@@ -1,0 +1,15 @@
+com.ostrichemulators.semtool.model.vocabulary
+com.ostrichemulators.semtool.om
+com.ostrichemulators.semtool.web.io
+com.ostrichemulators.semtool.security.permissions
+com.ostrichemulators.semtool.user
+com.ostrichemulators.semtool.rdf.engine.api
+com.ostrichemulators.semtool.rdf.engine.edgemodelers
+com.ostrichemulators.semtool.rdf.engine.impl
+com.ostrichemulators.semtool.rdf.engine.util
+com.ostrichemulators.semtool.rdf.query.util
+com.ostrichemulators.semtool.rdf.query.util.impl
+com.ostrichemulators.semtool.graph.functions
+com.ostrichemulators.semtool.util
+com.ostrichemulators.semtool.poi.main.xlsxml
+com.ostrichemulators.semtool.poi.main

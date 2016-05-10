@@ -1,0 +1,17 @@
+com.ostrichemulators.semtool.com.calls
+com.ostrichemulators.semtool.graph.functions
+com.ostrichemulators.semtool.om
+com.ostrichemulators.semtool.poi.main
+com.ostrichemulators.semtool.poi.main.xlsxml
+com.ostrichemulators.semtool.rdf.engine.api
+com.ostrichemulators.semtool.rdf.engine.edgemodelers
+com.ostrichemulators.semtool.rdf.engine.impl
+com.ostrichemulators.semtool.rdf.engine.util
+com.ostrichemulators.semtool.rdf.query.util
+com.ostrichemulators.semtool.rdf.query.util.impl
+com.ostrichemulators.semtool.tools
+com.ostrichemulators.semtool.ui.components
+com.ostrichemulators.semtool.ui.components.playsheets
+com.ostrichemulators.semtool.ui.components.semanticexplorer
+com.ostrichemulators.semtool.user
+com.ostrichemulators.semtool.util
