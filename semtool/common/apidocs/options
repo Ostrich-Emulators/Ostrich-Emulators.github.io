@@ -13,10 +13,10 @@
 -docencoding
 'UTF-8'
 -doctitle
-'OS-EM Semantic Tool Common 2.0 API'
+'OS-EM Semantic Tool Common 1.0 API'
 -linkoffline
 'http://docs.oracle.com/javase/8/docs/api' '/home/ryan/devl/OE/github/semtool/common/target/javadoc-bundle-options'
 -use
 -version
 -windowtitle
-'OS-EM Semantic Tool Common 2.0 API'
+'OS-EM Semantic Tool Common 1.0 API'

@@ -11,7 +11,6 @@ com.ostrichemulators.semtool.rdf.query.util
 com.ostrichemulators.semtool.rdf.query.util.impl
 com.ostrichemulators.semtool.tools
 com.ostrichemulators.semtool.ui.components
-com.ostrichemulators.semtool.ui.components.playsheets
 com.ostrichemulators.semtool.ui.components.semanticexplorer
 com.ostrichemulators.semtool.user
 com.ostrichemulators.semtool.util
