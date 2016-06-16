@@ -30,7 +30,7 @@ com.ostrichemulators.semtool.ui.components.tabbedqueries
 com.ostrichemulators.semtool.ui.helpers
 com.ostrichemulators.semtool.ui.main
 com.ostrichemulators.semtool.ui.main.listener.impl
-com.ostrichemulators.semtool.ui.swing.custom
+com.ostrichemulators.semtool.ui.preferences
 com.ostrichemulators.semtool.ui.transformer
 com.ostrichemulators.semtool.user
 com.ostrichemulators.semtool.util
