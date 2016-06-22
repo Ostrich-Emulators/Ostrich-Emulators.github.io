@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>QueryExecutorAdapter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.query.util</a> &gt; <span class="el_source">QueryExecutorAdapter.java</span></div><h1>QueryExecutorAdapter.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.query.util;
+
+import com.ostrichemulators.semtool.rdf.engine.api.QueryExecutor;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import javax.xml.datatype.DatatypeConfigurationException;
+import javax.xml.datatype.DatatypeFactory;
+import javax.xml.datatype.XMLGregorianCalendar;
+import java.util.List;
+import org.apache.log4j.Logger;
+import org.openrdf.model.Resource;
+
+/**
+ * A class that handles all the housekeeping of the QueryExecutor interface
+ *
+ * @author ryan
+ * @param &lt;T&gt; the type of the result
+ */
+public abstract class QueryExecutorAdapter&lt;T&gt; extends AbstractBindable
+		implements QueryExecutor&lt;T&gt; {
+
+<span class="nc" id="L28">	private static final Logger log = Logger.getLogger( QueryExecutorAdapter.class );</span>
+
+<span class="nc" id="L30">	private final List&lt;String&gt; bindNames = new ArrayList&lt;&gt;();</span>
+	protected T result;
+
+<span class="nc" id="L33">	public QueryExecutorAdapter() {</span>
+<span class="nc" id="L34">	}</span>
+
+	public QueryExecutorAdapter( String sparq ) {
+<span class="nc" id="L37">		super( sparq );</span>
+<span class="nc" id="L38">	}</span>
+
+	@Override
+	public T getResults() {
+<span class="nc" id="L42">		return result;</span>
+	}
+
+	@Override
+	public void start( List&lt;String&gt; bnames ) {
+<span class="nc" id="L47">		bindNames.clear();</span>
+<span class="nc" id="L48">		bindNames.addAll( bnames );</span>
+<span class="nc" id="L49">	}</span>
+
+	public int getNumBindings() {
+<span class="nc" id="L52">		return bindNames.size();</span>
+	}
+
+	public List&lt;String&gt; getBindingNames() {
+<span class="nc" id="L56">		return bindNames;</span>
+	}
+
+	@Override
+	public void done() {
+<span class="nc" id="L61">	}</span>
+
+	@Override
+	public QueryExecutorAdapter&lt;T&gt; bind( String var, boolean d ) {
+<span class="nc" id="L65">		return (QueryExecutorAdapter&lt;T&gt;) super.bind( var, d );</span>
+	}
+
+	@Override
+	public QueryExecutorAdapter&lt;T&gt; bind( String var, Date d ) {
+<span class="nc" id="L70">		return (QueryExecutorAdapter&lt;T&gt;) super.bind( var, d );</span>
+	}
+
+	@Override
+	public QueryExecutorAdapter&lt;T&gt; bind( String var, int d ) {
+<span class="nc" id="L75">		return (QueryExecutorAdapter&lt;T&gt;) super.bind( var, d );</span>
+	}
+
+	@Override
+	public QueryExecutorAdapter&lt;T&gt; bind( String var, double d ) {
+<span class="nc" id="L80">		return (QueryExecutorAdapter&lt;T&gt;) super.bind( var, d );</span>
+	}
+
+	@Override
+	public QueryExecutorAdapter&lt;T&gt; bind( String var, String s, String lang ) {
+<span class="nc" id="L85">		return (QueryExecutorAdapter&lt;T&gt;) super.bind( var, s, lang );</span>
+	}
+
+	@Override
+	public QueryExecutorAdapter&lt;T&gt; bind( String var, Resource r ) {
+<span class="nc" id="L90">		return (QueryExecutorAdapter&lt;T&gt;) super.bind( var, r );</span>
+	}
+
+	@Override
+	public QueryExecutorAdapter&lt;T&gt; bind( String var, String s ) {
+<span class="nc" id="L95">		return (QueryExecutorAdapter&lt;T&gt;) super.bind( var, s );</span>
+	}
+
+	@Override
+	public QueryExecutorAdapter&lt;T&gt; bindURI( String var, String basename, String localname ) {
+<span class="nc" id="L100">		return (QueryExecutorAdapter&lt;T&gt;) super.bindURI( var, basename, localname );</span>
+	}
+
+	@Override
+	public QueryExecutorAdapter&lt;T&gt; bindURI( String var, String uri ) {
+<span class="nc" id="L105">		return (QueryExecutorAdapter&lt;T&gt;) super.bindURI( var, uri );</span>
+	}
+
+	public static XMLGregorianCalendar getCal( Date date ) {
+<span class="nc" id="L109">		GregorianCalendar gCalendar = new GregorianCalendar();</span>
+<span class="nc" id="L110">		gCalendar.setTime( date );</span>
+<span class="nc" id="L111">		XMLGregorianCalendar xmlCalendar = null;</span>
+		try {
+<span class="nc" id="L113">			xmlCalendar = DatatypeFactory.newInstance().newXMLGregorianCalendar( gCalendar );</span>
+		}
+<span class="nc" id="L115">		catch ( DatatypeConfigurationException ex ) {</span>
+<span class="nc" id="L116">			log.error( ex );</span>
+<span class="nc" id="L117">		}</span>
+<span class="nc" id="L118">		return xmlCalendar;</span>
+	}
+
+	public static Date getDate( XMLGregorianCalendar cal ) {
+<span class="nc" id="L122">		return cal.toGregorianCalendar().getTime();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

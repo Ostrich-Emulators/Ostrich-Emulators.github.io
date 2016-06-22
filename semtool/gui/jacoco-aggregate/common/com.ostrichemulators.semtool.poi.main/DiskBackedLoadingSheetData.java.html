@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>DiskBackedLoadingSheetData.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.poi.main</a> &gt; <span class="el_source">DiskBackedLoadingSheetData.java</span></div><h1>DiskBackedLoadingSheetData.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.poi.main;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.ostrichemulators.semtool.util.RDFDatatypeTools;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
+import org.openrdf.model.Literal;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.ValueFactoryImpl;
+
+/**
+ * A class to encapsulate relationship loading sheet information.
+ *
+ * @author ryan
+ */
+public class DiskBackedLoadingSheetData extends LoadingSheetData {
+
+<span class="nc" id="L50">	private static final Logger log = Logger.getLogger( DiskBackedLoadingSheetData.class );</span>
+	private static final int COMMITLIMIT = 100000;
+	private static final int READCACHELIMIT = 10000;
+
+	private File backingfile;
+<span class="nc" id="L55">	private long opsSinceLastCommit = 0;</span>
+<span class="nc" id="L56">	private int datacount = 0;</span>
+<span class="nc" id="L57">	private final Set&lt;LoadingNodeAndPropertyValues&gt; removedNodes = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L58">	private final ObjectMapper oxm = new ObjectMapper();</span>
+<span class="nc" id="L59">	private int commitlimit = COMMITLIMIT;</span>
+<span class="nc" id="L60">	private int readcachelimit = commitlimit / 10;</span>
+
+	protected DiskBackedLoadingSheetData( String tabtitle, String type ) throws IOException {
+<span class="nc" id="L63">		this( tabtitle, type, new HashMap&lt;&gt;() );</span>
+<span class="nc" id="L64">	}</span>
+
+	protected DiskBackedLoadingSheetData( String tabtitle, String type,
+			Map&lt;String, URI&gt; props ) throws IOException {
+<span class="nc" id="L68">		this( tabtitle, type, null, null, props );</span>
+<span class="nc" id="L69">	}</span>
+
+	protected DiskBackedLoadingSheetData( String tabtitle, String sType, String oType,
+			String relname ) throws IOException {
+<span class="nc" id="L73">		this( tabtitle, sType, oType, relname, new HashMap&lt;&gt;() );</span>
+<span class="nc" id="L74">	}</span>
+
+	public DiskBackedLoadingSheetData( LoadingSheetData model ) throws IOException {
+<span class="nc" id="L77">		this( model.getName(), model.getSubjectType(), model.getObjectType(),</span>
+<span class="nc" id="L78">				model.getRelname(), model.getPropertiesAndDataTypes() );</span>
+
+<span class="nc" id="L80">		Iterator&lt;LoadingNodeAndPropertyValues&gt; it = model.iterator();</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">		while ( it.hasNext() ) {</span>
+<span class="nc" id="L82">			add( it.next() );</span>
+		}
+<span class="nc" id="L84">	}</span>
+
+	protected DiskBackedLoadingSheetData( String tabtitle, String sType, String oType,
+			String relname, Map&lt;String, URI&gt; props ) throws IOException {
+<span class="nc" id="L88">		super( tabtitle, sType, oType, relname, props );</span>
+
+<span class="nc" id="L90">		backingfile = File.createTempFile( tabtitle + &quot;-&quot;, &quot;.lsdata&quot; );</span>
+<span class="nc" id="L91">		backingfile.delete(); // don't keep a file hanging around until we need to</span>
+<span class="nc" id="L92">		log.debug( &quot;backing file is: &quot; + backingfile );</span>
+<span class="nc" id="L93">		SimpleModule sm = new SimpleModule();</span>
+<span class="nc" id="L94">		sm.addSerializer( LoadingNodeAndPropertyValues.class, new NapSerializer() );</span>
+<span class="nc" id="L95">		sm.addDeserializer( LoadingNodeAndPropertyValues.class, new NapDeserializer() );</span>
+<span class="nc" id="L96">		oxm.registerModule( sm );</span>
+<span class="nc" id="L97">	}</span>
+
+	public void setMaxElementsInMemory( int max ) {
+<span class="nc bnc" id="L100" title="All 2 branches missed.">		if ( max &gt; 0 ) {</span>
+<span class="nc" id="L101">			commitlimit = max;</span>
+<span class="nc" id="L102">			readcachelimit = max / 10;</span>
+		}
+<span class="nc" id="L104">	}</span>
+
+	@Override
+	public boolean isMemOnly() {
+<span class="nc" id="L108">		return false;</span>
+	}
+
+	/**
+	 * Releases any resources used by this class.
+	 */
+	@Override
+	public void release() {
+<span class="nc" id="L116">		super.clear();</span>
+<span class="nc" id="L117">		removedNodes.clear();</span>
+<span class="nc" id="L118">		FileUtils.deleteQuietly( backingfile );</span>
+<span class="nc" id="L119">	}</span>
+
+	@Override
+	public void finishLoading() {
+<span class="nc" id="L123">		commit();</span>
+<span class="nc" id="L124">	}</span>
+
+	/**
+	 * Clears any stored loading data
+	 */
+	@Override
+	public void clear() {
+<span class="nc" id="L131">		super.clear();</span>
+<span class="nc" id="L132">		datacount = 0;</span>
+<span class="nc" id="L133">		commit();</span>
+<span class="nc" id="L134">	}</span>
+
+	@Override
+	protected void commit() {
+		// flush everything to our backing file
+<span class="nc bnc" id="L139" title="All 2 branches missed.">		if ( opsSinceLastCommit &gt; 0 ) {</span>
+<span class="nc" id="L140">			try ( BufferedWriter writer</span>
+					= new BufferedWriter( new FileWriter( backingfile, true ) ) ) {
+<span class="nc" id="L142">				DataIterator it = super.iterator();</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">				while ( it.hasNext() ) {</span>
+<span class="nc" id="L144">					writer.write( oxm.writeValueAsString( it.next() ) );</span>
+<span class="nc" id="L145">					writer.newLine();</span>
+<span class="nc" id="L146">					it.remove();</span>
+				}
+
+<span class="nc" id="L149">				opsSinceLastCommit = 0;</span>
+<span class="nc bnc" id="L150" title="All 8 branches missed.">			}</span>
+<span class="nc" id="L151">			catch ( IOException ioe ) {</span>
+<span class="nc" id="L152">				log.warn( &quot;loading sheet internal commit failed&quot;, ioe );</span>
+<span class="nc" id="L153">			}</span>
+		}
+<span class="nc" id="L155">	}</span>
+
+	@Override
+	public DataIterator iterator() {
+<span class="nc bnc" id="L159" title="All 2 branches missed.">		if ( backingfile.exists() ) {</span>
+			try {
+<span class="nc" id="L161">				return new CacheIterator();</span>
+			}
+<span class="nc" id="L163">			catch ( IOException ioe ) {</span>
+<span class="nc" id="L164">				log.warn( &quot;cannot access backing file in iterator&quot;, ioe );</span>
+			}
+		}
+<span class="nc" id="L167">		return super.iterator();</span>
+	}
+
+	@Override
+	public List&lt;LoadingNodeAndPropertyValues&gt; getData() {
+<span class="nc" id="L172">		List&lt;LoadingNodeAndPropertyValues&gt; list = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L173">		Iterator&lt;LoadingNodeAndPropertyValues&gt; it = iterator();</span>
+<span class="nc bnc" id="L174" title="All 2 branches missed.">		while ( it.hasNext() ) {</span>
+<span class="nc" id="L175">			list.add( it.next() );</span>
+		}
+<span class="nc" id="L177">		return list;</span>
+	}
+
+	@Override
+	public int rows() {
+<span class="nc" id="L182">		return datacount;</span>
+	}
+
+	@Override
+	public boolean isEmpty() {
+<span class="nc bnc" id="L187" title="All 2 branches missed.">		return ( 0 == datacount );</span>
+	}
+
+	@Override
+	protected void added( LoadingNodeAndPropertyValues nap ) {
+<span class="nc" id="L192">		datacount++;</span>
+<span class="nc" id="L193">		tryCommit();</span>
+<span class="nc" id="L194">	}</span>
+
+	private void tryCommit() {
+<span class="nc" id="L197">		opsSinceLastCommit++;</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">		if ( opsSinceLastCommit &gt;= commitlimit ) {</span>
+<span class="nc" id="L199">			commit();</span>
+		}
+<span class="nc" id="L201">	}</span>
+
+	@Override
+	public void removeAll( Collection&lt;LoadingNodeAndPropertyValues&gt; naps ) {
+<span class="nc" id="L205">		super.removeAll( naps );</span>
+<span class="nc" id="L206">		removedNodes.addAll( naps );</span>
+<span class="nc" id="L207">	}</span>
+
+	@Override
+	public void remove( LoadingNodeAndPropertyValues nap ) {
+<span class="nc" id="L211">		super.remove( nap );</span>
+<span class="nc" id="L212">		removedNodes.add( nap );</span>
+<span class="nc" id="L213">	}</span>
+
+<span class="nc" id="L215">	private static class NapSerializer extends JsonSerializer&lt;LoadingNodeAndPropertyValues&gt; {</span>
+
+		@Override
+		public void serialize( LoadingNodeAndPropertyValues value, JsonGenerator jgen,
+				SerializerProvider provider ) throws IOException, JsonProcessingException {
+<span class="nc" id="L220">			jgen.writeStartObject();</span>
+<span class="nc" id="L221">			jgen.writeStringField( &quot;subject&quot;, value.getSubject() );</span>
+<span class="nc" id="L222">			jgen.writeStringField( &quot;object&quot;, value.getObject() );</span>
+
+<span class="nc" id="L224">			jgen.writeBooleanField( &quot;subjectIsError&quot;, value.isSubjectError() );</span>
+<span class="nc" id="L225">			jgen.writeBooleanField( &quot;objectIsError&quot;, value.isObjectError() );</span>
+<span class="nc" id="L226">			jgen.writeArrayFieldStart( &quot;properties&quot; );</span>
+<span class="nc bnc" id="L227" title="All 2 branches missed.">			for ( Map.Entry&lt;String, Value&gt; en : value.entrySet() ) {</span>
+<span class="nc" id="L228">				Value val = en.getValue();</span>
+<span class="nc" id="L229">				jgen.writeStartObject();</span>
+<span class="nc" id="L230">				jgen.writeStringField( &quot;prop&quot;, en.getKey() );</span>
+<span class="nc" id="L231">				jgen.writeStringField( &quot;value&quot;, val.stringValue() );</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">				if ( val instanceof Literal ) {</span>
+<span class="nc" id="L233">					Literal l = Literal.class.cast( val );</span>
+<span class="nc bnc" id="L234" title="All 2 branches missed.">					if ( null == l.getLanguage() ) {</span>
+<span class="nc" id="L235">						URI dt = l.getDatatype();</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">						if ( null != dt ) {</span>
+<span class="nc" id="L237">							jgen.writeStringField( &quot;dt&quot;, dt.stringValue() );</span>
+						}
+<span class="nc" id="L239">					}</span>
+					else {
+<span class="nc" id="L241">						jgen.writeStringField( &quot;lang&quot;, l.getLanguage() );</span>
+					}
+				}
+<span class="nc" id="L244">				jgen.writeEndObject();</span>
+<span class="nc" id="L245">			}</span>
+<span class="nc" id="L246">			jgen.writeEndArray();</span>
+<span class="nc" id="L247">			jgen.writeEndObject();</span>
+<span class="nc" id="L248">		}</span>
+	}
+
+<span class="nc" id="L251">	private class NapDeserializer extends JsonDeserializer&lt;LoadingNodeAndPropertyValues&gt; {</span>
+
+		@Override
+		public LoadingNodeAndPropertyValues deserialize( JsonParser jp, DeserializationContext ctxt ) throws IOException, JsonProcessingException {
+<span class="nc" id="L255">			ValueFactory vf = new ValueFactoryImpl();</span>
+
+<span class="nc" id="L257">			JsonNode node = jp.getCodec().readTree( jp );</span>
+<span class="nc" id="L258">			LoadingNodeAndPropertyValues nap</span>
+<span class="nc" id="L259">					= new LoadingNodeAndPropertyValues( node.get( &quot;subject&quot; ).asText() );</span>
+<span class="nc" id="L260">			JsonNode oj = node.get( &quot;object&quot; );</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">			if ( !oj.isNull() ) {</span>
+<span class="nc" id="L262">				nap.setObject( oj.asText() );</span>
+			}
+
+<span class="nc" id="L265">			nap.setSubjectIsError( node.get( &quot;subjectIsError&quot; ).asBoolean( false ) );</span>
+<span class="nc" id="L266">			nap.setObjectIsError( node.get( &quot;objectIsError&quot; ).asBoolean( false ) );</span>
+
+<span class="nc" id="L268">			Iterator&lt;JsonNode&gt; propit = node.get( &quot;properties&quot; ).elements();</span>
+<span class="nc bnc" id="L269" title="All 2 branches missed.">			while ( propit.hasNext() ) {</span>
+<span class="nc" id="L270">				JsonNode propval = propit.next();</span>
+<span class="nc" id="L271">				String prop = propval.get( &quot;prop&quot; ).asText();</span>
+<span class="nc" id="L272">				String valstr = propval.get( &quot;value&quot; ).asText();</span>
+<span class="nc" id="L273">				JsonNode lang = propval.get( &quot;lang&quot; );</span>
+<span class="nc bnc" id="L274" title="All 4 branches missed.">				if ( null == lang || lang.isNull() ) {</span>
+					// no language, so check for datatype
+<span class="nc" id="L276">					JsonNode dt = propval.get( &quot;dt&quot; );</span>
+<span class="nc bnc" id="L277" title="All 4 branches missed.">					if ( null == dt || dt.isNull() ) {</span>
+						// just do the best we can
+<span class="nc" id="L279">						nap.put( prop, RDFDatatypeTools.getRDFStringValue( valstr, null, vf ) );</span>
+					}
+					else {
+<span class="nc" id="L282">						nap.put( prop, vf.createLiteral( valstr, vf.createURI( dt.asText() ) ) );</span>
+					}
+<span class="nc" id="L284">				}</span>
+				else {
+<span class="nc" id="L286">					nap.put( prop, vf.createLiteral( valstr, lang.asText() ) );</span>
+				}
+<span class="nc" id="L288">			}</span>
+
+<span class="nc" id="L290">			return nap;</span>
+		}
+	}
+
+	/**
+	 * An iterator that iterates over the backing store first, then over the
+	 * in-memory naps
+	 */
+	private class CacheIterator extends DataIteratorImpl {
+
+		private final BufferedReader reader;
+<span class="nc" id="L301">		private final Deque&lt;LoadingNodeAndPropertyValues&gt; readcache = new ArrayDeque&lt;&gt;();</span>
+<span class="nc" id="L302">		private Iterator&lt;LoadingNodeAndPropertyValues&gt; memoryiter = null;</span>
+		private LoadingNodeAndPropertyValues current;
+
+<span class="nc" id="L305">		public CacheIterator() throws IOException {</span>
+<span class="nc" id="L306">			reader = new BufferedReader( new FileReader( backingfile ) );</span>
+<span class="nc" id="L307">			cacheMoreFromStore();</span>
+<span class="nc" id="L308">		}</span>
+
+		@Override
+		public boolean hasNext() {
+			// we need to iterate over data from three places (in this order)
+			// 1) our readcache, until it is empty
+			// 2) our backing file, until it is empty
+			// 3) our in-memory data
+			// we'll populate our readcache by periodically filling it with data from 
+			// our backing file
+
+<span class="nc bnc" id="L319" title="All 2 branches missed.">			boolean hasnext = !readcache.isEmpty();</span>
+
+			// our read cache is empty
+<span class="nc bnc" id="L322" title="All 2 branches missed.">			if ( !hasnext ) {</span>
+				// we haven't exhausted our backing file yet, so check there
+<span class="nc bnc" id="L324" title="All 2 branches missed.">				if ( null == memoryiter ) {</span>
+<span class="nc" id="L325">					hasnext = cacheMoreFromStore();</span>
+
+<span class="nc bnc" id="L327" title="All 2 branches missed.">					if ( !hasnext ) {</span>
+						// close our file reader, since the file is empty
+						try {
+<span class="nc" id="L330">							reader.close();</span>
+						}
+<span class="nc" id="L332">						catch ( IOException ioe ) {</span>
+<span class="nc" id="L333">							log.warn( &quot;problem closing file cache reader&quot;, ioe );</span>
+<span class="nc" id="L334">						}</span>
+
+						// our backing file is exhausted, so switch to our in-memory data
+<span class="nc" id="L337">						memoryiter = DiskBackedLoadingSheetData.super.iterator();</span>
+<span class="nc" id="L338">						hasnext = memoryiter.hasNext();</span>
+					}
+				}
+				else {
+					// we've already exhausted our backing file, so we're just reading
+					// from memory until we're out of data
+<span class="nc" id="L344">					hasnext = memoryiter.hasNext();</span>
+				}
+			}
+
+<span class="nc" id="L348">			return hasnext;</span>
+		}
+
+		private boolean cacheMoreFromStore() {
+<span class="nc" id="L352">			int rowsread = 0;</span>
+			try {
+<span class="nc" id="L354">				String json = null;</span>
+<span class="nc bnc" id="L355" title="All 4 branches missed.">				while ( rowsread &lt; READCACHELIMIT &amp;&amp; null != ( json = reader.readLine() ) ) {</span>
+<span class="nc" id="L356">					LoadingNodeAndPropertyValues nap</span>
+<span class="nc" id="L357">							= oxm.readValue( json, LoadingNodeAndPropertyValues.class );</span>
+<span class="nc bnc" id="L358" title="All 2 branches missed.">					if ( !removedNodes.contains( nap ) ) {</span>
+<span class="nc" id="L359">						rowsread++;</span>
+<span class="nc" id="L360">						readcache.add( nap );</span>
+					}
+<span class="nc" id="L362">				}</span>
+			}
+<span class="nc" id="L364">			catch ( IOException ioe ) {</span>
+<span class="nc" id="L365">				log.warn( &quot;problem reading from cache&quot;, ioe );</span>
+<span class="nc" id="L366">			}</span>
+
+<span class="nc bnc" id="L368" title="All 2 branches missed.">			return !readcache.isEmpty();</span>
+		}
+
+		@Override
+		public LoadingNodeAndPropertyValues next() {
+<span class="nc bnc" id="L373" title="All 2 branches missed.">			current = ( null == memoryiter ? readcache.poll() : memoryiter.next() );</span>
+<span class="nc" id="L374">			return current;</span>
+		}
+
+		@Override
+		public void remove() {
+			// if we're working off the backing store, just make a note of the 
+			// removed node. else actually remove it from the in-memory list
+<span class="nc bnc" id="L381" title="All 2 branches missed.">			if ( null == memoryiter ) {</span>
+<span class="nc" id="L382">				removedNodes.add( current );</span>
+			}
+			else {
+<span class="nc" id="L385">				memoryiter.remove();</span>
+			}
+<span class="nc" id="L387">		}</span>
+
+		@Override
+		public void release() {
+<span class="nc" id="L391">			readcache.clear();</span>
+			try {
+<span class="nc" id="L393">				reader.close();</span>
+			}
+<span class="nc" id="L395">			catch ( IOException ioe ) {</span>
+				// don't really care
+<span class="nc" id="L397">			}</span>
+<span class="nc" id="L398">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

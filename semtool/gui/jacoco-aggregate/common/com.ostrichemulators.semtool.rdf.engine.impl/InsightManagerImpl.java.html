@@ -1,0 +1,752 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>InsightManagerImpl.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.impl</a> &gt; <span class="el_source">InsightManagerImpl.java</span></div><h1>InsightManagerImpl.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.impl;
+
+import com.ostrichemulators.semtool.model.vocabulary.SEMPERS;
+import info.aduna.iteration.Iterations;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.log4j.Logger;
+import org.openrdf.model.Literal;
+import org.openrdf.model.Statement;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.model.vocabulary.RDFS;
+import org.openrdf.model.vocabulary.DCTERMS;
+import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.repository.RepositoryException;
+import com.ostrichemulators.semtool.model.vocabulary.OLO;
+import com.ostrichemulators.semtool.model.vocabulary.SP;
+import com.ostrichemulators.semtool.model.vocabulary.SPIN;
+import com.ostrichemulators.semtool.model.vocabulary.SPL;
+import com.ostrichemulators.semtool.model.vocabulary.UI;
+import com.ostrichemulators.semtool.om.Insight;
+import com.ostrichemulators.semtool.om.InsightOutputType;
+import com.ostrichemulators.semtool.om.Parameter;
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import com.ostrichemulators.semtool.rdf.engine.api.InsightManager;
+import com.ostrichemulators.semtool.om.Perspective;
+import com.ostrichemulators.semtool.rdf.engine.util.NodeDerivationTools;
+import static com.ostrichemulators.semtool.rdf.query.util.QueryExecutorAdapter.getDate;
+import com.ostrichemulators.semtool.rdf.query.util.impl.OneVarListQueryAdapter;
+import com.ostrichemulators.semtool.user.User;
+
+import com.ostrichemulators.semtool.util.UriBuilder;
+import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.ListIterator;
+import org.openrdf.model.Model;
+import org.openrdf.model.impl.LinkedHashModel;
+import org.openrdf.model.impl.StatementImpl;
+import org.openrdf.model.impl.ValueFactoryImpl;
+import org.openrdf.model.vocabulary.XMLSchema;
+import org.openrdf.repository.Repository;
+import org.openrdf.repository.RepositoryResult;
+import org.openrdf.rio.RDFParser;
+import org.openrdf.rio.helpers.StatementCollector;
+import org.openrdf.rio.turtle.TurtleParser;
+
+/**
+ *
+ * @author ryan
+ */
+public class InsightManagerImpl implements InsightManager {
+
+<span class="nc" id="L67">	private static final Logger log = Logger.getLogger( InsightManagerImpl.class );</span>
+
+<span class="nc" id="L69">	private UriBuilder urib = UriBuilder.getBuilder( SEMPERS.NAMESPACE );</span>
+<span class="nc" id="L70">	private final Map&lt;URI, Insight&gt; insights = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L71">	private final List&lt;Perspective&gt; perspectives = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L73">	public InsightManagerImpl() {</span>
+
+<span class="nc" id="L75">	}</span>
+
+<span class="nc" id="L77">	public InsightManagerImpl( InsightManager im ) {</span>
+<span class="nc" id="L78">		urib = UriBuilder.getBuilder( im.getInsightNamespace() );</span>
+<span class="nc" id="L79">		perspectives.addAll( deepcopy( im.getPerspectives() ) );</span>
+
+<span class="nc bnc" id="L81" title="All 2 branches missed.">		for ( Perspective p : perspectives ) {</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">			for ( Insight i : p.getInsights() ) {</span>
+<span class="nc" id="L83">				insights.put( i.getId(), i );</span>
+<span class="nc" id="L84">			}</span>
+<span class="nc" id="L85">		}</span>
+<span class="nc" id="L86">	}</span>
+
+	@Override
+	public void setInsightNamespace( String ns ) {
+<span class="nc" id="L90">		urib = UriBuilder.getBuilder( ns );</span>
+<span class="nc" id="L91">	}</span>
+
+	@Override
+	public String getInsightNamespace() {
+<span class="nc" id="L95">		return urib.toString();</span>
+	}
+
+	@Override
+	public void addAll( Collection&lt;Perspective&gt; newdata, boolean clearfirst ) {
+<span class="nc bnc" id="L100" title="All 2 branches missed.">		if ( newdata.equals( perspectives ) ) {</span>
+<span class="nc" id="L101">			return; // nothing to copy</span>
+		}
+
+<span class="nc bnc" id="L104" title="All 2 branches missed.">		if ( clearfirst ) {</span>
+<span class="nc" id="L105">			perspectives.clear();</span>
+<span class="nc" id="L106">			insights.clear();</span>
+		}
+
+<span class="nc" id="L109">		perspectives.addAll( deepcopy( newdata ) );</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">		for ( Perspective p : perspectives ) {</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">			for ( Insight i : p.getInsights() ) {</span>
+<span class="nc" id="L112">				insights.put( i.getId(), i );</span>
+<span class="nc" id="L113">			}</span>
+<span class="nc" id="L114">		}</span>
+<span class="nc" id="L115">	}</span>
+
+	@Override
+	public List&lt;Perspective&gt; getPerspectives() {
+<span class="nc" id="L119">		return new ArrayList&lt;&gt;( perspectives );</span>
+	}
+
+	public static InsightManager createFromRepository( Repository repo ) {
+<span class="nc" id="L123">		InsightManagerImpl imi = new InsightManagerImpl();</span>
+<span class="nc" id="L124">		RepositoryConnection rc = null;</span>
+		try {
+<span class="nc bnc" id="L126" title="All 2 branches missed.">			if ( !repo.isInitialized() ) {</span>
+<span class="nc" id="L127">				repo.initialize();</span>
+			}
+<span class="nc" id="L129">			rc = repo.getConnection();</span>
+<span class="nc" id="L130">			imi.loadFromRepository( rc );</span>
+		}
+<span class="nc" id="L132">		catch ( RepositoryException re ) {</span>
+<span class="nc" id="L133">			log.error( re, re );</span>
+		}
+		finally {
+<span class="nc bnc" id="L136" title="All 6 branches missed.">			if ( null != rc ) {</span>
+				try {
+<span class="nc" id="L138">					rc.close();</span>
+				}
+<span class="nc" id="L140">				catch ( RepositoryException re ) {</span>
+<span class="nc" id="L141">					log.warn( re, re );</span>
+<span class="nc" id="L142">				}</span>
+			}
+
+		}
+<span class="nc" id="L146">		return imi;</span>
+	}
+
+	public void loadFromRepository( RepositoryConnection rc ) {
+<span class="nc" id="L150">		List&lt;Perspective&gt; persps = new ArrayList&lt;&gt;();</span>
+		try {
+<span class="nc" id="L152">			RepositoryResult&lt;Statement&gt; rrs = rc.getStatements( null, RDF.TYPE,</span>
+					SEMPERS.Perspective, true );
+<span class="nc" id="L154">			List&lt;Statement&gt; stmts = Iterations.asList( rrs );</span>
+<span class="nc" id="L155">			Map&lt;Perspective, Integer&gt; ordering = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">			for ( Statement s : stmts ) {</span>
+<span class="nc" id="L157">				Perspective p = loadPerspective( URI.class.cast( s.getSubject() ), rc, urib );</span>
+
+<span class="nc" id="L159">				List&lt;Statement&gt; slotstmts = Iterations.asList(</span>
+<span class="nc" id="L160">						rc.getStatements( p.getId(), OLO.index, null, false ) );</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">				if ( !slotstmts.isEmpty() ) {</span>
+<span class="nc" id="L162">					Literal slotval = Literal.class.cast( slotstmts.get( 0 ).getObject() );</span>
+<span class="nc" id="L163">					ordering.put( p, slotval.intValue() );</span>
+				}
+
+<span class="nc" id="L166">				persps.add( p );</span>
+<span class="nc" id="L167">			}</span>
+
+<span class="nc" id="L169">			persps.sort( new Comparator&lt;Perspective&gt;() {</span>
+
+				@Override
+				public int compare( Perspective o1, Perspective o2 ) {
+<span class="nc" id="L173">					int o1slot = ordering.getOrDefault( o1, Integer.MAX_VALUE );</span>
+<span class="nc" id="L174">					int o2slot = ordering.getOrDefault( o2, Integer.MAX_VALUE );</span>
+<span class="nc" id="L175">					return o1slot - o2slot;</span>
+				}
+			} );
+
+		}
+<span class="nc" id="L180">		catch ( RepositoryException e ) {</span>
+<span class="nc" id="L181">			log.error( e, e );</span>
+<span class="nc" id="L182">		}</span>
+
+<span class="nc" id="L184">		perspectives.addAll( persps );</span>
+
+<span class="nc bnc" id="L186" title="All 2 branches missed.">		for ( Perspective p : persps ) {</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">			for ( Insight i : p.getInsights() ) {</span>
+<span class="nc" id="L188">				insights.put( i.getId(), i );</span>
+<span class="nc" id="L189">			}</span>
+<span class="nc" id="L190">		}</span>
+<span class="nc" id="L191">	}</span>
+
+	@Override
+	public boolean isEmpty() {
+<span class="nc bnc" id="L195" title="All 4 branches missed.">		return ( perspectives.isEmpty() &amp;&amp; insights.isEmpty() );</span>
+	}
+
+	@Override
+	public Perspective getSystemPerspective( IEngine eng ) {
+<span class="nc" id="L200">		Perspective persps = new Perspective( urib.uniqueUri(), &quot;Generic Perspective&quot;,</span>
+				&quot;System Generated Generic Perspective&quot; );
+
+<span class="nc" id="L203">		Insight metamodel = new Insight( &quot;View the Database Metamodel&quot;, null,</span>
+				InsightOutputType.GRAPH_METAMODEL );
+
+<span class="nc" id="L206">		Insight explore = new Insight( &quot;Explore an instance of a selected node type&quot;,</span>
+				&quot;SELECT DISTINCT ?instance WHERE { ?instance ?s ?o }&quot;,
+				InsightOutputType.GRAPH );
+<span class="nc" id="L209">		explore.setId( urib.uniqueUri() );</span>
+
+<span class="nc" id="L211">		Parameter concept = new Parameter( &quot;Concept&quot;,</span>
+<span class="nc" id="L212">				NodeDerivationTools.getConceptQuery( eng ) );</span>
+<span class="nc" id="L213">		concept.setId( urib.uniqueUri() );</span>
+
+<span class="nc" id="L215">		Parameter instance = new Parameter( &quot;Instance&quot;,</span>
+				&quot;SELECT ?instance WHERE { ?instance a ?concept }&quot; );
+<span class="nc" id="L217">		instance.setId( urib.uniqueUri() );</span>
+
+<span class="nc" id="L219">		explore.setParameters( Arrays.asList( concept, instance ) );</span>
+
+<span class="nc" id="L221">		String nespql = &quot;CONSTRUCT { ?instance ?step ?neighbor } WHERE {&quot;</span>
+				+ &quot;  ?instance ?step ?neighbor .&quot;
+				+ &quot;  ?step a ?stepType .&quot;
+				+ &quot;  FILTER ( ?stepType = owl:ObjectProperty )&quot;
+				+ &quot;}&quot;;
+<span class="nc" id="L226">		Insight neighbor = new Insight( &quot;Show One Neighbor Away from Selected Node&quot;,</span>
+				nespql, InsightOutputType.GRAPH );
+<span class="nc" id="L228">		neighbor.setId( urib.uniqueUri() );</span>
+<span class="nc" id="L229">		neighbor.setParameters( Arrays.asList( concept, instance ) );</span>
+
+<span class="nc" id="L231">		persps.setInsights( Arrays.asList( metamodel, explore, neighbor ) );</span>
+<span class="nc" id="L232">		return persps;</span>
+	}
+
+	/**
+	 * Gets all Parameter objects under the passed-in Insight URI.
+	 *
+	 * @param insightURI -- (URI) An Insight URI.
+	 *
+	 * @return -- (Collection&lt;Parameter&gt;) Described above.
+	 */
+	private static Collection&lt;Parameter&gt; loadParameters( Insight insight,
+			RepositoryConnection rc ) {
+<span class="nc" id="L244">		List&lt;Parameter&gt; colInsightParameters = new ArrayList&lt;&gt;();</span>
+
+		try {
+			// get this insight's constraints/parameters
+<span class="nc" id="L248">			Collection&lt;Statement&gt; paramIds = Iterations.asList( rc.getStatements( insight.getId(),</span>
+					SPIN.constraint, null, false ) );
+<span class="nc bnc" id="L250" title="All 2 branches missed.">			for ( Statement s : paramIds ) {</span>
+<span class="nc" id="L251">				URI paramId = URI.class.cast( s.getObject() );</span>
+<span class="nc" id="L252">				Parameter parameter = new Parameter();</span>
+<span class="nc" id="L253">				parameter.setId( paramId );</span>
+
+				// get data about this parameter
+<span class="nc" id="L256">				Collection&lt;Statement&gt; data</span>
+<span class="nc" id="L257">						= Iterations.asList( rc.getStatements( paramId, null, null, false ) );</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">				for ( Statement d : data ) {</span>
+<span class="nc" id="L259">					URI pred = d.getPredicate();</span>
+<span class="nc" id="L260">					Value val = d.getObject();</span>
+
+<span class="nc bnc" id="L262" title="All 2 branches missed.">					if ( RDFS.LABEL.equals( pred ) ) {</span>
+<span class="nc" id="L263">						parameter.setLabel( val.stringValue() );</span>
+					}
+<span class="nc bnc" id="L265" title="All 2 branches missed.">					else if ( SPL.predicate.equals( pred ) ) {</span>
+<span class="nc" id="L266">						List&lt;Statement&gt; preddata</span>
+<span class="nc" id="L267">								= Iterations.asList( rc.getStatements( URI.class.cast( val ),</span>
+												RDFS.LABEL, null, true ) );
+<span class="nc bnc" id="L269" title="All 2 branches missed.">						if ( !preddata.isEmpty() ) {</span>
+							// parameter.setVariable( preddata.get( 0 ).getObject().stringValue() );
+						}
+<span class="nc" id="L272">					}</span>
+<span class="nc bnc" id="L273" title="All 2 branches missed.">					else if ( SP.query.equals( pred ) ) {</span>
+<span class="nc" id="L274">						List&lt;Statement&gt; preddata</span>
+<span class="nc" id="L275">								= Iterations.asList( rc.getStatements( URI.class.cast( val ),</span>
+												SP.text, null, true ) );
+<span class="nc bnc" id="L277" title="All 2 branches missed.">						if ( !preddata.isEmpty() ) {</span>
+<span class="nc" id="L278">							parameter.setDefaultQuery( preddata.get( 0 ).getObject().stringValue() );</span>
+						}
+<span class="nc" id="L280">					}</span>
+<span class="nc bnc" id="L281" title="All 2 branches missed.">					else if ( SPL.valueType.equals( pred ) ) {</span>
+<span class="nc" id="L282">						parameter.setParameterType( val.stringValue() );</span>
+					}
+<span class="nc" id="L284">				}</span>
+
+<span class="nc" id="L286">				colInsightParameters.add( parameter );</span>
+<span class="nc" id="L287">			}</span>
+		}
+<span class="nc" id="L289">		catch ( RepositoryException e ) {</span>
+<span class="nc" id="L290">			log.error( e, e );</span>
+<span class="nc" id="L291">		}</span>
+<span class="nc" id="L292">		return colInsightParameters;</span>
+	}
+
+	private static List&lt;Insight&gt; loadInsights( Perspective perspective,
+			RepositoryConnection rc, UriBuilder urib ) {
+<span class="nc" id="L297">		List&lt;Insight&gt; list = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">		if ( perspective != null ) {</span>
+<span class="nc" id="L299">			String query = &quot;SELECT ?item &quot;</span>
+					+ &quot;WHERE {&quot;
+					+ &quot;  ?perspective olo:slot ?slot .&quot;
+					+ &quot;  ?slot olo:item ?item .&quot;
+					+ &quot;  ?slot olo:index ?index . &quot;
+					+ &quot;} ORDER BY ?index&quot;;
+<span class="nc" id="L305">			OneVarListQueryAdapter&lt;URI&gt; orderquery</span>
+<span class="nc" id="L306">					= OneVarListQueryAdapter.getUriList( query );</span>
+<span class="nc" id="L307">			orderquery.bind( &quot;perspective&quot;, perspective.getId() );</span>
+<span class="nc" id="L308">			orderquery.addNamespace( OLO.PREFIX, OLO.NAMESPACE );</span>
+
+<span class="nc" id="L310">			List&lt;URI&gt; insightUris</span>
+<span class="nc" id="L311">					= AbstractSesameEngine.getSelectNoEx( orderquery, rc, true );</span>
+
+<span class="nc bnc" id="L313" title="All 2 branches missed.">			for ( URI id : insightUris ) {</span>
+<span class="nc" id="L314">				list.add( loadInsight( id, rc, urib ) );</span>
+<span class="nc" id="L315">			}</span>
+		}
+
+<span class="nc" id="L318">		return list;</span>
+	}
+
+	@Override
+	public Insight getInsight( URI insightURI ) {
+<span class="nc" id="L323">		return insights.get( insightURI );</span>
+	}
+
+	private static Insight loadInsight( URI insightURI, RepositoryConnection rc,
+			UriBuilder urib ) {
+
+<span class="nc" id="L329">		Insight insight = null;</span>
+		try {
+			// need a couple things here...the insight data, the query, 
+			// and view data (the playsheet)
+<span class="nc" id="L333">			List&lt;Statement&gt; stmts</span>
+<span class="nc" id="L334">					= Iterations.asList( rc.getStatements( insightURI, null, null, true ) );</span>
+
+			// the query itself
+<span class="nc" id="L337">			List&lt;Statement&gt; qstmts</span>
+<span class="nc" id="L338">					= Iterations.asList( rc.getStatements( insightURI, SPIN.body, null, true ) );</span>
+<span class="nc bnc" id="L339" title="All 2 branches missed.">			if ( !qstmts.isEmpty() ) {</span>
+<span class="nc" id="L340">				URI body = URI.class.cast( qstmts.get( 0 ).getObject() );</span>
+<span class="nc" id="L341">				List&lt;Statement&gt; querys</span>
+<span class="nc" id="L342">						= Iterations.asList( rc.getStatements( body, SP.text, null, true ) );</span>
+<span class="nc" id="L343">				stmts.addAll( querys );</span>
+			}
+			// the data view
+<span class="nc" id="L346">			List&lt;Statement&gt; dvstmts</span>
+<span class="nc" id="L347">					= Iterations.asList( rc.getStatements( insightURI, UI.dataView, null, true ) );</span>
+<span class="nc bnc" id="L348" title="All 2 branches missed.">			if ( !dvstmts.isEmpty() ) {</span>
+<span class="nc" id="L349">				URI view = URI.class.cast( dvstmts.get( 0 ).getObject() );</span>
+<span class="nc" id="L350">				List&lt;Statement&gt; dvs</span>
+<span class="nc" id="L351">						= Iterations.asList( rc.getStatements( view, UI.viewClass, null, true ) );</span>
+<span class="nc" id="L352">				stmts.addAll( dvs );</span>
+			}
+
+<span class="nc bnc" id="L355" title="All 2 branches missed.">			if ( !stmts.isEmpty() ) {</span>
+<span class="nc" id="L356">				insight = insightFromStatements( stmts );</span>
+
+				// finally, set the parameters
+<span class="nc" id="L359">				Collection&lt;Parameter&gt; params = loadParameters( insight, rc );</span>
+<span class="nc" id="L360">				insight.setParameters( params );</span>
+			}
+		}
+<span class="nc" id="L363">		catch ( RepositoryException e ) {</span>
+			// TODO Auto-generated catch block
+<span class="nc" id="L365">			log.error( e, e );</span>
+<span class="nc" id="L366">		}</span>
+
+<span class="nc bnc" id="L368" title="All 2 branches missed.">		if ( null == insight ) {</span>
+<span class="nc" id="L369">			throw new IllegalArgumentException( &quot;unknown insight: &quot; + insightURI );</span>
+		}
+<span class="nc" id="L371">		return insight;</span>
+	}
+
+	@Override
+	public Perspective getPerspective( URI perspectiveURI ) {
+<span class="nc" id="L376">		ListIterator&lt;Perspective&gt; lit = perspectives.listIterator();</span>
+<span class="nc bnc" id="L377" title="All 2 branches missed.">		while ( lit.hasNext() ) {</span>
+<span class="nc" id="L378">			Perspective old = lit.next();</span>
+<span class="nc bnc" id="L379" title="All 2 branches missed.">			if ( old.getId().equals( perspectiveURI ) ) {</span>
+<span class="nc" id="L380">				return old;</span>
+			}
+<span class="nc" id="L382">		}</span>
+
+<span class="nc" id="L384">		throw new IllegalArgumentException( &quot;unknown perspective: &quot; + perspectiveURI );</span>
+	}
+
+	@Override
+	public URI add( Perspective p ) {
+<span class="nc" id="L389">		p.setId( urib.uniqueUri() );</span>
+<span class="nc" id="L390">		perspectives.add( p );</span>
+<span class="nc" id="L391">		return p.getId();</span>
+	}
+
+	@Override
+	public void update( Perspective p ) {
+<span class="nc" id="L396">		ListIterator&lt;Perspective&gt; lit = perspectives.listIterator();</span>
+<span class="nc bnc" id="L397" title="All 2 branches missed.">		while ( lit.hasNext() ) {</span>
+<span class="nc" id="L398">			Perspective old = lit.next();</span>
+<span class="nc bnc" id="L399" title="All 2 branches missed.">			if ( old.getId().equals( p.getId() ) ) {</span>
+<span class="nc" id="L400">				lit.set( p );</span>
+			}
+<span class="nc" id="L402">		}</span>
+<span class="nc" id="L403">	}</span>
+
+	@Override
+	public void addInsight( Perspective p, Insight i, int pos ) {
+<span class="nc" id="L407">		insights.put( i.getId(), i );</span>
+<span class="nc bnc" id="L408" title="All 2 branches missed.">		if ( pos &lt; 0 ) {</span>
+<span class="nc" id="L409">			pos = p.getInsights().size();</span>
+		}
+
+<span class="nc" id="L412">		p.getInsights().add( pos, i );</span>
+<span class="nc" id="L413">	}</span>
+
+	@Override
+	public void remove( Perspective p ) {
+<span class="nc" id="L417">		perspectives.remove( p );</span>
+<span class="nc" id="L418">	}</span>
+
+	@Override
+	public URI add( Insight p ) {
+<span class="nc" id="L422">		p.setId( urib.uniqueUri() );</span>
+<span class="nc" id="L423">		insights.put( p.getId(), p );</span>
+<span class="nc" id="L424">		return p.getId();</span>
+	}
+
+	@Override
+	public void update( Insight p ) {
+<span class="nc" id="L429">		insights.put( p.getId(), p );</span>
+<span class="nc" id="L430">	}</span>
+
+	@Override
+	public void remove( Insight p ) {
+<span class="nc" id="L434">		insights.remove( p.getId() );</span>
+<span class="nc" id="L435">	}</span>
+
+	private static Perspective loadPerspective( URI perspectiveURI, RepositoryConnection rc,
+			UriBuilder urib ) {
+		try {
+<span class="nc" id="L440">			Perspective perspective = new Perspective( perspectiveURI );</span>
+<span class="nc" id="L441">			Collection&lt;Statement&gt; stmts</span>
+<span class="nc" id="L442">					= Iterations.asList( rc.getStatements( perspectiveURI, null, null, false ) );</span>
+<span class="nc bnc" id="L443" title="All 2 branches missed.">			for ( Statement s : stmts ) {</span>
+<span class="nc" id="L444">				URI pred = s.getPredicate();</span>
+<span class="nc" id="L445">				Value val = s.getObject();</span>
+
+<span class="nc bnc" id="L447" title="All 2 branches missed.">				if ( val instanceof Literal ) {</span>
+<span class="nc bnc" id="L448" title="All 2 branches missed.">					if ( RDFS.LABEL.equals( pred ) ) {</span>
+<span class="nc" id="L449">						perspective.setLabel( val.stringValue() );</span>
+					}
+<span class="nc bnc" id="L451" title="All 2 branches missed.">					else if ( DCTERMS.DESCRIPTION.equals( pred ) ) {</span>
+<span class="nc" id="L452">						perspective.setDescription( val.stringValue() );</span>
+					}
+				}
+<span class="nc" id="L455">			}</span>
+
+<span class="nc" id="L457">			perspective.setInsights( loadInsights( perspective, rc, urib ) );</span>
+<span class="nc" id="L458">			return perspective;</span>
+		}
+<span class="nc" id="L460">		catch ( RepositoryException e ) {</span>
+<span class="nc" id="L461">			log.error( e, e );</span>
+		}
+<span class="nc" id="L463">		throw new IllegalArgumentException( &quot;unknown perspective: &quot; + perspectiveURI );</span>
+	}
+
+	private static Insight insightFromStatements( Collection&lt;Statement&gt; stmts ) {
+<span class="nc" id="L467">		Insight insight = new Insight();</span>
+
+<span class="nc bnc" id="L469" title="All 2 branches missed.">		for ( Statement stmt : stmts ) {</span>
+<span class="nc" id="L470">			URI pred = stmt.getPredicate();</span>
+<span class="nc" id="L471">			Value val = stmt.getObject();</span>
+<span class="nc bnc" id="L472" title="All 2 branches missed.">			if ( val instanceof Literal ) {</span>
+<span class="nc" id="L473">				Literal obj = Literal.class.cast( val );</span>
+
+<span class="nc bnc" id="L475" title="All 2 branches missed.">				if ( RDFS.LABEL.equals( pred ) ) {</span>
+<span class="nc" id="L476">					insight.setId( URI.class.cast( stmt.getSubject() ) );</span>
+
+<span class="nc" id="L478">					insight.setLabel( obj.stringValue() );</span>
+				}
+<span class="nc bnc" id="L480" title="All 2 branches missed.">				else if ( SEMPERS.INSIGHT_OUTPUT_TYPE.equals( pred ) ) {</span>
+					try {
+<span class="nc" id="L482">						insight.setOutput( InsightOutputType.valueOf( obj.stringValue() ) );</span>
+					}
+<span class="nc" id="L484">					catch ( IllegalArgumentException iae ) {</span>
+<span class="nc" id="L485">						log.warn( &quot;unknown insight output type: &quot; + obj.stringValue()</span>
+								+ &quot;(using grid instead)&quot; );
+<span class="nc" id="L487">						insight.setOutput( InsightOutputType.GRID );</span>
+<span class="nc" id="L488">					}</span>
+				}
+<span class="nc bnc" id="L490" title="All 2 branches missed.">				else if ( DCTERMS.CREATOR.equals( pred ) ) {</span>
+<span class="nc" id="L491">					insight.setCreator( obj.stringValue() );</span>
+				}
+<span class="nc bnc" id="L493" title="All 2 branches missed.">				else if ( DCTERMS.CREATED.equals( pred ) ) {</span>
+<span class="nc" id="L494">					URI uri = obj.getDatatype();</span>
+<span class="nc bnc" id="L495" title="All 4 branches missed.">					if ( XMLSchema.DATE.equals( uri ) || XMLSchema.DATETIME.equals( uri ) ) {</span>
+<span class="nc" id="L496">						insight.setCreated( getDate( Literal.class.cast( obj ).calendarValue() ) );</span>
+					}
+<span class="nc" id="L498">				}</span>
+<span class="nc bnc" id="L499" title="All 2 branches missed.">				else if ( DCTERMS.MODIFIED.equals( pred ) ) {</span>
+<span class="nc" id="L500">					URI uri = obj.getDatatype();</span>
+<span class="nc bnc" id="L501" title="All 4 branches missed.">					if ( XMLSchema.DATE.equals( uri ) || XMLSchema.DATETIME.equals( uri ) ) {</span>
+<span class="nc" id="L502">						insight.setModified( getDate( Literal.class.cast( obj ).calendarValue() ) );</span>
+					}
+<span class="nc" id="L504">				}</span>
+<span class="nc bnc" id="L505" title="All 2 branches missed.">				else if ( DCTERMS.DESCRIPTION.equals( pred ) ) {</span>
+<span class="nc" id="L506">					insight.setDescription( obj.stringValue() );</span>
+				}
+<span class="nc bnc" id="L508" title="All 2 branches missed.">				else if ( SP.text.equals( pred ) ) {</span>
+<span class="nc" id="L509">					insight.setSparql( obj.stringValue() );</span>
+				}
+<span class="nc bnc" id="L511" title="All 2 branches missed.">				else if ( SEMPERS.INSIGHT_OUTPUT_TYPE.equals( pred ) ) {</span>
+<span class="nc" id="L512">					insight.setOutput( InsightOutputType.valueOf( obj.stringValue() ) );</span>
+				}
+			}
+<span class="nc" id="L515">		}</span>
+
+		// make sure every insight has an output type
+<span class="nc bnc" id="L518" title="All 2 branches missed.">		if ( null == insight.getOutput() ) {</span>
+<span class="nc" id="L519">			insight.setOutput( InsightOutputType.GRID );</span>
+		}
+
+<span class="nc" id="L522">		return insight;</span>
+	}
+
+	public static Model getModel( InsightManager im, User user ) {
+<span class="nc" id="L526">		Model statements = new LinkedHashModel();</span>
+<span class="nc" id="L527">		int idx = 0;</span>
+
+<span class="nc" id="L529">		RDFParser parser = new TurtleParser();</span>
+<span class="nc" id="L530">		StatementCollector coll = new StatementCollector();</span>
+<span class="nc" id="L531">		parser.setRDFHandler( coll );</span>
+<span class="nc" id="L532">		try ( InputStream is = IEngine.class.getResourceAsStream( &quot;/models/sempers.ttl&quot; ) ) {</span>
+<span class="nc" id="L533">			parser.parse( is, SEMPERS.BASE_URI );</span>
+<span class="nc bnc" id="L534" title="All 8 branches missed.">		}</span>
+<span class="nc" id="L535">		catch ( Exception e ) {</span>
+<span class="nc" id="L536">			log.warn( &quot;could not include sempers.ttl ontology in statements&quot;, e );</span>
+<span class="nc" id="L537">		}</span>
+
+<span class="nc" id="L539">		statements.addAll( coll.getStatements() );</span>
+
+<span class="nc" id="L541">		ValueFactory vf = new ValueFactoryImpl();</span>
+<span class="nc bnc" id="L542" title="All 2 branches missed.">		for ( Perspective p : im.getPerspectives() ) {</span>
+<span class="nc" id="L543">			statements.addAll( getStatements( p, user ) );</span>
+<span class="nc" id="L544">			statements.add( new StatementImpl( p.getId(), OLO.index,</span>
+<span class="nc" id="L545">					vf.createLiteral( idx++ ) ) );</span>
+<span class="nc" id="L546">		}</span>
+
+<span class="nc" id="L548">		return statements;</span>
+	}
+
+	/**
+	 * Converts the Perspective, its Insights and Parameters (and ordering!) to
+	 * Statements for adding to a Repository. If any Perspective, Insight, or
+	 * Parameter is missing an ID, a new one will be generated for it, and set on
+	 * the object
+	 *
+	 * @param p the perspective to convert.
+	 * @param user
+	 * @return a list of statements that completely represent the perspective tree
+	 */
+	public static Model getStatements( Perspective p, User user ) {
+<span class="nc" id="L562">		Model statements = new LinkedHashModel();</span>
+<span class="nc" id="L563">		UriBuilder urib = UriBuilder.getBuilder( SEMPERS.NAMESPACE );</span>
+
+		// if we're creating statements, mark our repository as an insights db
+<span class="nc" id="L566">		statements.add( new StatementImpl( SEMPERS.INSIGHT_DB, RDF.TYPE,</span>
+				SEMPERS.INSIGHT_CORE_TYPE ) );
+
+<span class="nc" id="L569">		ValueFactory vf = new ValueFactoryImpl();</span>
+
+<span class="nc bnc" id="L571" title="All 2 branches missed.">		if ( null == p.getId() ) {</span>
+<span class="nc" id="L572">			p.setId( urib.build( p.getLabel() ) );</span>
+		}
+<span class="nc" id="L574">		statements.addAll( getPerspectiveStatements( p, vf, urib, user ) );</span>
+
+<span class="nc bnc" id="L576" title="All 2 branches missed.">		for ( Insight i : p.getInsights() ) {</span>
+<span class="nc" id="L577">			final String piname = p.getLabel() + &quot;-&quot; + i.getLabel();</span>
+
+<span class="nc bnc" id="L579" title="All 2 branches missed.">			if ( null == i.getId() ) {</span>
+<span class="nc" id="L580">				i.setId( urib.build( piname ) );</span>
+			}
+<span class="nc" id="L582">			statements.addAll( getInsightStatements( i, vf, urib, user ) );</span>
+
+<span class="nc bnc" id="L584" title="All 2 branches missed.">			for ( Parameter a : i.getInsightParameters() ) {</span>
+<span class="nc" id="L585">				final String pianame = piname + &quot;-&quot; + a.getLabel();</span>
+
+<span class="nc" id="L587">				URI predicateUri = urib.build( pianame + &quot;-pred&quot; );</span>
+<span class="nc" id="L588">				URI queryUri = urib.build( pianame + &quot;-query&quot; );</span>
+
+<span class="nc bnc" id="L590" title="All 2 branches missed.">				if ( null == a.getId() ) {</span>
+<span class="nc" id="L591">					a.setId( urib.build( pianame ) );</span>
+				}
+
+<span class="nc" id="L594">				statements.addAll( getParameterStatements( a, predicateUri, queryUri,</span>
+						vf, urib, user ) );
+<span class="nc" id="L596">			}</span>
+
+<span class="nc" id="L598">			statements.addAll( getConstraintStatements( i, i.getInsightParameters() ) );</span>
+<span class="nc" id="L599">		}</span>
+
+<span class="nc" id="L601">		statements.addAll( getOrderingStatements( p, p.getInsights(), vf, urib ) );</span>
+
+<span class="nc" id="L603">		return statements;</span>
+	}
+
+	protected static Model getPerspectiveStatements( Perspective p,
+			ValueFactory vf, UriBuilder urib, User user ) {
+
+<span class="nc" id="L609">		Model statements = new LinkedHashModel();</span>
+<span class="nc" id="L610">		URI pid = p.getId();</span>
+<span class="nc" id="L611">		Date now = new Date();</span>
+
+<span class="nc" id="L613">		statements.add( new StatementImpl( pid, RDF.TYPE, SEMPERS.Perspective ) );</span>
+<span class="nc" id="L614">		statements.add( new StatementImpl( pid, RDFS.LABEL,</span>
+<span class="nc" id="L615">				vf.createLiteral( p.getLabel() ) ) );</span>
+<span class="nc bnc" id="L616" title="All 2 branches missed.">		if ( null != p.getDescription() ) {</span>
+<span class="nc" id="L617">			statements.add( new StatementImpl( pid, DCTERMS.DESCRIPTION,</span>
+<span class="nc" id="L618">					vf.createLiteral( p.getDescription() ) ) );</span>
+		}
+
+<span class="nc" id="L621">		statements.add( new StatementImpl( pid, DCTERMS.CREATED,</span>
+<span class="nc" id="L622">				vf.createLiteral( now ) ) );</span>
+<span class="nc" id="L623">		statements.add( new StatementImpl( pid, DCTERMS.MODIFIED,</span>
+<span class="nc" id="L624">				vf.createLiteral( now ) ) );</span>
+<span class="nc" id="L625">		statements.add( new StatementImpl( pid, DCTERMS.CREATOR,</span>
+<span class="nc" id="L626">				vf.createLiteral( getAuthorInfo( user ) ) ) );</span>
+
+<span class="nc" id="L628">		return statements;</span>
+	}
+
+	protected static Model getInsightStatements( Insight insight,
+			ValueFactory vf, UriBuilder urib, User user ) {
+
+<span class="nc" id="L634">		Model statements = new LinkedHashModel();</span>
+<span class="nc" id="L635">		URI iid = insight.getId();</span>
+
+<span class="nc" id="L637">		statements.add( new StatementImpl( iid, RDF.TYPE, SPIN.MagicProperty ) );</span>
+<span class="nc" id="L638">		statements.add( new StatementImpl( iid, RDFS.LABEL,</span>
+<span class="nc" id="L639">				vf.createLiteral( insight.getLabel() ) ) );</span>
+<span class="nc bnc" id="L640" title="All 2 branches missed.">		if ( null != insight.getDescription() ) {</span>
+<span class="nc" id="L641">			statements.add( new StatementImpl( iid, DCTERMS.DESCRIPTION,</span>
+<span class="nc" id="L642">					vf.createLiteral( insight.getDescription() ) ) );</span>
+		}
+
+<span class="nc bnc" id="L645" title="All 2 branches missed.">		if ( null != insight.getOutput() ) {</span>
+<span class="nc" id="L646">			statements.add( new StatementImpl( iid, SEMPERS.INSIGHT_OUTPUT_TYPE,</span>
+<span class="nc" id="L647">					vf.createLiteral( insight.getOutput().toString() ) ) );</span>
+		}
+
+<span class="nc" id="L650">		statements.add( new StatementImpl( iid, RDFS.SUBCLASSOF, SEMPERS.InsightProperties ) );</span>
+<span class="nc" id="L651">		statements.add( new StatementImpl( iid, DCTERMS.CREATED,</span>
+<span class="nc bnc" id="L652" title="All 2 branches missed.">				vf.createLiteral( null == insight.getCreated() ? new Date()</span>
+<span class="nc" id="L653">								: insight.getCreated() ) ) );</span>
+<span class="nc" id="L654">		statements.add( new StatementImpl( iid, DCTERMS.MODIFIED,</span>
+<span class="nc" id="L655">				vf.createLiteral( new Date() ) ) );</span>
+<span class="nc" id="L656">		statements.add( new StatementImpl( iid, DCTERMS.CREATOR,</span>
+<span class="nc" id="L657">				vf.createLiteral( getAuthorInfo( user ) ) ) );</span>
+
+<span class="nc" id="L659">		String sparql = insight.getSparql();</span>
+
+<span class="nc" id="L661">		URI spinid = urib.build( insight.getLabel() + &quot;-query&quot; );</span>
+<span class="nc" id="L662">		statements.add( new StatementImpl( iid, SPIN.body, spinid ) );</span>
+<span class="nc" id="L663">		statements.add( new StatementImpl( spinid, SP.text,</span>
+<span class="nc" id="L664">				vf.createLiteral( sparql ) ) );</span>
+
+		// Insights can only have SELECT, CONSTRUCT, or DESCRIBE queries:
+		URI bodytype;
+<span class="nc bnc" id="L668" title="All 2 branches missed.">		if ( sparql.toUpperCase().startsWith( &quot;DESCRIBE&quot; ) ) {</span>
+<span class="nc" id="L669">			bodytype = SP.Describe;</span>
+		}
+<span class="nc bnc" id="L671" title="All 2 branches missed.">		else if ( sparql.toUpperCase().startsWith( &quot;CONSTRUCT&quot; ) ) {</span>
+<span class="nc" id="L672">			bodytype = SP.Construct;</span>
+		}
+		else {
+<span class="nc" id="L675">			bodytype = SP.Select;</span>
+		}
+<span class="nc" id="L677">		statements.add( new StatementImpl( spinid, RDF.TYPE, bodytype ) );</span>
+
+<span class="nc" id="L679">		return statements;</span>
+	}
+
+	protected static Model getParameterStatements( Parameter parameter,
+			URI predicateUri, URI queryUri, ValueFactory vf, UriBuilder urib,
+			User user ) {
+
+<span class="nc" id="L686">		Model statements = new LinkedHashModel();</span>
+
+<span class="nc" id="L688">		URI pid = parameter.getId();</span>
+
+<span class="nc" id="L690">		statements.add( new StatementImpl( pid, RDFS.LABEL,</span>
+<span class="nc" id="L691">				vf.createLiteral( parameter.getLabel() ) ) );</span>
+
+<span class="nc" id="L693">		statements.add( new StatementImpl( pid, SPL.predicate, predicateUri ) );</span>
+<span class="nc" id="L694">		statements.add( new StatementImpl( pid, SP.query, queryUri ) );</span>
+
+<span class="nc" id="L696">		statements.add( new StatementImpl( predicateUri, RDFS.LABEL,</span>
+<span class="nc" id="L697">				vf.createLiteral( parameter.getLabel() ) ) );</span>
+<span class="nc" id="L698">		statements.add( new StatementImpl( queryUri, SP.text,</span>
+<span class="nc" id="L699">				vf.createLiteral( parameter.getDefaultQuery() ) ) );</span>
+
+<span class="nc" id="L701">		return statements;</span>
+	}
+
+	protected static Model getOrderingStatements( Perspective p,
+			List&lt;Insight&gt; insights, ValueFactory vf, UriBuilder urib ) {
+<span class="nc" id="L706">		Model statements = new LinkedHashModel();</span>
+<span class="nc" id="L707">		int idx = 0;</span>
+<span class="nc bnc" id="L708" title="All 2 branches missed.">		for ( Insight i : insights ) {</span>
+<span class="nc" id="L709">			URI slot = urib.build( p.getLabel() + &quot;-slot-&quot; + Integer.toString( ++idx ) );</span>
+<span class="nc" id="L710">			statements.add( new StatementImpl( p.getId(), OLO.slot, slot ) );</span>
+<span class="nc" id="L711">			statements.add( new StatementImpl( slot, OLO.index, vf.createLiteral( idx ) ) );</span>
+<span class="nc" id="L712">			statements.add( new StatementImpl( slot, OLO.item, i.getId() ) );</span>
+<span class="nc" id="L713">		}</span>
+
+<span class="nc" id="L715">		return statements;</span>
+	}
+
+	protected static Collection&lt;Statement&gt; getConstraintStatements( Insight ins,
+			Collection&lt;Parameter&gt; params ) {
+<span class="nc" id="L720">		Model statements = new LinkedHashModel();</span>
+<span class="nc bnc" id="L721" title="All 2 branches missed.">		for ( Parameter p : params ) {</span>
+<span class="nc" id="L722">			statements.add( new StatementImpl( ins.getId(), SPIN.constraint, p.getId() ) );</span>
+<span class="nc" id="L723">		}</span>
+<span class="nc" id="L724">		return statements;</span>
+	}
+
+	protected static String getAuthorInfo( User user ) {
+<span class="nc bnc" id="L728" title="All 4 branches missed.">		return ( null == user || null == user.getAuthorInfo()</span>
+				? &quot;Created By Insight Manager, &quot;
+<span class="nc" id="L730">				+ System.getProperty( &quot;release.nameVersion&quot;, &quot;VA SEMOSS&quot; )</span>
+<span class="nc" id="L731">				: user.getAuthorInfo() );</span>
+	}
+
+	public static Collection&lt;Perspective&gt; deepcopy( Collection&lt;Perspective&gt; oldps ) {
+<span class="nc" id="L735">		List&lt;Perspective&gt; perspectives = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L736" title="All 2 branches missed.">		for ( Perspective oldp : oldps ) {</span>
+<span class="nc" id="L737">			Perspective newp</span>
+<span class="nc" id="L738">					= new Perspective( oldp.getId(), oldp.getLabel(), oldp.getDescription() );</span>
+<span class="nc" id="L739">			List&lt;Insight&gt; newpInsights = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L740" title="All 2 branches missed.">			for ( Insight oldi : oldp.getInsights() ) {</span>
+<span class="nc" id="L741">				Insight newi = new Insight( oldi );</span>
+<span class="nc" id="L742">				newpInsights.add( newi );</span>
+<span class="nc" id="L743">			}</span>
+<span class="nc" id="L744">			newp.setInsights( newpInsights );</span>
+
+<span class="nc" id="L746">			perspectives.add( newp );</span>
+<span class="nc" id="L747">		}</span>
+
+<span class="nc" id="L749">		return perspectives;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

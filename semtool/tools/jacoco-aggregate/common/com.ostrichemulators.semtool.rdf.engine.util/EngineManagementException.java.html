@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>EngineManagementException.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.util</a> &gt; <span class="el_source">EngineManagementException.java</span></div><h1>EngineManagementException.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.util;
+
+/**
+ *
+ * @author ryan
+ */
+public class EngineManagementException extends Exception {
+
+<span class="nc" id="L14">	public enum ErrorCode {</span>
+
+<span class="nc" id="L16">		DUPLICATE_NAME, UNREADABLE_SMSS, UNKNOWN, MISSING_REQUIRED_TUPLE, FILE_ERROR,</span>
+<span class="nc" id="L17">		MISSING_BASE_URI, ACCESS_DENIED, BAD_CONNECTION</span>
+	};
+
+	private ErrorCode code;
+
+	public EngineManagementException() {
+<span class="nc" id="L23">		this( ErrorCode.UNKNOWN );</span>
+<span class="nc" id="L24">	}</span>
+
+	public EngineManagementException( String message ) {
+<span class="nc" id="L27">		this( ErrorCode.UNKNOWN, message );</span>
+<span class="nc" id="L28">	}</span>
+
+	public EngineManagementException( String message, Throwable cause ) {
+<span class="nc" id="L31">		this( ErrorCode.UNKNOWN, message, cause );</span>
+<span class="nc" id="L32">	}</span>
+
+	public EngineManagementException( Throwable cause ) {
+<span class="nc" id="L35">		this( ErrorCode.UNKNOWN, cause );</span>
+<span class="nc" id="L36">	}</span>
+
+	public EngineManagementException( String message, Throwable cause,
+			boolean enableSuppression, boolean writableStackTrace ) {
+<span class="nc" id="L40">		this( ErrorCode.UNKNOWN, message, cause, enableSuppression, writableStackTrace );</span>
+<span class="nc" id="L41">	}</span>
+
+<span class="nc" id="L43">	public EngineManagementException( ErrorCode c ) {</span>
+<span class="nc" id="L44">		code = c;</span>
+<span class="nc" id="L45">	}</span>
+
+	public EngineManagementException( ErrorCode c, String message ) {
+<span class="nc" id="L48">		super( message );</span>
+<span class="nc" id="L49">		code = c;</span>
+<span class="nc" id="L50">	}</span>
+
+	public EngineManagementException( ErrorCode c, String message, Throwable cause ) {
+<span class="nc" id="L53">		super( message, cause );</span>
+<span class="nc" id="L54">		code = c;</span>
+<span class="nc" id="L55">	}</span>
+
+	public EngineManagementException( ErrorCode c, Throwable cause ) {
+<span class="nc" id="L58">		super( cause );</span>
+<span class="nc" id="L59">		code = c;</span>
+<span class="nc" id="L60">	}</span>
+
+	public EngineManagementException( ErrorCode c, String message, Throwable cause,
+			boolean enableSuppression, boolean writableStackTrace ) {
+<span class="nc" id="L64">		super( message, cause, enableSuppression, writableStackTrace );</span>
+<span class="nc" id="L65">		code = c;</span>
+<span class="nc" id="L66">	}</span>
+
+	public ErrorCode getCode() {
+<span class="nc" id="L69">		return code;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L74">		return super.toString() + &quot; code: &quot; + code;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ImportDataProcessor.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.util</a> &gt; <span class="el_source">ImportDataProcessor.java</span></div><h1>ImportDataProcessor.java</h1><pre class="source lang-java linenums">package com.ostrichemulators.semtool.rdf.engine.util;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import org.apache.log4j.Logger;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import com.ostrichemulators.semtool.rdf.query.util.UpdateExecutorAdapter;
+import java.io.IOException;
+import org.openrdf.query.MalformedQueryException;
+import org.openrdf.query.UpdateExecutionException;
+import org.openrdf.repository.RepositoryException;
+
+<span class="nc" id="L20">public class ImportDataProcessor {</span>
+
+<span class="nc" id="L22">	private static final Logger logger = Logger.getLogger( ImportDataProcessor.class );</span>
+
+	public static void clearEngine( IEngine engine, Collection&lt;File&gt; filesToCheck ) {
+<span class="nc bnc" id="L25" title="All 2 branches missed.">		for ( File file : filesToCheck ) {</span>
+			try {
+<span class="nc" id="L27">				XSSFWorkbook book = new XSSFWorkbook( new FileInputStream( file ) );</span>
+<span class="nc" id="L28">				XSSFSheet lSheet = book.getSheet( &quot;Loader&quot; );</span>
+<span class="nc" id="L29">				int lastRow = lSheet.getLastRowNum();</span>
+
+<span class="nc" id="L31">				List&lt;String&gt; nodes = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L32">				List&lt;String[]&gt; relationships = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L33" title="All 2 branches missed.">				for ( int rIndex = 1; rIndex &lt;= lastRow; rIndex++ ) {</span>
+<span class="nc" id="L34">					XSSFRow sheetNameRow = lSheet.getRow( rIndex );</span>
+<span class="nc" id="L35">					XSSFCell cell = sheetNameRow.getCell( 0 );</span>
+<span class="nc" id="L36">					XSSFSheet sheet = book.getSheet( cell.getStringCellValue() );</span>
+
+<span class="nc" id="L38">					XSSFRow row = sheet.getRow( 0 );</span>
+<span class="nc" id="L39">					String sheetType = &quot;&quot;;</span>
+<span class="nc bnc" id="L40" title="All 2 branches missed.">					if ( row.getCell( 0 ) != null ) {</span>
+<span class="nc" id="L41">						sheetType = row.getCell( 0 ).getStringCellValue();</span>
+					}
+<span class="nc bnc" id="L43" title="All 2 branches missed.">					if ( &quot;Node&quot;.equalsIgnoreCase( sheetType ) ) {</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">						if ( row.getCell( 1 ) != null ) {</span>
+<span class="nc" id="L45">							nodes.add( row.getCell( 1 ).getStringCellValue() );</span>
+						}
+					}
+<span class="nc bnc" id="L48" title="All 2 branches missed.">					if ( &quot;Relation&quot;.equalsIgnoreCase( sheetType ) ) {</span>
+						String subject;
+						String object;
+<span class="nc" id="L51">						String relationship = &quot;&quot;;</span>
+<span class="nc bnc" id="L52" title="All 4 branches missed.">						if ( row.getCell( 1 ) != null &amp;&amp; row.getCell( 2 ) != null ) {</span>
+<span class="nc" id="L53">							subject = row.getCell( 1 ).getStringCellValue();</span>
+<span class="nc" id="L54">							object = row.getCell( 2 ).getStringCellValue();</span>
+
+<span class="nc" id="L56">							row = sheet.getRow( 1 );</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">							if ( row.getCell( 0 ) != null ) {</span>
+<span class="nc" id="L58">								relationship = row.getCell( 0 ).getStringCellValue();</span>
+							}
+
+<span class="nc" id="L61">							relationships.add( new String[]{ subject, relationship, object } );</span>
+						}
+					}
+				}
+				String deleteQuery;
+
+<span class="nc" id="L67">				int numberNodes = nodes.size();</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">				if ( numberNodes &gt; 0 ) {</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">					for ( String node : nodes ) {</span>
+<span class="nc" id="L70">						deleteQuery = &quot;DELETE {?s ?p ?prop. ?s ?x ?y} WHERE { {&quot;;</span>
+<span class="nc" id="L71">						deleteQuery += &quot;SELECT ?s ?p ?prop ?x ?y WHERE { {?s a &lt;http://semoss.org/ontologies/Concept/&quot;;</span>
+<span class="nc" id="L72">						deleteQuery += node;</span>
+<span class="nc" id="L73">						deleteQuery += &quot;&gt; ;} {?s ?x ?y} MINUS {?x &lt;http://www.w3.org/2000/01/rdf-schema#subPropertyOf&gt; &lt;http://semoss.org/ontologies/Relation&gt; ;} &quot;;</span>
+<span class="nc" id="L74">						deleteQuery += &quot;OPTIONAL{ {?p a &lt;http://semoss.org/ontologies/Relation/Contains&gt; ;} {?s ?p ?prop ;} } } } &quot;;</span>
+<span class="nc" id="L75">						deleteQuery += &quot;}&quot;;</span>
+
+<span class="nc" id="L77">						engine.update( new UpdateExecutorAdapter( deleteQuery ) );						</span>
+<span class="nc" id="L78">						logger.debug( deleteQuery );</span>
+<span class="nc" id="L79">					}</span>
+				}
+
+<span class="nc" id="L82">				int numberRelationships = relationships.size();</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">				if ( numberRelationships &gt; 0 ) {</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">					for ( String[] rel : relationships ) {</span>
+<span class="nc" id="L85">						deleteQuery = &quot;DELETE {?in ?relationship ?out. ?relationship ?contains ?prop} WHERE { {&quot;;</span>
+<span class="nc" id="L86">						deleteQuery += &quot;SELECT ?in ?relationship ?out ?contains ?prop WHERE { &quot;</span>
+								+ &quot;{?in a &lt;http://semoss.org/ontologies/Concept/&quot;;
+<span class="nc" id="L88">						deleteQuery += rel[0];</span>
+<span class="nc" id="L89">						deleteQuery += &quot;&gt; ;} &quot;;</span>
+
+<span class="nc" id="L91">						deleteQuery += &quot;{?out a &lt;http://semoss.org/ontologies/Concept/&quot;;</span>
+<span class="nc" id="L92">						deleteQuery += rel[2];</span>
+<span class="nc" id="L93">						deleteQuery += &quot;&gt; ;} &quot;;</span>
+
+<span class="nc" id="L95">						deleteQuery += &quot;{?relationship &lt;http://www.w3.org/2000/01/rdf-schema#subPropertyOf&gt; &lt;http://semoss.org/ontologies/Relation/&quot;;</span>
+<span class="nc" id="L96">						deleteQuery += rel[1];</span>
+<span class="nc" id="L97">						deleteQuery += &quot;&gt; ;} {?in ?relationship ?out ;} &quot;;</span>
+<span class="nc" id="L98">						deleteQuery += &quot;OPTIONAL { {?relationship ?contains ?prop ;} } } } &quot;;</span>
+<span class="nc" id="L99">						deleteQuery += &quot;}&quot;;</span>
+
+						
+<span class="nc" id="L102">						engine.update( new UpdateExecutorAdapter( deleteQuery ) );						</span>
+<span class="nc" id="L103">						logger.debug( deleteQuery );</span>
+<span class="nc" id="L104">					}</span>
+				}
+			}
+<span class="nc" id="L107">			catch ( IOException | RepositoryException | MalformedQueryException | UpdateExecutionException ex ) {</span>
+<span class="nc" id="L108">				logger.error( ex, ex );</span>
+<span class="nc" id="L109">			}</span>
+<span class="nc" id="L110">		}</span>
+<span class="nc" id="L111">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

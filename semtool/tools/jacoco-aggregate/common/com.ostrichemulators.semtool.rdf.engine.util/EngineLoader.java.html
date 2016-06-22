@@ -1,0 +1,595 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>EngineLoader.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.util</a> &gt; <span class="el_source">EngineLoader.java</span></div><h1>EngineLoader.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.util;
+
+import com.ostrichemulators.semtool.rdf.engine.edgemodelers.EdgeModeler;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.log4j.Logger;
+import org.openrdf.model.Statement;
+import org.openrdf.model.URI;
+import org.openrdf.model.impl.StatementImpl;
+import org.openrdf.model.vocabulary.OWL;
+import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.repository.RepositoryException;
+
+import com.ostrichemulators.semtool.poi.main.CSVReader;
+import com.ostrichemulators.semtool.poi.main.DiskBackedLoadingSheetData;
+import com.ostrichemulators.semtool.poi.main.ImportValidationException;
+import com.ostrichemulators.semtool.poi.main.ImportValidationException.ErrorType;
+import com.ostrichemulators.semtool.poi.main.ImportData;
+import com.ostrichemulators.semtool.poi.main.ImportFileReader;
+import com.ostrichemulators.semtool.poi.main.ImportMetadata;
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData;
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData.DataIterator;
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData.LoadingNodeAndPropertyValues;
+import com.ostrichemulators.semtool.poi.main.POIReader;
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import com.ostrichemulators.semtool.rdf.engine.api.MetadataConstants;
+import com.ostrichemulators.semtool.rdf.engine.api.ModificationExecutor;
+import com.ostrichemulators.semtool.rdf.engine.api.ReificationStyle;
+import com.ostrichemulators.semtool.rdf.engine.edgemodelers.LegacyEdgeModeler;
+import com.ostrichemulators.semtool.rdf.engine.edgemodelers.SemtoolEdgeModeler;
+import com.ostrichemulators.semtool.rdf.query.util.ModificationExecutorAdapter;
+
+import static com.ostrichemulators.semtool.util.RDFDatatypeTools.getRDFStringValue;
+import static com.ostrichemulators.semtool.util.RDFDatatypeTools.getUriFromRawString;
+import com.ostrichemulators.semtool.util.Utility;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.Writer;
+import java.util.Arrays;
+
+import org.openrdf.model.BNode;
+import org.openrdf.model.Literal;
+import org.openrdf.model.Model;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.TreeModel;
+import org.openrdf.repository.Repository;
+import org.openrdf.repository.RepositoryResult;
+import org.openrdf.repository.sail.SailRepository;
+import org.openrdf.rio.RDFFormat;
+import org.openrdf.rio.RDFHandlerException;
+import org.openrdf.rio.RDFParseException;
+import org.openrdf.rio.ntriples.NTriplesWriter;
+import org.openrdf.sail.helpers.NotifyingSailBase;
+import org.openrdf.sail.memory.MemoryStore;
+import org.openrdf.sail.nativerdf.NativeStore;
+
+/**
+ * A class to handle loading files to an existing engine
+ *
+ * @author ryan
+ */
+public class EngineLoader {
+
+<span class="nc" id="L79">	private static final Logger log = Logger.getLogger( EngineLoader.class );</span>
+<span class="nc" id="L80">	private static final Map&lt;String, ImportFileReader&gt; defaultExtReaderLkp</span>
+			= new HashMap&lt;&gt;();
+<span class="nc" id="L82">	private final List&lt;Statement&gt; owls = new ArrayList&lt;&gt;();</span>
+	private final ValueFactory vf;
+<span class="nc" id="L84">	private final Map&lt;String, ImportFileReader&gt; extReaderLkp = new HashMap&lt;&gt;();</span>
+	private final boolean stageInMemory;
+	private final boolean lsInMemory;
+	private boolean forceBaseUri;
+	private RepositoryConnection myrc;
+	private File stagingdir;
+	private URI defaultBaseUri;
+<span class="nc" id="L91">	private QaChecker qaer = new QaChecker();</span>
+<span class="nc" id="L92">	private final Model metamodel = new TreeModel();</span>
+
+	static {
+<span class="nc" id="L95">		POIReader poi = new POIReader();</span>
+<span class="nc" id="L96">		CSVReader csv = new CSVReader();</span>
+<span class="nc" id="L97">		defaultExtReaderLkp.put( &quot;xlsx&quot;, poi );</span>
+<span class="nc" id="L98">		defaultExtReaderLkp.put( &quot;xls&quot;, poi );</span>
+<span class="nc" id="L99">		defaultExtReaderLkp.put( &quot;csv&quot;, csv );</span>
+<span class="nc" id="L100">	}</span>
+
+<span class="nc" id="L102">	public EngineLoader( boolean stageInMem, boolean keepLoadingSheetsInMemory ) {</span>
+<span class="nc" id="L103">		stageInMemory = stageInMem;</span>
+<span class="nc" id="L104">		lsInMemory = keepLoadingSheetsInMemory;</span>
+		try {
+<span class="nc" id="L106">			myrc = initForLoad();</span>
+		}
+<span class="nc" id="L108">		catch ( RepositoryException | IOException ioe ) {</span>
+<span class="nc" id="L109">			log.error( ioe, ioe );</span>
+<span class="nc" id="L110">		}</span>
+
+<span class="nc" id="L112">		vf = myrc.getValueFactory();</span>
+<span class="nc" id="L113">	}</span>
+
+	public EngineLoader( boolean inmem ) {
+<span class="nc" id="L116">		this( inmem, false );</span>
+<span class="nc" id="L117">	}</span>
+
+	public EngineLoader() {
+<span class="nc" id="L120">		this( true );</span>
+<span class="nc" id="L121">	}</span>
+
+	/**
+	 * Sets the Base URI when loading files.
+	 *
+	 * @param base the default URI to use
+	 * @param overrideFile if true, use &lt;code&gt;base&lt;/code&gt; instead of anything
+	 * specified in the loading files
+	 */
+	public void setDefaultBaseUri( URI base, boolean overrideFile ) {
+<span class="nc" id="L131">		defaultBaseUri = base;</span>
+<span class="nc" id="L132">		forceBaseUri = overrideFile;</span>
+<span class="nc" id="L133">	}</span>
+
+	public void setReader( String extension, ImportFileReader rdr ) {
+<span class="nc" id="L136">		extReaderLkp.put( extension, rdr );</span>
+<span class="nc" id="L137">	}</span>
+
+	private RepositoryConnection initForLoad()
+			throws RepositoryException, IOException {
+
+<span class="nc" id="L142">		Repository repo = null;</span>
+
+<span class="nc" id="L144">		NotifyingSailBase store = null;</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">		if ( stageInMemory ) {</span>
+<span class="nc" id="L146">			store = new MemoryStore();</span>
+		}
+		else {
+<span class="nc" id="L149">			stagingdir = File.createTempFile( &quot;semoss-staging-&quot;, &quot;&quot; );</span>
+<span class="nc" id="L150">			stagingdir.delete(); // get rid of the file, and make it a directory</span>
+<span class="nc" id="L151">			stagingdir.mkdirs();</span>
+<span class="nc" id="L152">			log.debug( &quot;staging load in: &quot; + stagingdir );</span>
+<span class="nc" id="L153">			store = new NativeStore( stagingdir, &quot;spoc&quot; );</span>
+		}
+
+<span class="nc" id="L156">		repo = new SailRepository( store );</span>
+<span class="nc" id="L157">		repo.initialize();</span>
+<span class="nc" id="L158">		RepositoryConnection rc = repo.getConnection();</span>
+<span class="nc" id="L159">		initNamespaces( rc );</span>
+<span class="nc" id="L160">		return rc;</span>
+	}
+
+	/**
+	 * Loads the given files to the given engine
+	 *
+	 * @param toload the files to load
+	 * @param engine the engine to load it to
+	 * @param createmetamodel create the metamodel from the input files?
+	 * @param conformanceErrors if not-null, conformance will be checked and
+	 * errors added here
+	 * @throws RepositoryException
+	 * @throws IOException
+	 * @throws com.ostrichemulators.semtool.poi.main.ImportValidationException
+	 */
+	public void loadToEngine( Collection&lt;File&gt; toload, IEngine engine,
+			boolean createmetamodel, ImportData conformanceErrors )
+			throws RepositoryException, IOException, ImportValidationException {
+
+<span class="nc" id="L179">		qaer.loadCaches( engine );</span>
+
+<span class="nc bnc" id="L181" title="All 2 branches missed.">		for ( File fileToLoad : toload ) {</span>
+<span class="nc" id="L182">			ImportFileReader reader = getReader( fileToLoad );</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">			if ( null == reader ) {</span>
+<span class="nc" id="L184">				String ext = FilenameUtils.getExtension( fileToLoad.getName() ).toLowerCase();</span>
+<span class="nc bnc" id="L185" title="All 18 branches missed.">				switch ( ext ) {</span>
+					case &quot;ttl&quot;:
+<span class="nc" id="L187">						add( RDFFormat.TURTLE, fileToLoad );</span>
+<span class="nc" id="L188">						break;</span>
+					case &quot;n3&quot;:
+<span class="nc" id="L190">						add( RDFFormat.N3, fileToLoad );</span>
+<span class="nc" id="L191">						break;</span>
+					case &quot;nt&quot;:
+<span class="nc" id="L193">						add( RDFFormat.NTRIPLES, fileToLoad );</span>
+<span class="nc" id="L194">						break;</span>
+					case &quot;rdf&quot;:
+<span class="nc" id="L196">						add( RDFFormat.RDFXML, fileToLoad );</span>
+<span class="nc" id="L197">						break;</span>
+					default:
+<span class="nc" id="L199">						throw new ImportValidationException( ErrorType.INVALID_DATA,</span>
+								&quot;unhandled file type: &quot; + fileToLoad );
+				}
+<span class="nc" id="L202">			}</span>
+			else {
+<span class="nc" id="L204">				reader.keepLoadInMemory( lsInMemory );</span>
+<span class="nc" id="L205">				ImportData data = reader.readOneFile( fileToLoad );</span>
+<span class="nc" id="L206">				data.findPropertyLinks();</span>
+<span class="nc" id="L207">				ImportMetadata im = data.getMetadata();</span>
+<span class="nc" id="L208">				im.setAutocreateMetamodel( createmetamodel );</span>
+<span class="nc" id="L209">				loadIntermediateData( data, engine, conformanceErrors );</span>
+			}
+
+<span class="nc" id="L212">			moveStagingToEngine( engine, createmetamodel );</span>
+<span class="nc" id="L213">		}</span>
+<span class="nc" id="L214">	}</span>
+
+	/**
+	 * Loads the given data to the engine. The input data is
+	 * {@link ImportData#release() released} during the load, and is unusable
+	 * afterwards
+	 *
+	 * @param data The data to load. The data is consumed during the load, so this
+	 * object is unusable once this function completes.
+	 * @param engine
+	 * @param conformanceErrors
+	 * @throws RepositoryException
+	 * @throws IOException
+	 * @throws ImportValidationException
+	 */
+	public void loadToEngine( ImportData data, IEngine engine,
+			ImportData conformanceErrors ) throws RepositoryException, IOException,
+			ImportValidationException {
+<span class="nc" id="L232">		qaer.loadCaches( engine );</span>
+<span class="nc" id="L233">		loadIntermediateData( data, engine, conformanceErrors );</span>
+<span class="nc" id="L234">		moveStagingToEngine( engine, data.getMetadata().isAutocreateMetamodel() );</span>
+<span class="nc" id="L235">	}</span>
+
+	/**
+	 * Gets the metamodel statements from previously-imported data
+	 *
+	 * @return the statements
+	 */
+	public Model getMetamodel() {
+<span class="nc" id="L243">		return new TreeModel( metamodel );</span>
+	}
+
+	private void loadIntermediateData( ImportData data, IEngine engine,
+			ImportData conformanceErrors ) throws ImportValidationException, IOException {
+
+<span class="nc" id="L249">		ImportMetadata im = data.getMetadata();</span>
+		// fill in anything not already set. In legacy mode, nothing is set,
+		// but the metadata tab might not set these variables, either
+<span class="nc bnc" id="L252" title="All 4 branches missed.">		if ( null == im.getBase() || forceBaseUri ) {</span>
+<span class="nc" id="L253">			im.setBase( defaultBaseUri );</span>
+		}
+
+<span class="nc bnc" id="L256" title="All 2 branches missed.">		if ( null == im.getBase() ) {</span>
+<span class="nc" id="L257">			throw new ImportValidationException( ErrorType.MISSING_DATA,</span>
+					&quot;No Base URI specified in either the EngineLoader or the file&quot; );
+		}
+
+<span class="nc bnc" id="L261" title="All 2 branches missed.">		if ( null == im.getSchemaBuilder() ) {</span>
+<span class="nc" id="L262">			im.setSchemaBuilder( engine.getSchemaBuilder().toString() );</span>
+		}
+
+<span class="nc bnc" id="L265" title="All 2 branches missed.">		if ( null == im.getDataBuilder() ) {</span>
+<span class="nc" id="L266">			im.setDataBuilder( engine.getDataBuilder().toString() );</span>
+		}
+
+		// we want to search all namespaces, but use the metadata's first
+<span class="nc" id="L270">		Map&lt;String, String&gt; namespaces = engine.getNamespaces();</span>
+<span class="nc" id="L271">		namespaces.putAll( im.getNamespaces() );</span>
+
+		try {
+<span class="nc" id="L274">			List&lt;Statement&gt; stmts = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">			for ( String[] stmt : data.getStatements() ) {</span>
+<span class="nc" id="L276">				URI s = getUriFromRawString( stmt[0], namespaces );</span>
+<span class="nc" id="L277">				URI p = getUriFromRawString( stmt[1], namespaces );</span>
+<span class="nc" id="L278">				Value o = getRDFStringValue( stmt[2], namespaces, vf );</span>
+
+<span class="nc bnc" id="L280" title="All 6 branches missed.">				if ( null == s || null == p || null == o ) {</span>
+<span class="nc" id="L281">					throw new ImportValidationException( ErrorType.INVALID_DATA,</span>
+<span class="nc" id="L282">							&quot;Could not create metadata statement&quot; + Arrays.toString( stmt ) );</span>
+				}
+
+<span class="nc" id="L285">				Statement st = new StatementImpl( s, p, o );</span>
+<span class="nc" id="L286">				stmts.add( st );</span>
+<span class="nc" id="L287">			}</span>
+
+<span class="nc bnc" id="L289" title="All 2 branches missed.">			if ( !stmts.isEmpty() ) {</span>
+<span class="nc" id="L290">				myrc.begin();</span>
+<span class="nc" id="L291">				myrc.add( stmts );</span>
+<span class="nc" id="L292">				myrc.commit();</span>
+			}
+
+			// create all metamodel triples, even if we don't add them to the repository
+<span class="nc" id="L296">			EdgeModeler modeler = getEdgeModeler( EngineUtil2.getReificationStyle( engine ) );</span>
+<span class="nc" id="L297">			metamodel.addAll( modeler.createMetamodel( data, namespaces, null ) );</span>
+
+<span class="nc bnc" id="L299" title="All 2 branches missed.">			for ( LoadingSheetData n : data.getNodes() ) {</span>
+<span class="nc" id="L300">				addToStaging( n, engine, data );</span>
+<span class="nc" id="L301">			}</span>
+
+<span class="nc" id="L303">			qaer.separateConformanceErrors( data, conformanceErrors, engine );</span>
+
+<span class="nc bnc" id="L305" title="All 2 branches missed.">			for ( LoadingSheetData r : data.getRels() ) {</span>
+<span class="nc" id="L306">				addToStaging( r, engine, data );</span>
+<span class="nc" id="L307">			}</span>
+
+<span class="nc" id="L309">			data.release();</span>
+
+<span class="nc" id="L311">			myrc.begin();</span>
+<span class="nc" id="L312">			URI ebase = engine.getBaseUri();</span>
+<span class="nc" id="L313">			myrc.add( ebase, MetadataConstants.VOID_SUBSET, im.getBase() );</span>
+<span class="nc" id="L314">			myrc.add( ebase, OWL.IMPORTS, im.getBase() );</span>
+
+<span class="nc" id="L316">			myrc.add( im.getBase(), RDF.TYPE, MetadataConstants.VOID_DS );</span>
+<span class="nc" id="L317">			myrc.add( im.getBase(), RDF.TYPE, OWL.ONTOLOGY );</span>
+<span class="nc" id="L318">			myrc.commit();</span>
+		}
+<span class="nc" id="L320">		catch ( RepositoryException e ) {</span>
+<span class="nc" id="L321">			log.error( e, e );</span>
+			try {
+<span class="nc" id="L323">				myrc.rollback();</span>
+			}
+<span class="nc" id="L325">			catch ( RepositoryException rr ) {</span>
+<span class="nc" id="L326">				log.warn( rr, rr );</span>
+<span class="nc" id="L327">			}</span>
+<span class="nc" id="L328">		}</span>
+<span class="nc" id="L329">	}</span>
+
+	/**
+	 * Gets a reader for the given file, based on extension. If no reader has been
+	 * explicitly set using {@link #setReader(java.lang.String, gov.va.semoss.poi.main.ImportFileReader)
+	 * }, then this function relies on {@link #getDefaultReader(java.io.File) }
+	 * to determine the appropriate reader for this file.
+	 *
+	 * @param toload
+	 * @return
+	 */
+	public ImportFileReader getReader( File toload ) {
+<span class="nc" id="L341">		String ext = FilenameUtils.getExtension( toload.getName() ).toLowerCase();</span>
+<span class="nc bnc" id="L342" title="All 2 branches missed.">		ImportFileReader rdr = ( extReaderLkp.containsKey( ext )</span>
+<span class="nc" id="L343">				? extReaderLkp.get( ext ) : getDefaultReader( toload ) );</span>
+<span class="nc" id="L344">		return rdr;</span>
+	}
+
+	public static ImportFileReader getDefaultReader( File toload ) {
+<span class="nc" id="L348">		String ext = FilenameUtils.getExtension( toload.getName() ).toLowerCase();</span>
+<span class="nc" id="L349">		ImportFileReader rdr = defaultExtReaderLkp.get( ext );</span>
+<span class="nc" id="L350">		return rdr;</span>
+	}
+
+	public Collection&lt;Statement&gt; getOwlData() {
+<span class="nc" id="L354">		return owls;</span>
+	}
+
+	private void add( RDFFormat format, File f ) throws IOException, RepositoryException {
+		try {
+<span class="nc" id="L359">			log.debug( &quot;adding data from &quot; + format + &quot; file: &quot; + f );</span>
+<span class="nc" id="L360">			myrc.add( f, f.toURI().toString(), format );</span>
+		}
+<span class="nc" id="L362">		catch ( RDFParseException rdfe ) {</span>
+<span class="nc" id="L363">			log.error( rdfe, rdfe );</span>
+<span class="nc" id="L364">		}</span>
+<span class="nc" id="L365">	}</span>
+
+	public void clear() {
+		try {
+<span class="nc" id="L369">			myrc.clear();</span>
+<span class="nc" id="L370">			initNamespaces( myrc );</span>
+
+<span class="nc" id="L372">			owls.clear();</span>
+<span class="nc" id="L373">			qaer.clear();</span>
+<span class="nc" id="L374">			metamodel.clear();</span>
+		}
+<span class="nc" id="L376">		catch ( Exception e ) {</span>
+<span class="nc" id="L377">			log.warn( e, e );</span>
+<span class="nc" id="L378">		}</span>
+<span class="nc" id="L379">	}</span>
+
+	public void release() {
+<span class="nc" id="L382">		clear();</span>
+<span class="nc" id="L383">		qaer.release();</span>
+
+		try {
+<span class="nc" id="L386">			myrc.close();</span>
+		}
+<span class="nc" id="L388">		catch ( Exception ioe ) {</span>
+<span class="nc" id="L389">			log.warn( ioe, ioe );</span>
+<span class="nc" id="L390">		}</span>
+		try {
+<span class="nc" id="L392">			myrc.getRepository().shutDown();</span>
+		}
+<span class="nc" id="L394">		catch ( Exception ioe ) {</span>
+<span class="nc" id="L395">			log.warn( ioe, ioe );</span>
+<span class="nc" id="L396">		}</span>
+
+<span class="nc" id="L398">		FileUtils.deleteQuietly( stagingdir );</span>
+<span class="nc" id="L399">	}</span>
+
+	/**
+	 * Adds the given loading sheet data to the staging repository
+	 *
+	 * @param sheet
+	 * @param engine
+	 * @param alldata
+	 * @throws ImportValidationException
+	 * @throws RepositoryException
+	 */
+	private void addToStaging( LoadingSheetData sheet, IEngine engine,
+			ImportData alldata ) throws ImportValidationException, RepositoryException {
+<span class="nc" id="L412">		log.debug( &quot;loading &quot; + sheet.getName() + &quot; to staging repository&quot; );</span>
+		// we want to search all namespaces, but use the metadata's first
+<span class="nc" id="L414">		ImportMetadata metas = alldata.getMetadata();</span>
+<span class="nc" id="L415">		Map&lt;String, String&gt; namespaces = engine.getNamespaces();</span>
+<span class="nc" id="L416">		namespaces.putAll( metas.getNamespaces() );</span>
+<span class="nc" id="L417">		EdgeModeler modeler = getEdgeModeler( EngineUtil2.getReificationStyle( engine ) );</span>
+
+		try {
+<span class="nc" id="L420">			myrc.begin();</span>
+<span class="nc bnc" id="L421" title="All 2 branches missed.">			if ( sheet.isRel() ) {</span>
+<span class="nc" id="L422">				DataIterator lit = sheet.iterator();</span>
+<span class="nc bnc" id="L423" title="All 2 branches missed.">				while ( lit.hasNext() ) {</span>
+<span class="nc" id="L424">					LoadingNodeAndPropertyValues nap = lit.next();</span>
+					try {
+<span class="nc" id="L426">						modeler.addRel( nap, namespaces, sheet, metas, myrc );</span>
+					}
+<span class="nc" id="L428">					catch ( RuntimeException re ) {</span>
+<span class="nc" id="L429">						log.error( re, re );</span>
+<span class="nc" id="L430">					}</span>
+<span class="nc" id="L431">				}</span>
+<span class="nc" id="L432">			}</span>
+			else {
+<span class="nc" id="L434">				DataIterator lit = sheet.iterator();</span>
+<span class="nc bnc" id="L435" title="All 2 branches missed.">				while ( lit.hasNext() ) {</span>
+<span class="nc" id="L436">					LoadingNodeAndPropertyValues nap = lit.next();</span>
+<span class="nc" id="L437">					modeler.addNode( nap, namespaces, sheet, metas, myrc );</span>
+<span class="nc" id="L438">				}</span>
+			}
+<span class="nc" id="L440">			myrc.commit();</span>
+		}
+<span class="nc" id="L442">		catch ( RepositoryException re ) {</span>
+<span class="nc" id="L443">			log.error( re, re );</span>
+			try {
+<span class="nc" id="L445">				myrc.rollback();</span>
+			}
+<span class="nc" id="L447">			catch ( RepositoryException rex ) {</span>
+<span class="nc" id="L448">				log.warn( rex, rex );</span>
+<span class="nc" id="L449">			}</span>
+<span class="nc" id="L450">			throw re;</span>
+<span class="nc" id="L451">		}</span>
+<span class="nc" id="L452">	}</span>
+
+	/**
+	 * Moves the statements from the loading RC to the given engine. The internal
+	 * repository is committed before the copy happens
+	 *
+	 * @param engine
+	 * @param copyowls
+	 * @param fileJustLoaded the file that was just loaded
+	 * @return the metamodel statements. Will always be empty if
+	 * &lt;code&gt;copyowls&lt;/code&gt; is false
+	 * @throws RepositoryException
+	 */
+	private void moveStagingToEngine( IEngine engine,
+			boolean copyowls ) throws RepositoryException {
+<span class="nc" id="L467">		myrc.commit();</span>
+<span class="nc" id="L468">		log.debug( &quot;moving staging data to engine&quot; );</span>
+<span class="nc" id="L469">		final RepositoryResult&lt;Statement&gt; stmts</span>
+<span class="nc" id="L470">				= myrc.getStatements( null, null, null, false );</span>
+
+		// we're done importing the files, so add all the statements to our engine
+<span class="nc" id="L473">		ModificationExecutor mea = new ModificationExecutorAdapter() {</span>
+			@Override
+			public void exec( RepositoryConnection conn ) throws RepositoryException {
+<span class="nc" id="L476">				initNamespaces( conn );</span>
+
+<span class="nc" id="L478">				conn.begin();</span>
+<span class="nc" id="L479">				conn.add( stmts );</span>
+
+<span class="nc bnc" id="L481" title="All 2 branches missed.">				if ( copyowls ) {</span>
+<span class="nc" id="L482">					conn.add( metamodel );</span>
+				}
+<span class="nc" id="L484">				conn.commit();</span>
+<span class="nc" id="L485">			}</span>
+		};
+
+<span class="nc" id="L488">		engine.execute( mea );</span>
+
+<span class="nc bnc" id="L490" title="All 2 branches missed.">		if ( log.isTraceEnabled() ) {</span>
+<span class="nc" id="L491">			File exportfile</span>
+<span class="nc" id="L492">					= new File( FileUtils.getTempDirectory(), &quot;file-load-export.nt&quot; );</span>
+<span class="nc" id="L493">			try ( Writer fw = new BufferedWriter( new FileWriter( exportfile ) ) ) {</span>
+<span class="nc" id="L494">				myrc.export( new NTriplesWriter( fw ) );</span>
+<span class="nc bnc" id="L495" title="All 8 branches missed.">			}</span>
+<span class="nc" id="L496">			catch ( RDFHandlerException | IOException ioe ) {</span>
+<span class="nc" id="L497">				log.warn( ioe, ioe );</span>
+<span class="nc" id="L498">			}</span>
+		}
+<span class="nc" id="L500">	}</span>
+
+	/**
+	 * BigData doesn't seem to handle moving statements between repositories, so
+	 * this function &quot;cleans&quot; a statement so it can be added.
+	 *
+	 * @param stmt the statement to clean
+	 * @param vf the thing to make the URIs/Literals from
+	 * @return a &quot;cleaned&quot; statement that won't cause problems
+	 */
+	public static Statement cleanStatement( Statement stmt, ValueFactory vf ) {
+		// URI s = URI.class.cast( cleanValue( stmt.getSubject(), vf ) );
+<span class="nc" id="L512">		Value sv = cleanValue( stmt.getSubject(), vf );</span>
+<span class="nc" id="L513">		URI p = URI.class.cast( cleanValue( stmt.getPredicate(), vf ) );</span>
+<span class="nc" id="L514">		Value v = cleanValue( stmt.getObject(), vf );</span>
+
+<span class="nc bnc" id="L516" title="All 2 branches missed.">		return ( sv instanceof BNode )</span>
+<span class="nc" id="L517">				? new StatementImpl( BNode.class.cast( sv ), p, v )</span>
+<span class="nc" id="L518">				: new StatementImpl( URI.class.cast( sv ), p, v );</span>
+	}
+
+	/**
+	 * &quot;Cleans&quot; a value for BigData
+	 *
+	 * @param v the value that needs cleaning
+	 * @param vf the value factory to make the new Value from
+	 * @return a value that won't make BigData bomb
+	 */
+	public static Value cleanValue( Value v, ValueFactory vf ) {
+		Value newv;
+<span class="nc bnc" id="L530" title="All 2 branches missed.">		if ( v instanceof URI ) {</span>
+<span class="nc" id="L531">			newv = vf.createURI( v.stringValue() );</span>
+		}
+<span class="nc bnc" id="L533" title="All 2 branches missed.">		else if ( v instanceof BNode ) {</span>
+<span class="nc" id="L534">			newv = vf.createBNode( v.stringValue() );</span>
+		}
+		else {
+<span class="nc" id="L537">			Literal oldv = Literal.class.cast( v );</span>
+<span class="nc bnc" id="L538" title="All 2 branches missed.">			if ( null != oldv.getLanguage() ) {</span>
+<span class="nc" id="L539">				newv = vf.createLiteral( oldv.stringValue(), oldv.getLanguage() );</span>
+			}
+			else {
+<span class="nc" id="L542">				newv = vf.createLiteral( oldv.stringValue(), oldv.getDatatype() );</span>
+			}
+		}
+
+<span class="nc" id="L546">		return newv;</span>
+	}
+
+	/**
+	 * Method to add the common namespaces into the namespace hash of our
+	 * RepositoryConnection. This function starts and commits a transaction.
+	 *
+	 * @param conn the connection to add the namespaces to
+	 *
+	 * @throws org.openrdf.repository.RepositoryException
+	 */
+	private static void initNamespaces( RepositoryConnection conn ) throws RepositoryException {
+
+<span class="nc" id="L559">		conn.begin();</span>
+<span class="nc bnc" id="L560" title="All 2 branches missed.">		for ( Map.Entry&lt;String, String&gt; e : Utility.DEFAULTNAMESPACES.entrySet() ) {</span>
+<span class="nc" id="L561">			conn.setNamespace( e.getKey(), e.getValue() );</span>
+<span class="nc" id="L562">		}</span>
+<span class="nc" id="L563">		conn.commit();</span>
+<span class="nc" id="L564">	}</span>
+
+	public static void initNamespaces( ImportData conn ) {
+<span class="nc" id="L567">		conn.getMetadata().setNamespaces( Utility.DEFAULTNAMESPACES );</span>
+<span class="nc" id="L568">	}</span>
+
+	public EdgeModeler getEdgeModeler( ReificationStyle reif ) {
+<span class="nc" id="L571">		EdgeModeler modeler = null;</span>
+<span class="nc bnc" id="L572" title="All 3 branches missed.">		switch ( reif ) {</span>
+			case SEMTOOL:
+<span class="nc" id="L574">				modeler = new SemtoolEdgeModeler( qaer );</span>
+<span class="nc" id="L575">				break;</span>
+			case LEGACY:
+<span class="nc" id="L577">				modeler = new LegacyEdgeModeler( qaer );</span>
+<span class="nc" id="L578">				break;</span>
+			default:
+<span class="nc" id="L580">				throw new IllegalArgumentException( &quot;Unhandled reification style: &quot; + reif );</span>
+		}
+
+<span class="nc" id="L583">		return modeler;</span>
+	}
+
+	private static ImportData cacheOnDisk( ImportData data ) throws IOException {
+<span class="nc" id="L587">		ImportData copy = new ImportData( data.getMetadata() );</span>
+<span class="nc bnc" id="L588" title="All 2 branches missed.">		for ( LoadingSheetData lsd : data.getSheets() ) {</span>
+<span class="nc" id="L589">			copy.add( new DiskBackedLoadingSheetData( lsd ) );</span>
+<span class="nc" id="L590">		}</span>
+
+<span class="nc" id="L592">		return copy;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SPIN.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.model.vocabulary</a> &gt; <span class="el_source">SPIN.java</span></div><h1>SPIN.java</h1><pre class="source lang-java linenums">package com.ostrichemulators.semtool.model.vocabulary;
+
+import org.openrdf.model.Namespace;
+import org.openrdf.model.URI;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.NamespaceImpl;
+import org.openrdf.model.impl.ValueFactoryImpl;
+
+
+/**
+ * Minimal vocabulary of the SPIN Modeling Vocabulary.
+ *
+ */
+<span class="nc" id="L14">public class SPIN {</span>
+
+	/**
+	 * SPIN SPARQL Syntax Base URI: hhttp://uispin.org/ui
+	 */	
+	public final static String BASE_URI = &quot;http://spinrdf.org/spin&quot;;
+	
+	/**
+	 * SPIN SPARQL Syntax schema namespace: http://spinrdf.org/spin#
+	 */
+	public final static String NAMESPACE = BASE_URI + &quot;#&quot;;
+
+	/**
+	 * Recommend prefix for the SPIN SPARQL Syntax schema namespace: &quot;spin&quot;
+	 */
+	public final static String PREFIX = &quot;spin&quot;;
+
+	/**
+	 * An immutable {@link Namespace} constant that represents the SPIN
+	 * Modeling Vocabulary namespace.
+	 */
+<span class="nc" id="L35">	public static final Namespace NS = new NamespaceImpl(PREFIX, NAMESPACE);</span>
+
+
+	// ----- Classes ------
+
+	/**
+	 * http://spinrdf.org/spin#Function
+	 */
+    public final static URI Function;
+
+	/**
+	 * http://spinrdf.org/spin#MagicProperties
+	 */
+    
+    public final static URI MagicProperty;
+    
+	// ----- Properties ------
+    
+	/**
+	 * http://spinrdf.org/spin#body
+	 */
+	public final static URI body;
+    
+	/**
+	 * http://spinrdf.org/spin#constraint
+	 */
+	public final static URI constraint;
+	
+	
+	static {
+<span class="nc" id="L65">		final ValueFactory factory = ValueFactoryImpl.getInstance();</span>
+		
+		// ----- Classes ------
+<span class="nc" id="L68">		Function = factory.createURI(NAMESPACE, &quot;Function&quot;);</span>
+		
+<span class="nc" id="L70">		MagicProperty = factory.createURI(NAMESPACE, &quot;MagicProperty&quot;);</span>
+
+		// ----- Properties ------
+<span class="nc" id="L73">		body = factory.createURI(NAMESPACE, &quot;body&quot;);</span>
+		
+<span class="nc" id="L75">		constraint = factory.createURI(NAMESPACE, &quot;constraint&quot;);</span>
+<span class="nc" id="L76">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

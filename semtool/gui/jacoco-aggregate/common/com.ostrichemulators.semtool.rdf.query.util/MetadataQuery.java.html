@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MetadataQuery.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.query.util</a> &gt; <span class="el_source">MetadataQuery.java</span></div><h1>MetadataQuery.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.query.util;
+
+import com.ostrichemulators.semtool.model.vocabulary.SEMTOOL;
+import java.util.HashMap;
+import java.util.Map;
+import org.openrdf.model.URI;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.vocabulary.DC;
+import org.openrdf.model.vocabulary.DCTERMS;
+import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.query.BindingSet;
+import com.ostrichemulators.semtool.rdf.engine.api.MetadataConstants;
+import org.openrdf.model.Value;
+
+/**
+ * A Query Adapter that returns the metadata for an engine. The metadata is in
+ * the form of a map of URI =&amp;gt; String. For simplicity, this map contains a
+ * key of {@link MetadataConstants#VOID_DS} pointing to the baseuri of the
+ * metadata.
+ *
+ * @author ryan
+ */
+public class MetadataQuery extends QueryExecutorAdapter&lt;Map&lt;URI, Value&gt;&gt; {
+
+	public MetadataQuery() {
+<span class="nc" id="L31">		super( &quot;SELECT ?db ?p ?o WHERE { ?db a ?dataset . ?db ?p ?o }&quot; );</span>
+<span class="nc" id="L32">		result = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L33">		bind(&quot;dataset&quot;, SEMTOOL.Database );</span>
+<span class="nc" id="L34">	}</span>
+
+	public MetadataQuery( URI uri ) {
+<span class="nc" id="L37">		super( &quot;SELECT ?db ?p ?o WHERE { ?db a ?dataset . ?db ?p ?o }&quot; );</span>
+<span class="nc" id="L38">		result = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L39">		bind(&quot;dataset&quot;, SEMTOOL.Database );</span>
+		// special handling when we're trying to figure out the base uri
+<span class="nc bnc" id="L41" title="All 2 branches missed.">		bind(&quot;p&quot;, ( SEMTOOL.Database.equals( uri ) ? RDF.TYPE : uri ) );</span>
+<span class="nc" id="L42">	}</span>
+
+	public Map&lt;URI, String&gt; asStrings() {
+<span class="nc" id="L45">		Map&lt;URI, String&gt; vals = new HashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L47" title="All 2 branches missed.">		for ( Map.Entry&lt;URI, Value&gt; en : super.getResults().entrySet() ) {</span>
+<span class="nc" id="L48">			vals.put( en.getKey(), en.getValue().stringValue() );</span>
+<span class="nc" id="L49">		}</span>
+
+<span class="nc" id="L51">		return vals;</span>
+	}
+
+	/**
+	 * Returns the one value desired, if this query was given a URI at
+	 * instantiation, or the first (random) key from the result map, or null
+	 *
+	 * @return the first (random) key of the result map, or null if the map is
+	 * empty
+	 */
+	public Value getOne() {
+		// if we used the one-URI ctor, get the (only) value, or null
+<span class="nc bnc" id="L63" title="All 2 branches missed.">		return ( result.isEmpty() ? null : result.values().iterator().next() );</span>
+	}
+
+	public String getString() {
+		// if we used the one-URI ctor, get the (only) value, or null
+<span class="nc" id="L68">		Value v = getOne();</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">		return ( null == v ? null : v.stringValue() );</span>
+	}
+
+	@Override
+	public void handleTuple( BindingSet set, ValueFactory fac ) {
+<span class="nc" id="L74">		URI pred = fac.createURI( set.getValue( &quot;p&quot; ).stringValue() );</span>
+<span class="nc" id="L75">		Value val = set.getValue( &quot;o&quot; );</span>
+
+		// for baseuri, we need the subject, not the object
+		// and also, we use the VOID_DS as the key elsewhere in the code
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		if ( RDF.TYPE.equals( pred ) ) {</span>
+<span class="nc" id="L80">			pred = SEMTOOL.Database;</span>
+<span class="nc" id="L81">			val = set.getValue( &quot;db&quot; );</span>
+		}
+<span class="nc bnc" id="L83" title="All 2 branches missed.">		else if ( pred.getNamespace().equals( DC.NAMESPACE ) ) {</span>
+			// silently handle the old DC namespace (ignore our DC-specific URIs)
+<span class="nc bnc" id="L85" title="All 2 branches missed.">			if ( !( MetadataConstants.DCT_CREATED.equals( pred )</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">					|| MetadataConstants.DCT_MODIFIED.equals( pred ) ) ) {</span>
+<span class="nc" id="L87">				pred = fac.createURI( DCTERMS.NAMESPACE, pred.getLocalName() );</span>
+			}
+		}
+
+<span class="nc" id="L91">		result.put( pred, val );</span>
+<span class="nc" id="L92">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

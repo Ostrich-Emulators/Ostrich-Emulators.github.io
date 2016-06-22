@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>GraphToTreeConverter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.graph.functions</a> &gt; <span class="el_source">GraphToTreeConverter.java</span></div><h1>GraphToTreeConverter.java</h1><pre class="source lang-java linenums">/**
+ * *****************************************************************************
+ * Copyright 2013 SEMOSS.ORG
+ *
+ * This file is part of SEMOSS.
+ *
+ * SEMOSS is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * SEMOSS is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * SEMOSS. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ * ****************************************************************************
+ */
+package com.ostrichemulators.semtool.graph.functions;
+
+import com.ostrichemulators.semtool.util.Utility;
+import org.apache.log4j.Logger;
+
+import edu.uci.ics.jung.graph.DelegateForest;
+import edu.uci.ics.jung.graph.DelegateTree;
+import edu.uci.ics.jung.graph.DirectedGraph;
+import edu.uci.ics.jung.graph.Forest;
+import edu.uci.ics.jung.graph.Tree;
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import org.openrdf.model.URI;
+
+/**
+ * This class extends downstream processing in order to convert the graph into
+ * the tree format.
+ *
+ * @param &lt;V&gt;
+ * @param &lt;E&gt;
+ */
+public class GraphToTreeConverter&lt;V, E&gt; {
+
+<span class="nc" id="L49">	public static enum Search {</span>
+
+<span class="nc" id="L51">		DFS, BFS</span>
+	};
+
+<span class="nc" id="L54">	private static final Logger log = Logger.getLogger( GraphToTreeConverter.class );</span>
+	private final Search method;
+
+	/**
+	 * Converts the given graph to a tree
+	 *
+	 * @param &lt;V&gt;
+	 * @param &lt;E&gt;
+	 * @param graph
+	 * @param roots
+	 * @param search
+	 * @return
+	 * @throws
+	 * com.ostrichemulators.semtool.graph.functions.GraphToTreeConverter.TreeConversionException
+	 */
+	public static &lt;V, E&gt; Forest&lt;V, E&gt; convert(
+			DirectedGraph&lt;V, E&gt; graph, Collection&lt;V&gt; roots, Search search ) throws TreeConversionException {
+<span class="nc" id="L71">		return new GraphToTreeConverter( search ).convert( graph, roots );</span>
+	}
+
+	public static &lt;V, E&gt; Forest&lt;V, E&gt; convertq(
+			DirectedGraph&lt;V, E&gt; graph, Collection&lt;V&gt; roots, Search search ) {
+<span class="nc" id="L76">		return new GraphToTreeConverter( search ).convertq( graph, roots );</span>
+	}
+
+<span class="nc" id="L79">	public GraphToTreeConverter( Search search ) {</span>
+<span class="nc" id="L80">		method = search;</span>
+<span class="nc" id="L81">	}</span>
+
+	public GraphToTreeConverter() {
+<span class="nc" id="L84">		this( Search.BFS );</span>
+<span class="nc" id="L85">	}</span>
+
+	/**
+	 * @see #convertq(edu.uci.ics.jung.graph.DirectedGraph, java.lang.Object)
+	 *
+	 * @param graph
+	 * @param roots
+	 * @return
+	 */
+	public Forest&lt;V, E&gt; convertq( DirectedGraph&lt;V, E&gt; graph, Collection&lt;V&gt; roots ) {
+<span class="nc" id="L95">		DelegateForest&lt;V, E&gt; newforest = new DelegateForest&lt;&gt;();</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">		for ( V root : roots ) {</span>
+<span class="nc" id="L97">			newforest.addTree( convertq( graph, root ) );</span>
+<span class="nc" id="L98">		}</span>
+<span class="nc" id="L99">		return newforest;</span>
+	}
+
+	public Forest&lt;V, E&gt; convert( DirectedGraph&lt;V, E&gt; graph, Collection&lt;V&gt; roots ) throws TreeConversionException {
+<span class="nc" id="L103">		DelegateForest&lt;V, E&gt; newforest = new DelegateForest&lt;&gt;();</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">		for ( V root : roots ) {</span>
+<span class="nc" id="L105">			newforest.addTree( convert( graph, root ) );</span>
+<span class="nc" id="L106">		}</span>
+<span class="nc" id="L107">		return newforest;</span>
+	}
+
+	/**
+	 * Converts the given graph &quot;quietly.&quot; It will not throw exceptions, but will
+	 * skip edges to vertices that already have a parent edge
+	 *
+	 * @param graph
+	 * @param root
+	 * @return
+	 */
+	public Tree&lt;V, E&gt; convertq( DirectedGraph&lt;V, E&gt; graph, V root ) {
+		try {
+<span class="nc" id="L120">			return iconvert( graph, root, false );</span>
+		}
+<span class="nc" id="L122">		catch ( Exception x ) {</span>
+<span class="nc" id="L123">			log.error( &quot;BUG: this exception should never be thrown!&quot; );</span>
+		}
+
+<span class="nc" id="L126">		return null;</span>
+	}
+
+	public Tree&lt;V, E&gt; convert( DirectedGraph&lt;V, E&gt; graph, V root ) throws TreeConversionException {
+<span class="nc" id="L130">		return iconvert( graph, root, true );</span>
+	}
+
+	/**
+	 * Creates a tree using random, unique URIs instead of actual vertices and
+	 * nodes. The lookup maps are populated with the conversions. NOTE: the Tree
+	 * can contain duplicates in the sense that different URIs might map to the
+	 * same vertex/edge.
+	 *
+	 * @param graph the graph to convert
+	 * @param root the root of the tree
+	 * @param vlookup a (usually empty) map that will be populated with the
+	 * uri-to-vertex lookup
+	 * @param elookup a (usually empty) map that will be populated with the
+	 * uri-to-edge lookup
+	 * @return a valid tree, no matter what
+	 */
+	public Tree&lt;URI, URI&gt; convert( DirectedGraph&lt;V, E&gt; graph,
+			V root, Map&lt;URI, V&gt; vlookup, Map&lt;URI, E&gt; elookup ) {
+
+<span class="nc" id="L150">		DelegateTree&lt;URI, URI&gt; tree = new DelegateTree&lt;&gt;();</span>
+<span class="nc" id="L151">		Map&lt;V, URI&gt; revlkp = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L153">		ArrayDeque&lt;V&gt; deque = new ArrayDeque&lt;&gt;();</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">		Queue&lt;V&gt; todo = ( Search.DFS == method</span>
+<span class="nc" id="L155">				? Collections.asLifoQueue( deque )</span>
+				: deque );
+
+<span class="nc" id="L158">		URI rootu = Utility.getUniqueUri();</span>
+<span class="nc" id="L159">		vlookup.put( rootu, root );</span>
+<span class="nc" id="L160">		revlkp.put( root, rootu );</span>
+<span class="nc" id="L161">		tree.setRoot( rootu );</span>
+
+		// avoid cycles in the graph
+<span class="nc" id="L164">		Set&lt;E&gt; edgesToSkip = new HashSet&lt;&gt;();</span>
+
+<span class="nc" id="L166">		todo.add( root );</span>
+<span class="nc bnc" id="L167" title="All 2 branches missed.">		while ( !todo.isEmpty() ) {</span>
+<span class="nc" id="L168">			V v = todo.poll();</span>
+<span class="nc" id="L169">			URI srcuri = revlkp.get( v );</span>
+			// once we visit a node, we can never end
+			// up there again, or we're not acyclic
+<span class="nc" id="L172">			edgesToSkip.addAll( graph.getInEdges( v ) );</span>
+
+<span class="nc" id="L174">			Set&lt;E&gt; outgoings = new HashSet&lt;&gt;( graph.getOutEdges( v ) );</span>
+<span class="nc" id="L175">			outgoings.removeAll( edgesToSkip );</span>
+
+<span class="nc bnc" id="L177" title="All 2 branches missed.">			for ( E e : outgoings ) {</span>
+<span class="nc" id="L178">				V child = graph.getOpposite( v, e );</span>
+
+<span class="nc" id="L180">				URI edgeuri = Utility.getUniqueUri();</span>
+<span class="nc" id="L181">				URI tgturi = Utility.getUniqueUri();</span>
+
+<span class="nc" id="L183">				elookup.put( edgeuri, e );</span>
+<span class="nc" id="L184">				vlookup.put( tgturi, child );</span>
+<span class="nc" id="L185">				revlkp.put( child, tgturi );</span>
+
+<span class="nc" id="L187">				tree.addChild( edgeuri, srcuri, tgturi );</span>
+<span class="nc" id="L188">				todo.add( child );</span>
+<span class="nc" id="L189">			}</span>
+<span class="nc" id="L190">		}</span>
+
+<span class="nc" id="L192">		return tree;</span>
+	}
+
+	private Tree&lt;V, E&gt; iconvert( DirectedGraph&lt;V, E&gt; graph, V root,
+			boolean throwExceptions ) throws TreeConversionException {
+
+<span class="nc" id="L198">		ArrayDeque&lt;V&gt; deque = new ArrayDeque&lt;&gt;();</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">		Queue&lt;V&gt; todo = ( Search.DFS == method</span>
+<span class="nc" id="L200">				? Collections.asLifoQueue( deque )</span>
+				: deque );
+
+<span class="nc" id="L203">		DelegateTree&lt;V, E&gt; tree = new DelegateTree&lt;&gt;();</span>
+<span class="nc" id="L204">		tree.setRoot( root );</span>
+<span class="nc" id="L205">		todo.add( root );</span>
+
+		// avoid cycles in the graph
+<span class="nc" id="L208">		Set&lt;E&gt; edgesToSkip = new HashSet&lt;&gt;();</span>
+
+<span class="nc bnc" id="L210" title="All 2 branches missed.">		while ( !todo.isEmpty() ) {</span>
+<span class="nc" id="L211">			V v = todo.poll();</span>
+
+			// once we visit a node, we can never end
+			// up there again, or we're not acyclic
+<span class="nc" id="L215">			edgesToSkip.addAll( graph.getInEdges( v ) );</span>
+
+<span class="nc" id="L217">			Set&lt;E&gt; outgoings = new HashSet&lt;&gt;( graph.getOutEdges( v ) );</span>
+<span class="nc" id="L218">			outgoings.removeAll( edgesToSkip );</span>
+
+<span class="nc bnc" id="L220" title="All 2 branches missed.">			for ( E e : outgoings ) {</span>
+<span class="nc" id="L221">				V child = graph.getOpposite( v, e );</span>
+
+<span class="nc bnc" id="L223" title="All 2 branches missed.">				if ( tree.containsVertex( child ) ) {</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">					if ( throwExceptions ) {</span>
+<span class="nc" id="L225">						throw new TreeConversionException();</span>
+					}
+				}
+				else {
+<span class="nc" id="L229">					tree.addChild( e, v, child );</span>
+<span class="nc" id="L230">					todo.add( child );</span>
+				}
+<span class="nc" id="L232">			}</span>
+<span class="nc" id="L233">		}</span>
+
+<span class="nc" id="L235">		return tree;</span>
+	}
+
+	public static &lt;V, E&gt; void printForest( Forest&lt;V, E&gt; forest ) {
+<span class="nc bnc" id="L239" title="All 2 branches missed.">		for ( Tree&lt;V, E&gt; tree : forest.getTrees() ) {</span>
+<span class="nc" id="L240">			printTree( tree );</span>
+<span class="nc" id="L241">		}</span>
+<span class="nc" id="L242">	}</span>
+
+	public static &lt;V, E&gt; void printTree( Tree&lt;V, E&gt; tree ) {
+<span class="nc" id="L245">		printTree( tree.getRoot(), tree, 0 );</span>
+<span class="nc" id="L246">	}</span>
+
+	public static &lt;V, E&gt; void printTree( V root,
+			Tree&lt;V, E&gt; tree, int depth ) {
+<span class="nc" id="L250">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc bnc" id="L251" title="All 2 branches missed.">		for ( int i = 0; i &lt; depth; i++ ) {</span>
+<span class="nc" id="L252">			sb.append( &quot;  &quot; );</span>
+		}
+<span class="nc" id="L254">		sb.append( root );</span>
+<span class="nc" id="L255">		log.debug( sb.toString() );</span>
+
+<span class="nc bnc" id="L257" title="All 2 branches missed.">		for ( V child : tree.getChildren( root ) ) {</span>
+<span class="nc" id="L258">			printTree( child, tree, depth + 1 );</span>
+<span class="nc" id="L259">		}</span>
+<span class="nc" id="L260">	}</span>
+
+	public static class TreeConversionException extends Exception {
+
+		public TreeConversionException() {
+<span class="nc" id="L265">			super( &quot;Tree conversion failed (too many parents)&quot; );</span>
+<span class="nc" id="L266">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

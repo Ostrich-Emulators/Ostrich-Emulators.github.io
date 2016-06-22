@@ -1,0 +1,437 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>CSVReader.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.poi.main</a> &gt; <span class="el_source">CSVReader.java</span></div><h1>CSVReader.java</h1><pre class="source lang-java linenums">/**
+ * *****************************************************************************
+ * Copyright 2013 SEMOSS.ORG
+ *
+ * This file is part of SEMOSS.
+ *
+ * SEMOSS is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * SEMOSS is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * SEMOSS. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ * ****************************************************************************
+ */
+package com.ostrichemulators.semtool.poi.main;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.log4j.Logger;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.vocabulary.XMLSchema;
+import org.supercsv.io.CsvMapReader;
+import org.supercsv.prefs.CsvPreference;
+
+import java.io.FileNotFoundException;
+import java.util.Properties;
+import org.openrdf.model.impl.URIImpl;
+import org.openrdf.model.impl.ValueFactoryImpl;
+
+/**
+ * Loading data into SEMOSS using comma separated value (CSV) files
+ */
+public class CSVReader implements ImportFileReader {
+
+<span class="nc" id="L54">	private static final Logger logger = Logger.getLogger( CSVReader.class );</span>
+	private final static String START_ROW = &quot;START_ROW&quot;;
+	private final static String END_ROW = &quot;END_ROW&quot;;
+	private final static String RELATION = &quot;RELATION&quot;;
+	private final static String NODE_PROP = &quot;NODE_PROP&quot;;
+	private final static String RELATION_PROP = &quot;RELATION_PROP&quot;;
+<span class="nc" id="L60">	private static final Pattern RELATION_PAT = Pattern.compile( &quot;^(.*)[@](.*)[@](.*)$&quot; );</span>
+<span class="nc" id="L61">	private static final Pattern NODEPROP_PAT = Pattern.compile( &quot;^([^%]+)[%](.*)$&quot; );</span>
+<span class="nc" id="L62">	private static final Map&lt;String, URI&gt; datatypes = new HashMap&lt;&gt;();</span>
+
+	private CsvMapReader mapReader;
+	private String[] header;
+<span class="nc" id="L66">	private final List&lt;String&gt; relationArrayList = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L67">	private final Map&lt;String, List&lt;String&gt;&gt; nodePropArrayList = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L68">	private final List&lt;String&gt; relPropArrayList = new ArrayList&lt;&gt;();</span>
+	private File propFile;
+<span class="nc" id="L70">	private final Properties rdfMap = new Properties();</span>
+<span class="nc" id="L71">	private boolean lsInMem = false;</span>
+
+<span class="nc" id="L73">	public CSVReader() {</span>
+<span class="nc" id="L74">	}</span>
+
+<span class="nc" id="L76">	public CSVReader( File control ) {</span>
+<span class="nc" id="L77">		propFile = control;</span>
+<span class="nc" id="L78">	}</span>
+
+	@Override
+	public void keepLoadInMemory( boolean b ) {
+<span class="nc" id="L82">		lsInMem = b;</span>
+<span class="nc" id="L83">	}</span>
+
+	/**
+	 * Loads the prop file for the CSV file
+	 *
+	 * @param fileName	Absolute path to the prop file specified in the last column
+	 * of the CSV file
+	 *
+	 * @throws IOException
+	 * @throws FileNotFoundException
+	 */
+	protected void setRdfMapFromFile( File fileName ) throws FileNotFoundException, IOException {
+<span class="nc" id="L95">		Properties rdfPropMap = new Properties();</span>
+<span class="nc" id="L96">		rdfPropMap.load( new FileReader( fileName ) );</span>
+
+<span class="nc bnc" id="L98" title="All 2 branches missed.">		for ( String name : rdfPropMap.stringPropertyNames() ) {</span>
+<span class="nc" id="L99">			rdfMap.put( name, rdfPropMap.getProperty( name ) );</span>
+<span class="nc" id="L100">		}</span>
+<span class="nc" id="L101">	}</span>
+
+	@Override
+	public ImportMetadata getMetadata( File file ) throws IOException, ImportValidationException {
+<span class="nc" id="L105">		return new ImportMetadata(); // no metadata for CSVs</span>
+	}
+
+	@Override
+	public ImportData readOneFile( File file ) throws IOException, ImportValidationException {
+<span class="nc" id="L110">		ImportData data = new ImportData();</span>
+<span class="nc" id="L111">		ImportMetadata im = data.getMetadata();</span>
+<span class="nc" id="L112">		im.setSourceOfData( new URIImpl( file.toURI().toString() ) );</span>
+<span class="nc" id="L113">		im.setLegacyMode( true );</span>
+
+<span class="nc" id="L115">		try ( Reader rdr = new BufferedReader( new FileReader( file ) ) ) {</span>
+<span class="nc" id="L116">			mapReader = new CsvMapReader( rdr, CsvPreference.STANDARD_PREFERENCE );</span>
+<span class="nc" id="L117">			File propfile = propCSVFile( mapReader );</span>
+<span class="nc" id="L118">			setRdfMapFromFile( propfile ); // will throw an IOException if missing file</span>
+
+<span class="nc" id="L120">			createProcessors();</span>
+<span class="nc" id="L121">			processConceptRelationURIs( data );</span>
+<span class="nc" id="L122">			processNodePropURIs( data );</span>
+<span class="nc" id="L123">			processRelationships( data );</span>
+<span class="nc bnc" id="L124" title="All 8 branches missed.">		}</span>
+		finally {
+<span class="nc bnc" id="L126" title="All 4 branches missed.">			if ( null != mapReader ) {</span>
+<span class="nc" id="L127">				mapReader.close();</span>
+			}
+		}
+
+<span class="nc" id="L131">		return data;</span>
+	}
+
+	/**
+	 * Matches user inputed column type in prop file to the specific variable type
+	 * name within Java SuperCSV API
+	 */
+	public void createProcessors() {
+		// Columns in prop file that are NON_OPTIMAL must contain a value
+<span class="nc" id="L140">		Map&lt;String, URI&gt; dtlkp = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L141">		dtlkp.put( &quot;Double&quot;, XMLSchema.DOUBLE );</span>
+<span class="nc" id="L142">		dtlkp.put( &quot;Int&quot;, XMLSchema.INT );</span>
+<span class="nc" id="L143">		dtlkp.put( &quot;Integer&quot;, XMLSchema.INTEGER );</span>
+<span class="nc" id="L144">		dtlkp.put( &quot;Float&quot;, XMLSchema.FLOAT );</span>
+<span class="nc" id="L145">		dtlkp.put( &quot;String&quot;, XMLSchema.STRING );</span>
+
+<span class="nc bnc" id="L147" title="All 2 branches missed.">		for ( int col = 0; col &lt; header.length; col++ ) {</span>
+			// find the type for each column
+<span class="nc" id="L149">			String type = rdfMap.getProperty( Integer.toString( col + 1 ), null );</span>
+
+			// we have some sort of datatype to worry about, so keep track of it
+<span class="nc bnc" id="L152" title="All 2 branches missed.">			if ( dtlkp.containsKey( type ) ) {</span>
+<span class="nc" id="L153">				datatypes.put( header[col], dtlkp.get( type ) );</span>
+			}
+		}
+<span class="nc" id="L156">	}</span>
+
+	public void processRelationships( ImportData data ) throws IOException {
+<span class="nc" id="L159">		Map&lt;String, LoadingSheetData&gt; rels = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L160">		Map&lt;String, LoadingSheetData&gt; nodes = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">		for ( LoadingSheetData r : data.getSheets() ) {</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">			if ( r.isRel() ) {</span>
+<span class="nc" id="L163">				rels.put( r.getName(), r );</span>
+			}
+			else {
+<span class="nc" id="L166">				nodes.put( r.getName(), r );</span>
+			}
+<span class="nc" id="L168">		}</span>
+
+		//start count at 1 just row 1 is the header
+<span class="nc" id="L171">		int count = 1;</span>
+<span class="nc" id="L172">		int startRow = Integer.parseInt( rdfMap.getProperty( START_ROW, &quot;2&quot; ) );</span>
+
+<span class="nc bnc" id="L174" title="All 4 branches missed.">		while ( count &lt; startRow &amp;&amp; mapReader.read( header ) != null ) {</span>
+<span class="nc" id="L175">			count++;</span>
+<span class="nc" id="L176">			logger.debug( &quot;Skipping line: &quot; + count );</span>
+		}
+
+		// get all the relation
+		// max row predetermined value
+		// overwrite this value if user specified the max rows to load
+<span class="nc" id="L182">		int maxRows = Integer.parseInt( rdfMap.getProperty( END_ROW, &quot;10000&quot; ) );</span>
+
+		// only start from the maxRow - the startRow
+		// added -1 is because of index nature
+		// the earlier rows should already have been skipped
+		Map&lt;String, String&gt; jcrMap;
+		//while ( null != ( jcrMap = mapReader.read( header, processors ) )
+		//  &amp;&amp; count &lt; maxRows ) {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">		while ( ++count &lt; maxRows</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">				&amp;&amp; null != ( jcrMap = mapReader.read( header ) ) ) {</span>
+			// logger.debug( &quot;Process line: &quot; + count );
+
+<span class="nc bnc" id="L194" title="All 2 branches missed.">			for ( Map.Entry&lt;String, List&lt;String&gt;&gt; en : nodePropArrayList.entrySet() ) {</span>
+<span class="nc" id="L195">				String nodetype = en.getKey();</span>
+<span class="nc" id="L196">				Collection&lt;String&gt; valuesForProp = en.getValue();</span>
+
+<span class="nc" id="L198">				String sbjinstance = createInstanceValue( nodetype, jcrMap );</span>
+
+<span class="nc" id="L200">				LoadingSheetData nlsd = nodes.get( nodetype );</span>
+
+<span class="nc" id="L202">				Map&lt;String, Value&gt; props = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">				for ( String propValColumn : valuesForProp ) {</span>
+<span class="nc" id="L204">					Value v = createObject( propValColumn, jcrMap );</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">					if ( null != v ) {</span>
+<span class="nc" id="L206">						props.put( propValColumn, v );</span>
+					}
+<span class="nc" id="L208">				}</span>
+
+<span class="nc" id="L210">				nlsd.add( sbjinstance, props );</span>
+<span class="nc" id="L211">			}</span>
+
+			// process all relationships in row
+<span class="nc bnc" id="L214" title="All 2 branches missed.">			for ( String relation : relationArrayList ) {</span>
+<span class="nc" id="L215">				Matcher m = RELATION_PAT.matcher( relation );</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">				if ( !m.matches() ) {</span>
+<span class="nc" id="L217">					logger.error( &quot;can't find previously-found match (?)&quot; );</span>
+<span class="nc" id="L218">					break; // don't expect to ever get here</span>
+				}
+
+<span class="nc" id="L221">				LoadingSheetData rlsd = rels.get( relation );</span>
+
+				// get the subject and object for triple (the two indexes)
+<span class="nc" id="L224">				String sub = m.group( 1 );</span>
+				// String predicate = m.group( 2 );
+<span class="nc" id="L226">				String obj = m.group( 3 );</span>
+
+<span class="nc" id="L228">				String sbjinstance = createInstanceValue( sub, jcrMap );</span>
+<span class="nc" id="L229">				String objinstance = createInstanceValue( obj, jcrMap );</span>
+<span class="nc" id="L230">				rlsd.add( sbjinstance, objinstance, new HashMap&lt;&gt;() );</span>
+
+				// FIXME: need to worry about relationship properties
+<span class="nc" id="L233">			}</span>
+		}
+<span class="nc" id="L235">	}</span>
+
+	private void processConceptRelationURIs( ImportData data ) {
+		// get the list of relationships from the prop file
+
+<span class="nc" id="L240">		Map&lt;String, LoadingSheetData&gt; rels = new HashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L242" title="All 2 branches missed.">		if ( null != rdfMap.getProperty( RELATION ) ) {</span>
+<span class="nc" id="L243">			String relationNames = rdfMap.getProperty( RELATION );</span>
+
+<span class="nc" id="L245">			ValueFactory vf = new ValueFactoryImpl();</span>
+
+<span class="nc" id="L247">			relationArrayList.clear();</span>
+<span class="nc bnc" id="L248" title="All 2 branches missed.">			for ( String relation : relationNames.split( &quot;;&quot; ) ) {</span>
+<span class="nc" id="L249">				Matcher m = RELATION_PAT.matcher( relation );</span>
+<span class="nc bnc" id="L250" title="All 2 branches missed.">				if ( !m.matches() ) {</span>
+<span class="nc" id="L251">					logger.warn( &quot;skipping unparseable relationship definition: &quot; + relation );</span>
+<span class="nc" id="L252">					break;</span>
+				}
+
+<span class="nc" id="L255">				relationArrayList.add( relation );</span>
+<span class="nc" id="L256">				logger.debug( &quot;Loading relation &quot; + relation );</span>
+				// get the subject and object for triple (the two indexes)
+<span class="nc" id="L258">				String sub = m.group( 1 );</span>
+<span class="nc" id="L259">				String predicate = m.group( 2 );</span>
+<span class="nc" id="L260">				String obj = m.group( 3 );</span>
+
+<span class="nc" id="L262">				String subjectLabel = processAutoConcat( sub );</span>
+<span class="nc" id="L263">				String objectLabel = processAutoConcat( obj );</span>
+
+				// String name, String sType, String oType,String relname
+<span class="nc" id="L266">				LoadingSheetData rlsd = LoadingSheetData.relsheet( relation, subjectLabel,</span>
+						objectLabel, predicate, lsInMem );
+<span class="nc" id="L268">				data.add( rlsd );</span>
+<span class="nc" id="L269">				rels.put( relation, rlsd );</span>
+			}
+		}
+<span class="nc" id="L272">	}</span>
+
+	public void processNodePropURIs( ImportData data ) {
+
+<span class="nc" id="L276">		Map&lt;String, LoadingSheetData&gt; nodes = new HashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L278" title="All 2 branches missed.">		if ( null != rdfMap.getProperty( NODE_PROP ) ) {</span>
+<span class="nc" id="L279">			nodePropArrayList.clear();</span>
+<span class="nc" id="L280">			String nodePropNames = rdfMap.getProperty( NODE_PROP );</span>
+
+<span class="nc bnc" id="L282" title="All 2 branches missed.">			for ( String nt : nodePropNames.split( &quot;;&quot; ) ) {</span>
+<span class="nc" id="L283">				Matcher m = NODEPROP_PAT.matcher( nt );</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">				if ( !m.matches() ) {</span>
+<span class="nc" id="L285">					break;</span>
+				}
+
+<span class="nc" id="L288">				logger.debug( &quot;Loading Node Prop &quot; + nt );</span>
+
+				// get the subject and object for triple (the two indexes)
+<span class="nc" id="L291">				String sub = m.group( 1 );</span>
+<span class="nc" id="L292">				String prop = m.group( 2 );</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">				if ( !nodePropArrayList.containsKey( sub ) ) {</span>
+<span class="nc" id="L294">					nodePropArrayList.put( sub, new ArrayList&lt;&gt;() );</span>
+				}
+
+<span class="nc" id="L297">				List&lt;String&gt; propnames = Arrays.asList( prop.split( &quot;%&quot; ) );</span>
+<span class="nc" id="L298">				nodePropArrayList.get( sub ).addAll( propnames );</span>
+
+<span class="nc" id="L300">				String subjectLabel = processAutoConcat( sub );</span>
+
+<span class="nc bnc" id="L302" title="All 2 branches missed.">				if ( !nodes.containsKey( sub ) ) {</span>
+<span class="nc" id="L303">					LoadingSheetData nlsd = LoadingSheetData.nodesheet( sub, subjectLabel );</span>
+<span class="nc" id="L304">					nodes.put( sub, nlsd );</span>
+<span class="nc" id="L305">					data.add( nlsd );</span>
+				}
+
+<span class="nc" id="L308">				LoadingSheetData nlsd = nodes.get( sub );</span>
+<span class="nc bnc" id="L309" title="All 2 branches missed.">				for ( String pname : propnames ) {</span>
+<span class="nc" id="L310">					nlsd.addProperty( pname, datatypes.get( pname ) );</span>
+<span class="nc" id="L311">				}</span>
+			}
+		}
+<span class="nc" id="L314">	}</span>
+
+	/**
+	 * Change the name of nodes that are concatenations of multiple CSV columns
+	 * Example: changes the string &quot;Cat+Dog&quot; into &quot;CatDog&quot;
+	 *
+	 * @param input String name of the node that is a concatenation
+	 *
+	 * @return String name of the node removing the &quot;+&quot; to indicate a
+	 * concatenation
+	 */
+	public String processAutoConcat( String input ) {
+<span class="nc" id="L326">		return input.replaceAll( &quot;\\+&quot;, &quot;&quot; );</span>
+	}
+
+	/**
+	 * Determine if the node is a concatenation of multiple columns in the CSV
+	 * file
+	 *
+	 * @param input String containing the name of the node
+	 *
+	 * @return true when the node is a concatenation
+	 */
+	public boolean isProperConcatHeader( String input ) {
+<span class="nc" id="L338">		boolean ret = true;</span>
+<span class="nc" id="L339">		List&lt;String&gt; headerList = Arrays.asList( header );</span>
+<span class="nc bnc" id="L340" title="All 2 branches missed.">		for ( String split1 : input.split( &quot;\\+&quot; ) ) {</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">			if ( !headerList.contains( split1 ) ) {</span>
+<span class="nc" id="L342">				ret = false;</span>
+<span class="nc" id="L343">				break;</span>
+			}
+		}
+<span class="nc" id="L346">		return ret;</span>
+	}
+
+	/**
+	 * Constructs the node instance name
+	 *
+	 * @param subject String containing the node type name
+	 * @param jcrMap Map containing the data in the CSV file
+	 *
+	 * @return retString String containing the instance level name
+	 */
+	public String createInstanceValue( String subject, Map&lt;String, String&gt; jcrMap ) {
+<span class="nc" id="L358">		String retString = &quot;&quot;;</span>
+		// if node is a concatenation
+<span class="nc bnc" id="L360" title="All 2 branches missed.">		if ( subject.contains( &quot;+&quot; ) ) {</span>
+<span class="nc" id="L361">			String elements[] = subject.split( &quot;\\+&quot; );</span>
+<span class="nc bnc" id="L362" title="All 2 branches missed.">			for ( String subjectElement : elements ) {</span>
+<span class="nc bnc" id="L363" title="All 4 branches missed.">				if ( jcrMap.containsKey( subjectElement ) &amp;&amp; jcrMap.get( subjectElement ) != null ) {</span>
+<span class="nc" id="L364">					String value = jcrMap.get( subjectElement );</span>
+<span class="nc" id="L365">					retString = retString + value + &quot;-&quot;;</span>
+<span class="nc" id="L366">				}</span>
+				else {
+<span class="nc" id="L368">					retString = retString + &quot;null-&quot;;</span>
+				}
+			}
+			// a - will show up at the end of this and we need to get rid of that
+<span class="nc bnc" id="L372" title="All 2 branches missed.">			if ( !retString.equals( &quot;&quot; ) ) {</span>
+<span class="nc" id="L373">				retString = retString.substring( 0, retString.length() - 1 );</span>
+			}
+<span class="nc" id="L375">		}</span>
+		else {
+<span class="nc bnc" id="L377" title="All 4 branches missed.">			if ( jcrMap.containsKey( subject ) &amp;&amp; jcrMap.get( subject ) != null ) {</span>
+<span class="nc" id="L378">				retString = jcrMap.get( subject );</span>
+			}
+		}
+
+<span class="nc" id="L382">		return retString;</span>
+	}
+
+	private Value createObject( String object, Map&lt;String, String&gt; jcrMap ) {
+<span class="nc" id="L386">		ValueFactory vf = new ValueFactoryImpl();</span>
+
+		// need to do the class vs. object magic
+<span class="nc bnc" id="L389" title="All 2 branches missed.">		if ( object.contains( &quot;+&quot; ) ) {</span>
+<span class="nc" id="L390">			StringBuilder strBuilder = new StringBuilder();</span>
+<span class="nc" id="L391">			String[] objList = object.split( &quot;\\+&quot; );</span>
+<span class="nc bnc" id="L392" title="All 2 branches missed.">			for ( String objList1 : objList ) {</span>
+<span class="nc" id="L393">				strBuilder.append( jcrMap.get( objList1 ) );</span>
+			}
+<span class="nc" id="L395">			return vf.createLiteral( strBuilder.toString() );</span>
+		}
+
+<span class="nc" id="L398">		Object o = jcrMap.get( object );</span>
+<span class="nc bnc" id="L399" title="All 2 branches missed.">		if ( null == o ) {</span>
+<span class="nc" id="L400">			return null;</span>
+		}
+
+<span class="nc" id="L403">		String val = o.toString();</span>
+		// see if we have a special datatype to worry about
+<span class="nc bnc" id="L405" title="All 2 branches missed.">		if ( datatypes.containsKey( object ) ) {</span>
+<span class="nc" id="L406">			return vf.createLiteral( val, datatypes.get( object ) );</span>
+		}
+<span class="nc" id="L408">		return vf.createLiteral( val );</span>
+	}
+
+	/**
+	 * Gets the headers for each column and returns the property file. If this
+	 * reader already has a prop file set (from {@link #CSVReader(java.io.File,
+	 * gov.va.semoss.util.UriBuilder, prerna.util.UriBuilder) }, this value from
+	 * the header file is ignored, and the pre-set file is returned in all cases.
+	 *
+	 * @param file the CSV file
+	 *
+	 * @return the control file for the CSV (last column of the header row)
+	 *
+	 * @throws java.io.IOException
+	 */
+	private File propCSVFile( CsvMapReader rdr ) throws IOException {
+		// store the headers of each of the columns
+<span class="nc" id="L425">		String rawheaders[] = rdr.getHeader( true );</span>
+<span class="nc" id="L426">		header = new String[rawheaders.length];</span>
+
+		// don't copy the last index of the array, because there is no corresponding
+		// data column (the last column is the control file location)
+<span class="nc" id="L430">		System.arraycopy( rawheaders, 0, header, 0, header.length - 1 );</span>
+
+		// last header in CSV file is the absolute path to the prop file
+<span class="nc bnc" id="L433" title="All 2 branches missed.">		return ( null == propFile ? new File( rawheaders[rawheaders.length - 1] )</span>
+				: propFile );
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

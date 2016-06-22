@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ImportMetadata.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.poi.main</a> &gt; <span class="el_source">ImportMetadata.java</span></div><h1>ImportMetadata.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.poi.main;
+
+import com.ostrichemulators.semtool.model.vocabulary.SEMTOOL;
+import com.ostrichemulators.semtool.util.UriBuilder;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.log4j.Logger;
+import org.openrdf.model.URI;
+
+/**
+ *
+ * @author ryan
+ */
+public final class ImportMetadata {
+
+<span class="nc" id="L24">	private static final Logger log = Logger.getLogger( ImportMetadata.class );</span>
+<span class="nc" id="L25">	private final Map&lt;String, String&gt; namespaces = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L26">	private final List&lt;String[]&gt; statements = new ArrayList&lt;&gt;();</span>
+	private URI base;
+	private UriBuilder databuilder;
+	private UriBuilder schemabuilder;
+<span class="nc" id="L30">	private boolean autocreateModel = true;</span>
+<span class="nc" id="L31">	private boolean legacy = false;</span>
+	private URI sourceOfData;
+
+<span class="nc" id="L34">	public ImportMetadata() {</span>
+<span class="nc" id="L35">	}</span>
+
+<span class="nc" id="L37">	public ImportMetadata( URI base, UriBuilder schema, UriBuilder data ) {</span>
+<span class="nc" id="L38">		this.base = base;</span>
+<span class="nc" id="L39">		this.databuilder = data;</span>
+<span class="nc" id="L40">		this.schemabuilder = schema;</span>
+<span class="nc" id="L41">	}</span>
+
+	public void setSourceOfData( URI s ) {
+<span class="nc" id="L44">		sourceOfData = s;</span>
+<span class="nc" id="L45">	}</span>
+
+	/**
+	 * Retrieves the source of the data, if set.
+	 *
+	 * @return the URI of the data source, or null
+	 */
+	public URI getSourceOfData() {
+<span class="nc" id="L53">		return sourceOfData;</span>
+	}
+
+	public void clear() {
+<span class="nc" id="L57">		namespaces.clear();</span>
+<span class="nc" id="L58">		statements.clear();</span>
+<span class="nc" id="L59">	}</span>
+
+	public void setAll( ImportMetadata im ) {
+<span class="nc" id="L62">		setNamespaces( im.getNamespaces() );</span>
+<span class="nc" id="L63">		setStatements( im.getStatements() );</span>
+<span class="nc" id="L64">		base = im.getBase();</span>
+<span class="nc" id="L65">		databuilder = im.getDataBuilder();</span>
+<span class="nc" id="L66">		schemabuilder = im.getSchemaBuilder();</span>
+<span class="nc" id="L67">		autocreateModel = im.isAutocreateMetamodel();</span>
+<span class="nc" id="L68">	}</span>
+
+	public boolean isLegacyMode() {
+<span class="nc" id="L71">		return legacy;</span>
+	}
+
+	public void setLegacyMode( boolean legacy ) {
+<span class="nc" id="L75">		this.legacy = legacy;</span>
+<span class="nc" id="L76">	}</span>
+
+	public ImportMetadata setNamespaces( Map&lt;String, String&gt; ns ) {
+<span class="nc" id="L79">		namespaces.clear();</span>
+<span class="nc" id="L80">		return addNamespaces( ns );</span>
+	}
+
+	public ImportMetadata addNamespaces( Map&lt;String, String&gt; ns ) {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		for ( Map.Entry&lt;String, String&gt; en : ns.entrySet() ) {</span>
+<span class="nc" id="L85">			setNamespace( en.getKey(), en.getValue() );</span>
+<span class="nc" id="L86">		}</span>
+<span class="nc" id="L87">		return this;</span>
+	}
+
+	public ImportMetadata setNamespace( String prefix, String uri ) {
+		// if the prefix ends with a :, remove it
+<span class="nc" id="L92">		namespaces.put( prefix.replaceAll( &quot;:$&quot;, &quot;&quot; ), uri );</span>
+<span class="nc" id="L93">		return this;</span>
+	}
+
+	public Map&lt;String, String&gt; getNamespaces() {
+<span class="nc" id="L97">		return new HashMap&lt;&gt;( namespaces );</span>
+	}
+
+	public void setAutocreateMetamodel( boolean b ) {
+<span class="nc" id="L101">		autocreateModel = b;</span>
+<span class="nc" id="L102">	}</span>
+
+	public boolean isAutocreateMetamodel() {
+<span class="nc" id="L105">		return autocreateModel;</span>
+	}
+
+	public void setBase( URI b ) {
+<span class="nc" id="L109">		base = b;</span>
+<span class="nc" id="L110">	}</span>
+
+	public void setDataBuilder( String uri ) {
+<span class="nc bnc" id="L113" title="All 2 branches missed.">		databuilder = ( null == uri ? null : UriBuilder.getBuilder( uri ) );</span>
+<span class="nc" id="L114">	}</span>
+
+	public void setSchemaBuilder( String uri ) {
+<span class="nc bnc" id="L117" title="All 2 branches missed.">		schemabuilder = ( null == uri ? null : UriBuilder.getBuilder( uri ) );</span>
+<span class="nc" id="L118">	}</span>
+
+	public URI getBase() {
+<span class="nc" id="L121">		return base;</span>
+	}
+
+	public UriBuilder getDataBuilder() {
+<span class="nc bnc" id="L125" title="All 2 branches missed.">		return ( null == databuilder ? null : databuilder.copy() );</span>
+	}
+
+	public UriBuilder getSchemaBuilder() {
+<span class="nc bnc" id="L129" title="All 2 branches missed.">		return ( null == schemabuilder ? null : schemabuilder.copy() );</span>
+	}
+
+	/**
+	 *
+	 * @return list of String[3]s
+	 */
+	public Collection&lt;String[]&gt; getStatements() {
+<span class="nc" id="L137">		return statements;</span>
+	}
+
+	public ImportMetadata setStatements( Collection&lt;String[]&gt; stmts ) {
+<span class="nc" id="L141">		statements.clear();</span>
+<span class="nc" id="L142">		return addAll( stmts );</span>
+	}
+
+	/**
+	 * Adds a &quot;statement&quot; to our list
+	 *
+	 * @param s
+	 * @param p
+	 * @param o
+	 * @throws java.lang.IllegalArgumentException if either of the first two
+	 * values are empty
+	 * @throws java.lang.NullPointerException is any of the values is null
+	 */
+	public void add( String s, String p, String o ) {
+<span class="nc bnc" id="L156" title="All 6 branches missed.">		if ( null == s || null == p || null == o ) {</span>
+<span class="nc" id="L157">			throw new NullPointerException( &quot;argument cannot be null&quot; );</span>
+		}
+
+<span class="nc bnc" id="L160" title="All 4 branches missed.">		if ( s.isEmpty() || p.isEmpty() ) {</span>
+<span class="nc" id="L161">			throw new IllegalArgumentException( &quot;argument cannot be empty&quot; );</span>
+		}
+
+<span class="nc" id="L164">		statements.add( new String[]{ s, p, o } );</span>
+<span class="nc" id="L165">	}</span>
+
+	/**
+	 * Add all the String[3]s to our list of statements
+	 *
+	 * @param stmts
+	 * @return this
+	 * @throws IllegalArgumentException if any of the String[3]s isn't the right
+	 * size, or has null values
+	 */
+	public ImportMetadata addAll( Collection&lt;String[]&gt; stmts ) {
+<span class="nc bnc" id="L176" title="All 2 branches missed.">		for ( String[] stm : stmts ) {</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">			if ( 3 == stm.length ) {</span>
+<span class="nc" id="L178">				add( stm[0], stm[1], stm[2] );</span>
+			}
+			else {
+<span class="nc" id="L181">				throw new IllegalArgumentException( &quot;statement array size != 3&quot; );</span>
+			}
+<span class="nc" id="L183">		}</span>
+<span class="nc" id="L184">		return this;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Constants.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.util</a> &gt; <span class="el_source">Constants.java</span></div><h1>Constants.java</h1><pre class="source lang-java linenums">/**
+ * *****************************************************************************
+ * Copyright 2013 SEMOSS.ORG
+ *
+ * This file is part of SEMOSS.
+ *
+ * SEMOSS is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * SEMOSS is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * SEMOSS. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ * ****************************************************************************
+ */
+package com.ostrichemulators.semtool.util;
+
+import org.openrdf.model.impl.URIImpl;
+import org.openrdf.model.URI;
+import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.model.vocabulary.RDFS;
+
+/**
+ * This class contains all of the constants referenced elsewhere in the code.
+ */
+public class Constants {
+
+<span class="nc" id="L32">	private Constants() {</span>
+<span class="nc" id="L33">	}</span>
+
+	public static final String PDF = &quot;PDF&quot;;
+	public static final String PNG = &quot;PNG&quot;;
+
+	public static final int INITIAL_GRAPH_FONT_SIZE = 10;
+	public static final String TBD = &quot;TBD&quot;;
+	public static final String NA = &quot;n/a&quot;;
+
+	public static final String LAYOUT = &quot;LAYOUT&quot;;
+	public static final String PERSPECTIVE = &quot;PERSPECTIVE&quot;;
+	public static final String PROCESS_CURRENT_DATE = &quot;PROCESS_CURRENT_DATE&quot;;
+	public static final String PROCESS_CURRENT_USER = &quot;PROCESS_CURRENT_USER&quot;;
+	public static final String BASE_FOLDER = &quot;BaseFolder&quot;;
+
+<span class="nc" id="L48">	public static final URI VERTEX_NAME = RDFS.LABEL;</span>
+<span class="nc" id="L49">	public static final URI VERTEX_TYPE = RDF.TYPE;</span>
+<span class="nc" id="L50">	public static final URI IN_EDGE_CNT = new URIImpl( &quot;semoss://count.edge.in&quot; );</span>
+<span class="nc" id="L51">	public static final URI OUT_EDGE_CNT = new URIImpl( &quot;semoss://count.edge.out&quot; );</span>
+<span class="nc" id="L52">	public static final URI EDGE_CNT = new URIImpl( &quot;semoss://count.edge&quot; );</span>
+
+<span class="nc" id="L54">	public static final URI ANYNODE = new URIImpl( &quot;semoss://any&quot; );</span>
+<span class="nc" id="L55">	public static final URI NONODE = new URIImpl( &quot;semoss://none&quot; );</span>
+
+<span class="nc" id="L57">	public static final URI EDGE_NAME = RDFS.LABEL;</span>
+<span class="nc" id="L58">	public static final URI EDGE_TYPE = RDF.TYPE;</span>
+
+	//Used by POIReader
+	public static final String RELATION_URI_CONCATENATOR = &quot;_x_&quot;; //used in between the in node and out node for relation instance uris.
+	public static final String RELATION_LABEL_CONCATENATOR = &quot;:&quot;; //used in between the in node and out node for relation instance uris.
+	public static final String DEFAULT_NODE_CLASS = &quot;Concept&quot;;
+	public static final String CONTAINS = &quot;Contains&quot;;
+
+	public static final String SEMOSS_URI = &quot;SEMOSS_URI&quot;;
+	public static final String INTERNAL_NS = &quot;semoss://internal/&quot;;
+
+//	// layouts
+//	public static final String FR = &quot;Fruchterman-Reingold&quot;;
+//	public static final String KK = &quot;Kamada-Kawai&quot;;
+//	public static final String SPRING = &quot;Spring-Layout&quot;;
+//	public static final String SPRING2 = &quot;Spring-Layout2&quot;;
+//	public static final String CIRCLE_LAYOUT = &quot;Circle-Layout&quot;;
+//	public static final String ISO = &quot;ISO-Layout&quot;;
+//	public static final String TREE_LAYOUT = &quot;Tree-Layout&quot;;
+//	public static final String RADIAL_TREE_LAYOUT = &quot;Radial-Tree-Layout&quot;;
+//	public static final String BALLOON_LAYOUT = &quot;Balloon Layout&quot;;
+	//public static final String LEGEND = &quot;_LEGEND&quot;;
+
+	public static final String DESCR = &quot;DESCRIPTION&quot;;
+	public static final String QUERY = &quot;QUERY&quot;;
+
+	public static final String ENGINE_NAME = &quot;ENGINE&quot;;
+	public static final String ENGINE_IMPL = &quot;ENGINE_TYPE&quot;;
+	public static final String DATASERIES = &quot;dataSeries&quot;;
+
+	public static final String ENTITY = &quot;entity&quot;;
+
+	public static final String BLANK_URL = &quot;http://bornhere.com/noparent/blank/&quot;;
+
+	public static final String DREAMER = &quot;DREAMER&quot;;
+	public static final String ONTOLOGY = &quot;ONTOLOGY&quot;;
+
+	public static final String SPARQL_QUERY_ENDPOINT = &quot;SPARQL_QUERY_ENDPOINT&quot;;
+	public static final String SPARQL_UPDATE_ENDPOINT = &quot;SPARQL_UPDATE_ENDPOINT&quot;;
+
+	//Load Sheet Export Panel
+	public static final int MAX_EXPORTS = 9;
+
+	public static final String OWLFILE = &quot;OWL&quot;;
+	public static final String URL_PARAM = &quot;URL_PARAM&quot;;
+
+	public static final String SMSS_LOCATION = &quot;SMSS_LOCATION&quot;;
+	public static final String SMSS_SEARCHPATH = &quot;SMSS_SEARCHPATH&quot;;
+	public static final String SMSS_VERSION_KEY = &quot;VERSION&quot;;
+	public static final String SMSS_RWSTORE_KEY = &quot;RWStore&quot;;
+
+	public static final String METADATA_SHEET_NAME = &quot;Metadata&quot;;
+	public static final String HELPURI_KEY = &quot;HelpURI&quot;;
+	public static final String LATESTRELEASE_KEY = &quot;LatestRelease&quot;;
+	public static final String EXPERIMENTALRELEASE_KEY = &quot;ExperimentalRelease&quot;;
+	public static final String LICENSEURI_KEY = &quot;LicenseURI&quot;;
+	public static final String BASEURI_KEY = &quot;baseuri&quot;;
+	public static final String PIN_KEY = &quot;pinned&quot;;
+	public static final String DEFAULTUI_KEY = &quot;DefaultUI&quot;;
+
+	public static final String CALC_INFERENCES_PREF = &quot;calculateInferences&quot;;
+	public static final String SEMEX_USE_LABELS_PREF = &quot;semexUseLabels&quot;;
+	public static final String INSIGHTKB = &quot;insights&quot;;
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

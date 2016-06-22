@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractGraphElement.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.om</a> &gt; <span class="el_source">AbstractGraphElement.java</span></div><h1>AbstractGraphElement.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.om;
+
+import com.ostrichemulators.semtool.util.RDFDatatypeTools;
+import com.ostrichemulators.semtool.util.Constants;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.impl.LiteralImpl;
+import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.model.vocabulary.RDFS;
+import org.openrdf.model.vocabulary.XMLSchema;
+
+/**
+ *
+ * @author ryan
+ */
+public abstract class AbstractGraphElement implements GraphElement, Comparable&lt;AbstractGraphElement&gt; {
+
+<span class="nc" id="L34">	private final transient List&lt;PropertyChangeListener&gt; listeners = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L35">	private final transient Map&lt;URI, Value&gt; properties = new HashMap&lt;&gt;();</span>
+	private URI graphid;
+<span class="nc" id="L37">	private Map&lt;String, Object&gt; propHash = new HashMap&lt;&gt;(); //this is sent to the js (ChartIt)</span>
+
+	public AbstractGraphElement( URI id ) {
+<span class="nc" id="L40">		this( id, null, id.getLocalName() );</span>
+<span class="nc" id="L41">	}</span>
+
+<span class="nc" id="L43">	public AbstractGraphElement( URI id, URI type, String label ) {</span>
+<span class="nc" id="L44">		properties.put( RDF.SUBJECT, id );</span>
+<span class="nc" id="L45">		properties.put( RDFS.LABEL, new LiteralImpl( label ) );</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">		properties.put( RDF.TYPE, null == type ? Constants.ANYNODE : type );</span>
+<span class="nc" id="L47">		graphid = id;</span>
+<span class="nc" id="L48">	}</span>
+
+	@Override
+	public void addPropertyChangeListener( PropertyChangeListener pcl ) {
+<span class="nc" id="L52">		listeners.add( pcl );</span>
+<span class="nc" id="L53">	}</span>
+
+	@Override
+	public void removePropertyChangeListener( PropertyChangeListener pcl ) {
+<span class="nc" id="L57">		listeners.remove( pcl );</span>
+<span class="nc" id="L58">	}</span>
+
+	@Override
+	public Collection&lt;PropertyChangeListener&gt; getPropertyChangeListeners() {
+<span class="nc" id="L62">		return new ArrayList&lt;&gt;( listeners );</span>
+	}
+
+	protected void fireIfPropertyChanged( String prop, Object oldval, Object newval ) {
+		// we only want to fire if we need to, so check that something has 
+		// actually changed
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		boolean oldNull = ( null == oldval );</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">		boolean newNull = ( null == newval );</span>
+
+<span class="nc bnc" id="L71" title="All 4 branches missed.">		if ( oldNull &amp;&amp; newNull ) {</span>
+<span class="nc" id="L72">			return;</span>
+		}
+
+<span class="nc bnc" id="L75" title="All 2 branches missed.">		if ( !Objects.equals( oldval, newval ) ) {</span>
+<span class="nc" id="L76">			PropertyChangeEvent pce</span>
+					= new PropertyChangeEvent( this, prop, oldval, newval );
+<span class="nc bnc" id="L78" title="All 2 branches missed.">			for ( PropertyChangeListener pcl : listeners ) {</span>
+<span class="nc" id="L79">				pcl.propertyChange( pce );</span>
+<span class="nc" id="L80">			}</span>
+		}
+<span class="nc" id="L82">	}</span>
+
+	/**
+	 * Sets a new label for this vertex. This function is a convenience to 	 {@link #setValue(org.openrdf.model.URI, org.openrdf.model.Value)
+	 * }
+	 * Any name is acceptable. We can always rename a vertex or edge.
+	 *
+	 * @param label the new label to set
+	 */
+	@Override
+	public void setLabel( String label ) {
+<span class="nc" id="L93">		setValue( RDFS.LABEL, RDFDatatypeTools.getValueFromObject( label ) );</span>
+<span class="nc" id="L94">	}</span>
+
+	@Override
+	public Set&lt;URI&gt; getPropertyKeys() {
+<span class="nc" id="L98">		return new HashSet&lt;&gt;( properties.keySet() );</span>
+	}
+
+	@Override
+	public String getLabel() {
+<span class="nc bnc" id="L103" title="All 2 branches missed.">		return ( properties.containsKey( RDFS.LABEL )</span>
+<span class="nc" id="L104">				? properties.get( RDFS.LABEL ).stringValue() : &quot;&quot; );</span>
+	}
+
+	@Override
+	public void setValue( URI prop, Value val ) {
+<span class="nc" id="L109">		Value oldval = properties.get( prop );</span>
+<span class="nc" id="L110">		properties.put( prop, val );</span>
+<span class="nc" id="L111">		fireIfPropertyChanged( prop.toString(), oldval, val );</span>
+<span class="nc" id="L112">	}</span>
+
+	public void setPropHash( Map&lt;String, Object&gt; _propHash ) {
+<span class="nc" id="L115">		propHash = _propHash;</span>
+<span class="nc" id="L116">	}</span>
+
+	public Map&lt;String, Object&gt; getPropHash() {
+<span class="nc" id="L119">		return propHash;</span>
+	}
+
+	@Override
+	public Value getValue( URI prop ) {
+<span class="nc" id="L124">		return properties.get( prop );</span>
+	}
+
+	@Override
+	public Map&lt;URI, Value&gt; getValues() {
+<span class="nc" id="L129">		return properties;</span>
+	}
+
+	@Override
+	public boolean hasProperty( URI prop ) {
+<span class="nc" id="L134">		return properties.containsKey( prop );</span>
+	}
+
+	@Override
+	public void setURI( URI uri ) {
+<span class="nc" id="L139">		setValue( RDF.SUBJECT, uri );</span>
+<span class="nc" id="L140">	}</span>
+
+	@Override
+	public URI getURI() {
+<span class="nc" id="L144">		return URI.class.cast( getValue( RDF.SUBJECT ) );</span>
+	}
+
+	@Override
+	public URI getType() {
+<span class="nc" id="L149">		return URI.class.cast( getValue( RDF.TYPE ) );</span>
+	}
+
+	@Override
+	public void setType( URI type ) {
+<span class="nc" id="L154">		setValue( RDF.TYPE, type );</span>
+<span class="nc" id="L155">	}</span>
+
+	@Override
+	public void removeProperty( URI prop ) {
+<span class="nc" id="L159">		properties.remove( prop );</span>
+<span class="nc" id="L160">	}</span>
+
+	/**
+	 * Gets the datatype for the value that would be returned for the given
+	 * property from a call to {@link #getValue(org.openrdf.model.URI) }
+	 *
+	 * @param prop the property to find
+	 * @return the datatype, or {@link XMLSchema#ANYURI} if the value is a URI, or
+	 * {@link XMLSchema#ENTITY} for a BNode.
+	 */
+	public URI getDataType( URI prop ) {
+<span class="nc bnc" id="L171" title="All 2 branches missed.">		if ( properties.containsKey( prop ) ) {</span>
+<span class="nc" id="L172">			Value data = properties.get( prop );</span>
+<span class="nc" id="L173">			return RDFDatatypeTools.getDatatype( data );</span>
+		}
+<span class="nc" id="L175">		return null;</span>
+	}
+
+	@Override
+	public URI getGraphId() {
+<span class="nc" id="L180">		return graphid;</span>
+	}
+
+	@Override
+	public void setGraphId( URI graphid ) {
+<span class="nc" id="L185">		this.graphid = graphid;</span>
+<span class="nc" id="L186">	}</span>
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L190">		int hash = 7;</span>
+<span class="nc" id="L191">		hash = 41 * hash + Objects.hashCode( this.getGraphId() );</span>
+<span class="nc" id="L192">		return hash;</span>
+	}
+
+	@Override
+	public boolean equals( Object obj ) {
+<span class="nc bnc" id="L197" title="All 2 branches missed.">		if ( obj == null ) {</span>
+<span class="nc" id="L198">			return false;</span>
+		}
+<span class="nc bnc" id="L200" title="All 2 branches missed.">		if ( getClass() != obj.getClass() ) {</span>
+<span class="nc" id="L201">			return false;</span>
+		}
+<span class="nc" id="L203">		final AbstractGraphElement other = (AbstractGraphElement) obj;</span>
+
+<span class="nc" id="L205">		return Objects.equals( this.getGraphId(), other.getGraphId() );</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L210">		return getURI() + &quot;; &quot; + getType().getLocalName() + &quot;; &quot; + getLabel();</span>
+	}
+
+	@Override
+	public int compareTo( AbstractGraphElement o ){
+<span class="nc" id="L215">		return toString().compareTo( o.toString() );</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

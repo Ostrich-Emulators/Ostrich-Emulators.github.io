@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractEngine.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.impl</a> &gt; <span class="el_source">AbstractEngine.java</span></div><h1>AbstractEngine.java</h1><pre class="source lang-java linenums">/**
+ * *****************************************************************************
+ * Copyright 2013 SEMOSS.ORG
+ *
+ * This file is part of SEMOSS.
+ *
+ * SEMOSS is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * SEMOSS is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * SEMOSS. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ * ****************************************************************************
+ */
+package com.ostrichemulators.semtool.rdf.engine.impl;
+
+import com.ostrichemulators.semtool.model.vocabulary.SEMONTO;
+import java.io.IOException;
+import java.util.Properties;
+
+import org.apache.log4j.Logger;
+import org.openrdf.repository.RepositoryException;
+
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+
+import com.ostrichemulators.semtool.util.Constants;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
+import com.ostrichemulators.semtool.rdf.engine.api.InsightManager;
+import com.ostrichemulators.semtool.rdf.engine.api.UpdateExecutor;
+import com.ostrichemulators.semtool.rdf.engine.util.EngineManagementException;
+import com.ostrichemulators.semtool.user.Security;
+import com.ostrichemulators.semtool.user.User;
+import com.ostrichemulators.semtool.util.UriBuilder;
+import com.ostrichemulators.semtool.util.Utility;
+import java.util.Collection;
+import org.apache.log4j.Level;
+import org.openrdf.model.Statement;
+import org.openrdf.model.URI;
+import org.openrdf.model.impl.URIImpl;
+
+/**
+ * An Abstract Engine that sets up the base constructs needed to create an
+ * engine.
+ */
+public abstract class AbstractEngine implements IEngine {
+
+	public static final String REMOTE_KEY = &quot;repo-is-remote&quot;;
+
+<span class="nc" id="L60">	private static final Logger log = Logger.getLogger( AbstractEngine.class );</span>
+<span class="nc" id="L61">	private static final Logger provenance = Logger.getLogger( &quot;provenance&quot; );</span>
+
+<span class="nc" id="L63">	private String engineName = null;</span>
+<span class="nc" id="L64">	private Properties prop = new Properties();</span>
+	private InsightManager insightEngine;
+	private UriBuilder schemabuilder;
+	private UriBuilder databuilder;
+	private URI baseuri;
+
+<span class="nc" id="L70">	public AbstractEngine() {</span>
+<span class="nc" id="L71">	}</span>
+
+	/**
+	 * Opens the database. This function calls (in this order)
+	 * &lt;ol&gt;
+	 * &lt;li&gt;{@link #startLoading(java.util.Properties) },
+	 * &lt;li&gt;{@link #setUris(java.lang.String, java.lang.String) },
+	 * &lt;li&gt;{@link #finishLoading(java.util.Properties) }
+	 * &lt;/ol&gt;
+	 *
+	 * @param initprops
+	 */
+	@Override
+	public void openDB( Properties initprops ) throws RepositoryException {
+<span class="nc" id="L85">		prop = Utility.copyProperties( initprops );</span>
+
+<span class="nc bnc" id="L87" title="All 2 branches missed.">		if ( log.isDebugEnabled() ) {</span>
+<span class="nc" id="L88">			StringBuilder sb = new StringBuilder( &quot;db properties:&quot; );</span>
+<span class="nc" id="L89">			final String lf = System.getProperty( &quot;line.separator&quot; );</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">			for ( String key : initprops.stringPropertyNames() ) {</span>
+<span class="nc" id="L91">				sb.append( lf ).append( key ).append( &quot;=&gt;&quot; ).append( initprops.getProperty( key ) );</span>
+<span class="nc" id="L92">			}</span>
+<span class="nc" id="L93">			log.debug( sb.toString() );</span>
+		}
+
+<span class="nc" id="L96">		startLoading( prop );</span>
+
+<span class="nc" id="L98">		String baseuristr = prop.getProperty( Constants.BASEURI_KEY, &quot;&quot; );</span>
+<span class="nc" id="L99">		String owlstarter = prop.getProperty( Constants.SEMOSS_URI, null );</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">		if ( null == owlstarter ) {</span>
+<span class="nc" id="L101">			log.warn( &quot;no schema URI set...using &quot; + SEMONTO.NAMESPACE );</span>
+<span class="nc" id="L102">			owlstarter = SEMONTO.NAMESPACE;</span>
+		}
+<span class="nc" id="L104">		baseuri = new URIImpl( setUris( baseuristr, owlstarter ).stringValue() );</span>
+
+<span class="nc" id="L106">		finishLoading( prop );</span>
+<span class="nc" id="L107">	}</span>
+
+	/**
+	 * Initiates the loading process with the given properties. If overridden,
+	 * subclasses should be sure to call their superclass's version of this
+	 * function in addition to whatever other processing they do.
+	 *
+	 * @param props
+	 * @throws RepositoryException
+	 */
+	protected void startLoading( Properties props ) throws RepositoryException {
+<span class="nc" id="L118">		insightEngine = createInsightManager();</span>
+<span class="nc" id="L119">	}</span>
+
+	protected abstract InsightManager createInsightManager() throws RepositoryException;
+
+	protected void finishLoading( Properties props ) throws RepositoryException {
+<span class="nc" id="L124">	}</span>
+
+	@Override
+	public String getProperty( String key ) {
+<span class="nc" id="L128">		return prop.getProperty( key );</span>
+	}
+
+	@Override
+	public final void setSchemaBuilder( UriBuilder ns ) {
+<span class="nc" id="L133">		schemabuilder = ns;</span>
+<span class="nc" id="L134">	}</span>
+
+	@Override
+	public UriBuilder getSchemaBuilder() {
+<span class="nc" id="L138">		return schemabuilder;</span>
+	}
+
+	@Override
+	public UriBuilder getDataBuilder() {
+<span class="nc" id="L143">		return databuilder;</span>
+	}
+
+	@Override
+	public void setDataBuilder( UriBuilder b ) {
+<span class="nc" id="L148">		databuilder = b;</span>
+<span class="nc" id="L149">	}</span>
+
+	@Override
+	public org.openrdf.model.URI getBaseUri() {
+<span class="nc" id="L153">		return baseuri;</span>
+	}
+
+	protected void setBaseUri( URI base ) {
+<span class="nc" id="L157">		baseuri = base;</span>
+<span class="nc" id="L158">	}</span>
+
+	/**
+	 * An extension point for subclasses to set their base uris during the load
+	 * process. This function should set the {@link #baseuri},
+	 * {@link #databuilder}, {@link #schemabuilder}
+	 *
+	 * @param data the data builder uri property value from the properties file
+	 * (possibly empty)
+	 * @param schema the schema builder uri (never empty)
+	 * @return this database's unique id. this will include some sort of UUID
+	 * @throws org.openrdf.repository.RepositoryException
+	 */
+	protected abstract URI setUris( String data, String schema ) throws RepositoryException;
+
+	/**
+	 * Update the &quot;last modified&quot; date of the dataset. This operation should fail
+	 * silently if necessary
+	 */
+	protected abstract void updateLastModifiedDate();
+
+	@Override
+	public boolean isConnected() {
+<span class="nc" id="L181">		return false;</span>
+	}
+
+	/**
+	 * Sets the name of the engine. This may be a lot of times the same as the
+	 * Repository Name
+	 *
+	 * @param engineName - Name of the engine that this is being set to
+	 */
+	@Override
+	public void setEngineName( String engineName ) {
+<span class="nc" id="L192">		this.engineName = engineName;</span>
+<span class="nc" id="L193">	}</span>
+
+	/**
+	 * Gets the engine name for this engine
+	 *
+	 * @return Name of the engine it is being set to
+	 */
+	@Override
+	public String getEngineName() {
+<span class="nc" id="L202">		return engineName;</span>
+	}
+
+	/**
+	 * Commits the database.
+	 */
+	@Override
+	public void commit() {
+
+<span class="nc" id="L211">	}</span>
+
+	@Override
+	public InsightManager getInsightManager() {
+<span class="nc" id="L215">		return insightEngine;</span>
+	}
+
+	@Override
+	public void updateInsights( InsightManager im ) throws EngineManagementException {
+<span class="nc" id="L220">		log.warn( &quot;updateInsights not yet implemented. This call does nothing.&quot; );</span>
+<span class="nc" id="L221">	}</span>
+
+	@Override
+	public void setInsightManager( InsightManager ie ) {
+<span class="nc" id="L225">		this.insightEngine = ie;</span>
+<span class="nc" id="L226">	}</span>
+
+	protected static File searchFor( String filename, File... dirs ) {
+<span class="nc bnc" id="L229" title="All 2 branches missed.">		if ( null != filename ) {</span>
+<span class="nc" id="L230">			File orig = new File( filename );</span>
+<span class="nc bnc" id="L231" title="All 4 branches missed.">			if ( orig.isAbsolute() &amp;&amp; orig.exists() ) {</span>
+<span class="nc" id="L232">				return orig;</span>
+			}
+
+<span class="nc" id="L235">			final String basefilename = orig.getName();</span>
+<span class="nc" id="L236">			final List&lt;String&gt; dirparts</span>
+<span class="nc" id="L237">					= new ArrayList&lt;&gt;( Arrays.asList( filename.split( Pattern.quote(</span>
+													File.separator ) ) ) );
+			// we're going to use the filename anyway, so we can remove it from the list
+<span class="nc bnc" id="L240" title="All 2 branches missed.">			if ( !dirparts.isEmpty() ) {</span>
+<span class="nc" id="L241">				dirparts.remove( dirparts.size() - 1 );</span>
+			}
+
+			// special case: filename is db/XXX, we can skip the db part
+<span class="nc bnc" id="L245" title="All 4 branches missed.">			if ( !dirparts.isEmpty() &amp;&amp; &quot;db&quot;.equals( dirparts.get( 0 ) ) ) {</span>
+<span class="nc" id="L246">				dirparts.remove( 0 );</span>
+			}
+
+<span class="nc" id="L249">			List&lt;File&gt; searchpath = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L250" title="All 2 branches missed.">			for ( File dir : dirs ) {</span>
+<span class="nc" id="L251">				searchpath.add( new File( dir, basefilename ) );</span>
+<span class="nc" id="L252">				StringBuilder sb = new StringBuilder();</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">				for ( String dirpart : dirparts ) {</span>
+<span class="nc" id="L254">					sb.append( File.separator ).append( dirpart );</span>
+
+<span class="nc" id="L256">					File check = new File( dir + sb.toString(), basefilename );</span>
+<span class="nc" id="L257">					searchpath.add( check );</span>
+<span class="nc" id="L258">				}</span>
+			}
+<span class="nc" id="L260">			searchpath.add( orig );</span>
+
+<span class="nc" id="L262">			Set&lt;String&gt; checked = new HashSet&lt;&gt;(); // don't check the same place twice</span>
+<span class="nc bnc" id="L263" title="All 2 branches missed.">			for ( File loc : searchpath ) {</span>
+<span class="nc bnc" id="L264" title="All 2 branches missed.">				if ( !checked.contains( loc.getAbsolutePath() ) ) {</span>
+					try {
+<span class="nc" id="L266">						checked.add( loc.getAbsolutePath() );</span>
+
+<span class="nc" id="L268">						log.debug( &quot;looking for &quot; + filename + &quot; as &quot; + loc.</span>
+<span class="nc" id="L269">								getAbsolutePath() );</span>
+<span class="nc bnc" id="L270" title="All 2 branches missed.">						if ( loc.exists() ) {</span>
+<span class="nc" id="L271">							log.debug( &quot;using &quot; + loc.getCanonicalPath() );</span>
+<span class="nc" id="L272">							return loc.getCanonicalFile();</span>
+						}
+					}
+<span class="nc" id="L275">					catch ( IOException ioe ) {</span>
+<span class="nc" id="L276">						log.error( &quot;could not access file: &quot; + loc.getAbsolutePath(), ioe );</span>
+<span class="nc" id="L277">					}</span>
+				}
+<span class="nc" id="L279">			}</span>
+		}
+
+<span class="nc" id="L282">		return null;</span>
+	}
+
+	@Override
+	public void setProperty( String key, String val ) {
+<span class="nc bnc" id="L287" title="All 4 branches missed.">		if ( null == val || val.isEmpty() ) {</span>
+<span class="nc" id="L288">			prop.remove( key );</span>
+		}
+		else {
+<span class="nc" id="L291">			prop.setProperty( key, val );</span>
+		}
+<span class="nc" id="L293">	}</span>
+
+	@Override
+	public Properties getProperties() {
+<span class="nc" id="L297">		Properties p = new Properties();</span>
+<span class="nc" id="L298">		p.putAll( prop );</span>
+<span class="nc" id="L299">		return p;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L304">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">		sb.append( null == engineName ? &quot;unnamed&quot; : engineName );</span>
+<span class="nc" id="L306">		sb.append( &quot; (base:&quot; );</span>
+<span class="nc bnc" id="L307" title="All 2 branches missed.">		sb.append( null == databuilder ? &quot;not set&quot; : getBaseUri() ).append( &quot;)&quot; );</span>
+<span class="nc" id="L308">		return sb.toString();</span>
+	}
+
+	public abstract boolean supportsSparqlBindings();
+
+	@Override
+	public void calculateInferences() throws RepositoryException {
+		// nothing to do
+<span class="nc" id="L316">	}</span>
+
+	public static final URI getNewBaseUri() {
+<span class="nc" id="L319">		URI baseuri = UriBuilder.getBuilder( &quot;http://os-em.com/semtool/database/&quot; ).uniqueUri();</span>
+<span class="nc" id="L320">		return baseuri;</span>
+	}
+
+	protected void logProvenance( UpdateExecutor ue ) {
+<span class="nc bnc" id="L324" title="All 2 branches missed.">		if ( provenance.isEnabledFor( Level.INFO ) ) {</span>
+<span class="nc" id="L325">			User user = Security.getSecurity().getAssociatedUser( this );</span>
+<span class="nc" id="L326">			provenance.info( user.getUsername() + &quot;: &quot; + ue.bindAndGetSparql() );</span>
+		}
+<span class="nc" id="L328">	}</span>
+
+	protected void logProvenance( Collection&lt;Statement&gt; stmts ) {
+<span class="nc bnc" id="L331" title="All 2 branches missed.">		if ( provenance.isEnabledFor( Level.INFO ) ) {</span>
+<span class="nc" id="L332">			User user = Security.getSecurity().getAssociatedUser( this );</span>
+<span class="nc bnc" id="L333" title="All 2 branches missed.">			for ( Statement stmt : stmts ) {</span>
+<span class="nc" id="L334">				provenance.info( user.getUsername() + &quot;: &quot; + stmt );</span>
+<span class="nc" id="L335">			}</span>
+		}
+<span class="nc" id="L337">	}</span>
+
+	@Override
+	public boolean isRemote() {
+<span class="nc" id="L341">		return Boolean.parseBoolean( prop.getProperty( REMOTE_KEY,</span>
+<span class="nc" id="L342">				Boolean.FALSE.toString() ) );</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>User.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.user</a> &gt; <span class="el_source">User.java</span></div><h1>User.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.user;
+
+import java.util.Map;
+
+/**
+ *
+ * @author ryan
+ */
+public interface User {
+
+<span class="nc" id="L16">	public static enum UserProperty {</span>
+
+<span class="nc" id="L18">		USER_EMAIL, USER_FULLNAME, USER_ORG</span>
+	};
+
+	public String getUsername();
+
+	public Map&lt;String, String&gt; getNamespaces();
+
+	public void addNamespace( String prefix, String ns );
+
+	public void setNamespaces( Map&lt;String, String&gt; nsmap );
+
+	public void setProperty( UserProperty prop, String value );
+
+	/**
+	 * Gets this user's property, or the empty string (not null)
+	 *
+	 * @param prop
+	 * @return the value, or the empty string
+	 */
+	public String getProperty( UserProperty prop );
+
+	public void setProperties( Map&lt;UserProperty, String&gt; props );
+
+	public String getProperty( String prop );
+
+	public void setProperty( String prop, String value );
+
+	public Map&lt;UserProperty, String&gt; getProperties();
+
+	/**
+	 * Is this user authorized remotely, or from the local computer?
+	 *
+	 * @return
+	 */
+	public boolean isLocal();
+
+	/**
+	 * Gets information in a consistent manner for keeping track of provenance
+	 * items. This should be: &lt;code&gt;FullName &amp;lt;email&amp;gt;, organization&lt;/code&gt;
+	 *
+	 * @return 
+	 */
+	public String getAuthorInfo();
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

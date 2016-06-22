@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>RemoteUserImpl.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.user</a> &gt; <span class="el_source">RemoteUserImpl.java</span></div><h1>RemoteUserImpl.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.user;
+
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ *
+ * @author ryan
+ */
+public final class RemoteUserImpl extends AbstractUser {
+
+<span class="nc" id="L18">	private final Map&lt;UserProperty, String&gt; properties = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L19">	private final Map&lt;String, String&gt; namespaces = new HashMap&lt;&gt;();</span>
+
+	public RemoteUserImpl( String name ) {
+<span class="nc" id="L22">		super( name );</span>
+<span class="nc" id="L23">	}</span>
+
+<span class="nc" id="L25">	public RemoteUserImpl() {</span>
+<span class="nc" id="L26">	}</span>
+
+	public RemoteUserImpl( User user ) {
+<span class="nc" id="L29">		super( user.getUsername() );</span>
+<span class="nc" id="L30">		setProperties( user.getProperties() );</span>
+<span class="nc" id="L31">		setNamespaces( user.getNamespaces() );</span>
+<span class="nc" id="L32">	}</span>
+
+	@Override
+	public Map&lt;UserProperty, String&gt; getProperties() {
+<span class="nc" id="L36">		return new EnumMap&lt;&gt;( properties );</span>
+	}
+
+	@Override
+	public Map&lt;String, String&gt; getNamespaces() {
+<span class="nc" id="L41">		return new HashMap&lt;&gt;( namespaces );</span>
+	}
+
+	@Override
+	public void addNamespace( String prefix, String ns ) {
+<span class="nc" id="L46">		namespaces.put( prefix, ns );</span>
+<span class="nc" id="L47">	}</span>
+
+	@Override
+	public void setNamespaces( Map&lt;String, String&gt; ns ) {
+<span class="nc" id="L51">		namespaces.clear();</span>
+<span class="nc" id="L52">		namespaces.putAll( ns );</span>
+<span class="nc" id="L53">	}</span>
+
+	@Override
+	public void setProperty( UserProperty prop, String value ) {
+<span class="nc bnc" id="L57" title="All 2 branches missed.">		if ( null == value ) {</span>
+<span class="nc" id="L58">			properties.remove( prop );</span>
+		}
+		else {
+<span class="nc" id="L61">			properties.put( prop, value.trim() );</span>
+		}
+<span class="nc" id="L63">	}</span>
+
+	@Override
+	public String getProperty( UserProperty prop ) {
+<span class="nc" id="L67">		return properties.getOrDefault( prop, &quot;&quot; );</span>
+	}
+
+	@Override
+	public void setProperties( Map&lt;UserProperty, String&gt; props ) {
+<span class="nc" id="L72">		properties.clear();</span>
+<span class="nc" id="L73">		properties.putAll( props );</span>
+<span class="nc" id="L74">	}</span>
+
+	@Override
+	public boolean isLocal() {
+<span class="nc" id="L78">		return false;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractEdgeModeler.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.edgemodelers</a> &gt; <span class="el_source">AbstractEdgeModeler.java</span></div><h1>AbstractEdgeModeler.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.edgemodelers;
+
+import com.ostrichemulators.semtool.model.vocabulary.SEMONTO;
+import com.ostrichemulators.semtool.poi.main.ImportData;
+import com.ostrichemulators.semtool.poi.main.ImportMetadata;
+import com.ostrichemulators.semtool.poi.main.ImportValidationException;
+import com.ostrichemulators.semtool.poi.main.ImportValidationException.ErrorType;
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData;
+import com.ostrichemulators.semtool.rdf.engine.util.QaChecker;
+import com.ostrichemulators.semtool.rdf.engine.util.QaChecker.RelationCacheKey;
+import com.ostrichemulators.semtool.rdf.engine.util.SemtoolStructureManagerImpl;
+import static com.ostrichemulators.semtool.util.RDFDatatypeTools.URISTARTPATTERN;
+import static com.ostrichemulators.semtool.util.RDFDatatypeTools.getRDFStringValue;
+import static com.ostrichemulators.semtool.util.RDFDatatypeTools.getUriFromRawString;
+import com.ostrichemulators.semtool.util.UriBuilder;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import org.apache.log4j.Logger;
+import org.openrdf.model.Model;
+import org.openrdf.model.Statement;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.TreeModel;
+import org.openrdf.model.impl.ValueFactoryImpl;
+import org.openrdf.model.vocabulary.OWL;
+import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.model.vocabulary.RDFS;
+import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.repository.RepositoryException;
+
+/**
+ *
+ * @author ryan
+ */
+public abstract class AbstractEdgeModeler implements EdgeModeler {
+
+<span class="nc" id="L46">	private static final Logger log = Logger.getLogger( AbstractEdgeModeler.class );</span>
+	private final Set&lt;URI&gt; duplicates;
+	private QaChecker qaer;
+
+<span class="nc" id="L50">	public AbstractEdgeModeler( QaChecker qa ) {</span>
+<span class="nc" id="L51">		qaer = qa;</span>
+<span class="nc" id="L52">		duplicates = qaer.getKnownUris();</span>
+<span class="nc" id="L53">	}</span>
+
+	public static boolean isUri( String raw, Map&lt;String, String&gt; namespaces ) {
+<span class="nc bnc" id="L56" title="All 4 branches missed.">		if ( raw.startsWith( &quot;&lt;&quot; ) &amp;&amp; raw.endsWith( &quot;&gt;&quot; ) ) {</span>
+<span class="nc" id="L57">			raw = raw.substring( 1, raw.length() - 1 );</span>
+		}
+
+<span class="nc" id="L60">		Matcher m = URISTARTPATTERN.matcher( raw );</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">		if ( m.matches() ) {</span>
+<span class="nc" id="L62">			return true;</span>
+		}
+
+<span class="nc bnc" id="L65" title="All 2 branches missed.">		if ( raw.contains( &quot;:&quot; ) ) {</span>
+<span class="nc" id="L66">			String[] pieces = raw.split( &quot;:&quot; );</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">			if ( 2 == pieces.length ) {</span>
+<span class="nc" id="L68">				String namespace = namespaces.get( pieces[0] );</span>
+<span class="nc bnc" id="L69" title="All 4 branches missed.">				if ( !( null == namespace || namespace.trim().isEmpty() ) ) {</span>
+<span class="nc" id="L70">					return true;</span>
+				}
+			}
+		}
+<span class="nc" id="L74">		return false;</span>
+	}
+
+	/**
+	 * Checks that the given ImportMetadata is valid for importing data
+	 * (basically, does it have a {@link ImportMetadata#databuilder} set).
+	 *
+	 * @param metas the data to check
+	 * @return true, if the ImportMetadata can be used for importing data
+	 */
+	public static boolean isValidMetadata( ImportMetadata metas ) {
+<span class="nc bnc" id="L85" title="All 2 branches missed.">		return ( null != metas.getDataBuilder() );</span>
+	}
+
+	/**
+	 * Same as {@link #isValidMetadata(com.ostrichemulators.semtool.poi.main.ImportMetadata)},
+	 * but throw an exception if
+	 * {@link #isValidMetadata(gov.va.semoss.poi.main.ImportMetadata)} returns
+	 * &lt;code&gt;false&lt;/code&gt;
+	 *
+	 * @param metas the data to check
+	 */
+	public static void isValidMetadataEx( ImportMetadata metas ) throws ImportValidationException {
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		if ( !isValidMetadata( metas ) ) {</span>
+<span class="nc" id="L98">			throw new ImportValidationException( ErrorType.MISSING_DATA,</span>
+					&quot;Invalid metadata&quot; );
+		}
+<span class="nc" id="L101">	}</span>
+
+	/**
+	 * Adds just a node to the dataset (no properties, nothing else)
+	 *
+	 * @param typename
+	 * @param rawlabel
+	 * @param namespaces
+	 * @param metas
+	 * @param myrc
+	 * @param checkCacheFirst
+	 * @return
+	 * @throws org.openrdf.repository.RepositoryException
+	 */
+	protected URI addSimpleNode( String typename, String rawlabel, Map&lt;String, String&gt; namespaces,
+			ImportMetadata metas, RepositoryConnection myrc, boolean checkCacheFirst )
+			throws RepositoryException {
+
+<span class="nc" id="L119">		boolean nodeIsAlreadyUri = isUri( rawlabel, namespaces );</span>
+
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		if ( nodeIsAlreadyUri ) {</span>
+<span class="nc" id="L122">			URI subject = getUriFromRawString( rawlabel, namespaces );</span>
+<span class="nc" id="L123">			cacheInstance( subject, typename, rawlabel );</span>
+<span class="nc" id="L124">		}</span>
+		else {
+<span class="nc bnc" id="L126" title="All 6 branches missed.">			if ( ( checkCacheFirst &amp;&amp; !hasCachedInstance( typename, rawlabel ) )</span>
+					|| !checkCacheFirst ) {
+<span class="nc bnc" id="L128" title="All 2 branches missed.">				URI subject = ( nodeIsAlreadyUri</span>
+<span class="nc" id="L129">						? getUriFromRawString( rawlabel, namespaces )</span>
+<span class="nc" id="L130">						: metas.getDataBuilder().add( rawlabel ).build() );</span>
+<span class="nc" id="L131">				subject = ensureUnique( subject );</span>
+<span class="nc" id="L132">				cacheInstance( subject, typename, rawlabel );</span>
+			}
+		}
+
+<span class="nc" id="L136">		URI subject = getCachedInstance( typename, rawlabel );</span>
+<span class="nc" id="L137">		myrc.add( subject, RDF.TYPE, qaer.getCachedInstanceClass( typename ) );</span>
+<span class="nc" id="L138">		return subject;</span>
+	}
+
+	protected URI ensureUnique( URI uri ) {
+<span class="nc bnc" id="L142" title="All 2 branches missed.">		if ( duplicates.contains( uri ) ) {</span>
+<span class="nc" id="L143">			UriBuilder dupefixer = UriBuilder.getBuilder( uri.getNamespace() );</span>
+<span class="nc" id="L144">			uri = dupefixer.uniqueUri();</span>
+<span class="nc" id="L145">			duplicates.add( uri );</span>
+		}
+<span class="nc" id="L147">		return uri;</span>
+	}
+
+	@Override
+	public URI addNode( LoadingSheetData.LoadingNodeAndPropertyValues nap,
+			Map&lt;String, String&gt; namespaces, LoadingSheetData sheet, ImportMetadata metas,
+			RepositoryConnection myrc ) throws RepositoryException {
+
+<span class="nc" id="L155">		String typename = nap.getSubjectType();</span>
+<span class="nc" id="L156">		String rawlabel = nap.getSubject();</span>
+
+<span class="nc" id="L158">		URI subject = addSimpleNode( typename, rawlabel, namespaces, metas, myrc, true );</span>
+
+<span class="nc" id="L160">		ValueFactory vf = myrc.getValueFactory();</span>
+<span class="nc" id="L161">		boolean savelabel = metas.isAutocreateMetamodel();</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">		if ( rawlabel.contains( &quot;:&quot; ) ) {</span>
+			// we have something with a colon in it, so we need to figure out if it's
+			// a namespace-prefixed string, or just a string with a colon in it
+
+<span class="nc" id="L166">			Value val = getRDFStringValue( rawlabel, namespaces, vf );</span>
+			// check if we have a prefixed URI
+<span class="nc" id="L168">			URI u = getUriFromRawString( rawlabel, namespaces );</span>
+<span class="nc bnc" id="L169" title="All 4 branches missed.">			savelabel = ( savelabel &amp;&amp; null == u );</span>
+<span class="nc" id="L170">			rawlabel = val.stringValue();</span>
+		}
+
+		// if we have a label property, skip this label-making
+		// (it'll get handled in the addProperties function later)
+<span class="nc bnc" id="L175" title="All 4 branches missed.">		if ( savelabel &amp;&amp; !nap.hasProperty( RDFS.LABEL, namespaces ) ) {</span>
+<span class="nc" id="L176">			myrc.add( subject, RDFS.LABEL, vf.createLiteral( rawlabel ) );</span>
+		}
+
+<span class="nc" id="L179">		addProperties( subject, nap, namespaces, sheet, metas, myrc );</span>
+
+<span class="nc" id="L181">		return subject;</span>
+	}
+
+	@Override
+	public void addProperties( URI subject, Map&lt;String, Value&gt; properties,
+			Map&lt;String, String&gt; namespaces, LoadingSheetData sheet,
+			ImportMetadata metas, RepositoryConnection myrc )
+			throws RepositoryException {
+
+<span class="nc bnc" id="L190" title="All 2 branches missed.">		for ( Map.Entry&lt;String, Value&gt; entry : properties.entrySet() ) {</span>
+<span class="nc" id="L191">			String propname = entry.getKey();</span>
+<span class="nc" id="L192">			URI predicate = getCachedPropertyClass( propname );</span>
+
+<span class="nc" id="L194">			Value value = entry.getValue();</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">			if ( sheet.isLink( propname ) ) {</span>
+				// our &quot;value&quot; is really the label of another node, so find that node
+<span class="nc" id="L197">				value = addSimpleNode( propname, value.stringValue(), namespaces,</span>
+						metas, myrc, true );
+<span class="nc" id="L199">				predicate = getCachedRelationClass( sheet.getSubjectType()</span>
+<span class="nc" id="L200">						+ sheet.getObjectType() + propname );</span>
+			}
+
+<span class="nc" id="L203">			myrc.add( subject, predicate, value );</span>
+<span class="nc" id="L204">		}</span>
+<span class="nc" id="L205">	}</span>
+
+	@Override
+	public Model createMetamodel( ImportData alldata, Map&lt;String, String&gt; namespaces,
+			ValueFactory vf ) throws RepositoryException {
+<span class="nc bnc" id="L210" title="All 2 branches missed.">		if ( null == vf ) {</span>
+<span class="nc" id="L211">			vf = new ValueFactoryImpl();</span>
+		}
+
+<span class="nc" id="L214">		Model model = new TreeModel();</span>
+
+<span class="nc" id="L216">		ImportMetadata metas = alldata.getMetadata();</span>
+<span class="nc" id="L217">		UriBuilder schema = metas.getSchemaBuilder();</span>
+
+<span class="nc" id="L219">		Map&lt;String, URI&gt; structurelkp = new HashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L221" title="All 2 branches missed.">		for ( LoadingSheetData sheet : alldata.getSheets() ) {</span>
+<span class="nc" id="L222">			String stype = sheet.getSubjectType();</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">			if ( !hasCachedInstanceClass( stype ) ) {</span>
+<span class="nc" id="L224">				boolean nodeAlreadyMade = isUri( stype, namespaces );</span>
+
+<span class="nc bnc" id="L226" title="All 2 branches missed.">				URI subtype = ( nodeAlreadyMade</span>
+<span class="nc" id="L227">						? getUriFromRawString( stype, namespaces )</span>
+<span class="nc" id="L228">						: schema.build( stype ) );</span>
+<span class="nc" id="L229">				cacheInstanceClass( subtype, stype );</span>
+
+<span class="nc bnc" id="L231" title="All 2 branches missed.">				if ( !nodeAlreadyMade ) {</span>
+<span class="nc" id="L232">					model.add( subtype, RDF.TYPE, OWL.CLASS );</span>
+<span class="nc" id="L233">					model.add( subtype, RDFS.LABEL, vf.createLiteral( stype ) );</span>
+<span class="nc" id="L234">					model.add( subtype, RDFS.SUBCLASSOF, schema.getConceptUri().build() );</span>
+				}
+			}
+
+<span class="nc bnc" id="L238" title="All 2 branches missed.">			if ( sheet.isRel() ) {</span>
+<span class="nc" id="L239">				String otype = sheet.getObjectType();</span>
+<span class="nc bnc" id="L240" title="All 2 branches missed.">				if ( !hasCachedInstanceClass( otype ) ) {</span>
+<span class="nc" id="L241">					boolean nodeAlreadyMade = isUri( otype, namespaces );</span>
+
+<span class="nc bnc" id="L243" title="All 2 branches missed.">					URI objtype = ( nodeAlreadyMade</span>
+<span class="nc" id="L244">							? getUriFromRawString( otype, namespaces )</span>
+<span class="nc" id="L245">							: schema.build( otype ) );</span>
+
+<span class="nc" id="L247">					cacheInstanceClass( objtype, otype );</span>
+
+<span class="nc bnc" id="L249" title="All 2 branches missed.">					if ( !nodeAlreadyMade ) {</span>
+<span class="nc" id="L250">						model.add( objtype, RDF.TYPE, OWL.CLASS );</span>
+<span class="nc" id="L251">						model.add( objtype, RDFS.LABEL, vf.createLiteral( otype ) );</span>
+<span class="nc" id="L252">						model.add( objtype, RDFS.SUBCLASSOF, schema.getConceptUri().build() );</span>
+					}
+				}
+
+<span class="nc" id="L256">				String rellabel = sheet.getRelname();</span>
+
+<span class="nc bnc" id="L258" title="All 2 branches missed.">				if ( !hasCachedRelationClass( rellabel ) ) {</span>
+<span class="nc" id="L259">					boolean relationAlreadyMade = isUri( rellabel, namespaces );</span>
+
+<span class="nc bnc" id="L261" title="All 2 branches missed.">					URI reltype = ( relationAlreadyMade</span>
+<span class="nc" id="L262">							? getUriFromRawString( rellabel, namespaces )</span>
+<span class="nc" id="L263">							: schema.build( rellabel ) );</span>
+<span class="nc" id="L264">					cacheRelationClass( reltype, rellabel );</span>
+
+<span class="nc bnc" id="L266" title="All 2 branches missed.">					if ( !relationAlreadyMade ) {</span>
+<span class="nc" id="L267">						model.add( reltype, RDFS.LABEL, vf.createLiteral( rellabel ) );</span>
+<span class="nc" id="L268">						model.add( reltype, RDF.TYPE, OWL.OBJECTPROPERTY );</span>
+<span class="nc" id="L269">						model.add( reltype, RDFS.SUBPROPERTYOF, schema.getRelationUri().build() );</span>
+					}
+				}
+
+				// save the structure data
+<span class="nc" id="L274">				URI subtype = getCachedInstanceClass( stype );</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">				if ( sheet.isRel() ) {</span>
+<span class="nc" id="L276">					URI objtype = getCachedInstanceClass( sheet.getObjectType() );</span>
+<span class="nc" id="L277">					URI edgetype = getCachedRelationClass( sheet.getRelname() );</span>
+
+<span class="nc" id="L279">					Collection&lt;Statement&gt; structures</span>
+<span class="nc" id="L280">							= SemtoolStructureManagerImpl.getEdgeStructure( edgetype,</span>
+									subtype, objtype, schema, structurelkp,
+<span class="nc" id="L282">									stype + &quot;_&quot; + sheet.getRelname() + &quot;_&quot; + sheet.getObjectType() );</span>
+<span class="nc" id="L283">					model.addAll( structures );</span>
+				}
+			}
+<span class="nc" id="L286">		}</span>
+
+<span class="nc bnc" id="L288" title="All 2 branches missed.">		for ( LoadingSheetData sheet : alldata.getSheets() ) {</span>
+<span class="nc" id="L289">			URI subtype = getCachedInstanceClass( sheet.getSubjectType() );</span>
+<span class="nc bnc" id="L290" title="All 2 branches missed.">			URI edgetype = ( sheet.isRel()</span>
+<span class="nc" id="L291">					? getCachedRelationClass( sheet.getRelname() )</span>
+					: null );
+
+<span class="nc bnc" id="L294" title="All 2 branches missed.">			for ( String propname : sheet.getProperties() ) {</span>
+				// check to see if we're actually a link to some
+				// other node (and not really a new property
+<span class="nc bnc" id="L297" title="All 4 branches missed.">				if ( sheet.isLink( propname ) || hasCachedInstanceClass( propname ) ) {</span>
+<span class="nc" id="L298">					log.debug( &quot;linking &quot; + propname + &quot; as a &quot; + SEMONTO.has</span>
+<span class="nc" id="L299">							+ &quot; relationship to &quot; + getCachedInstanceClass( propname ) );</span>
+
+<span class="nc" id="L301">					cacheRelationClass( SEMONTO.has,</span>
+<span class="nc" id="L302">							sheet.getSubjectType() + sheet.getObjectType() + propname );</span>
+
+					// keep the ontology info for posterity
+					Collection&lt;Statement&gt; structures;
+<span class="nc bnc" id="L306" title="All 2 branches missed.">					if ( sheet.isRel() ) {</span>
+<span class="nc" id="L307">						structures = SemtoolStructureManagerImpl.getEdgeStructure( SEMONTO.has,</span>
+<span class="nc" id="L308">								edgetype, getCachedInstanceClass( propname ),</span>
+								schema, structurelkp,
+<span class="nc" id="L310">								sheet.getRelname() + &quot;_has_&quot; + propname );</span>
+					}
+					else {
+<span class="nc" id="L313">						structures = SemtoolStructureManagerImpl.getEdgeStructure( SEMONTO.has,</span>
+<span class="nc" id="L314">								subtype, getCachedInstanceClass( propname ),</span>
+								schema, structurelkp,
+<span class="nc" id="L316">								sheet.getSubjectType() + &quot;_has_&quot; + propname );</span>
+					}
+<span class="nc" id="L318">					model.addAll( structures );</span>
+
+<span class="nc" id="L320">					continue;</span>
+				}
+
+<span class="nc" id="L323">				boolean alreadyMadeProp = isUri( propname, namespaces );</span>
+
+<span class="nc bnc" id="L325" title="All 2 branches missed.">				if ( !hasCachedPropertyClass( propname ) ) {</span>
+<span class="nc bnc" id="L326" title="All 2 branches missed.">					URI predicate = ( alreadyMadeProp</span>
+<span class="nc" id="L327">							? getUriFromRawString( propname, namespaces )</span>
+<span class="nc" id="L328">							: schema.build( propname ) );</span>
+<span class="nc" id="L329">					cachePropertyClass( predicate, propname );</span>
+				}
+
+<span class="nc" id="L332">				URI predicate = getCachedPropertyClass( propname );</span>
+
+				// save the ontology info for querying db structure
+				Collection&lt;Statement&gt; stmts;
+<span class="nc bnc" id="L336" title="All 2 branches missed.">				if ( sheet.isRel() ) {</span>
+<span class="nc" id="L337">					stmts = SemtoolStructureManagerImpl.getPropStructure( edgetype, subtype,</span>
+<span class="nc" id="L338">							getCachedInstanceClass( sheet.getObjectType() ), predicate,</span>
+							schema, structurelkp,
+<span class="nc" id="L340">							sheet.getSubjectType() + &quot;_&quot; + sheet.getRelname()</span>
+<span class="nc" id="L341">							+ &quot;_&quot; + sheet.getObjectType() );</span>
+				}
+				else {
+<span class="nc" id="L344">					stmts = SemtoolStructureManagerImpl.getPropStructure( predicate, subtype,</span>
+<span class="nc" id="L345">							schema, structurelkp, sheet.getSubjectType() + &quot;_&quot; + propname );</span>
+				}
+
+<span class="nc" id="L348">				model.addAll( stmts );</span>
+
+<span class="nc bnc" id="L350" title="All 2 branches missed.">				if ( !alreadyMadeProp ) {</span>
+<span class="nc" id="L351">					model.add( predicate, RDFS.LABEL, vf.createLiteral( propname ) );</span>
+<span class="nc" id="L352">					model.add( predicate, RDF.TYPE, OWL.DATATYPEPROPERTY );</span>
+				}
+<span class="nc" id="L354">			}</span>
+<span class="nc" id="L355">		}</span>
+
+<span class="nc" id="L357">		return model;</span>
+	}
+
+	@Override
+	public void setQaChecker( QaChecker q ) {
+<span class="nc" id="L362">		qaer = q;</span>
+<span class="nc" id="L363">	}</span>
+
+	public URI getCachedRelation( RelationCacheKey key ) {
+<span class="nc" id="L366">		return qaer.getCachedRelation( key );</span>
+	}
+
+	public URI getCachedInstance( String typename, String rawlabel ) {
+<span class="nc" id="L370">		return qaer.getCachedInstance( typename, rawlabel );</span>
+	}
+
+	public URI getCachedInstanceClass( String name ) {
+<span class="nc" id="L374">		return qaer.getCachedInstanceClass( name );</span>
+	}
+
+	public URI getCachedRelationClass( String rel ) {
+<span class="nc" id="L378">		return qaer.getCachedRelationClass( rel );</span>
+	}
+
+	public URI getCachedPropertyClass( String name ) {
+<span class="nc" id="L382">		return qaer.getCachedPropertyClass( name );</span>
+	}
+
+	public boolean hasCachedPropertyClass( String name ) {
+<span class="nc" id="L386">		return qaer.hasCachedPropertyClass( name );</span>
+	}
+
+	public boolean hasCachedRelationClass( String rel ) {
+<span class="nc" id="L390">		return qaer.hasCachedRelationClass( rel );</span>
+	}
+
+	public boolean hasCachedRelation( String stype, String otype, String relname,
+			String slabel, String olabel ) {
+<span class="nc" id="L395">		return qaer.hasCachedRelation( stype, otype, relname, slabel, olabel );</span>
+	}
+
+	public boolean hasCachedRelation( RelationCacheKey key ) {
+<span class="nc" id="L399">		return qaer.hasCachedRelation( key );</span>
+	}
+
+	public boolean hasCachedInstance( String typename, String rawlabel ) {
+<span class="nc" id="L403">		return qaer.hasCachedInstance( typename, rawlabel );</span>
+	}
+
+	public boolean hasCachedInstanceClass( String name ) {
+<span class="nc" id="L407">		return qaer.hasCachedInstanceClass( name );</span>
+	}
+
+	public void cacheInstanceClass( URI uri, String label ) {
+<span class="nc" id="L411">		qaer.cacheInstanceClass( uri, label );</span>
+<span class="nc" id="L412">		duplicates.add( uri );</span>
+<span class="nc" id="L413">	}</span>
+
+	public void cacheRelationNode( URI uri, String stype, String otype,
+			String relname, String slabel, String olabel ) {
+<span class="nc" id="L417">		qaer.cacheRelationNode( uri, stype, otype, relname, slabel, olabel );</span>
+<span class="nc" id="L418">		duplicates.add( uri );</span>
+<span class="nc" id="L419">	}</span>
+
+	public void cacheRelationNode( URI uri, RelationCacheKey key ) {
+<span class="nc" id="L422">		qaer.cacheRelationNode( uri, key );</span>
+<span class="nc" id="L423">		duplicates.add( uri );</span>
+<span class="nc" id="L424">	}</span>
+
+	public void cacheRelationClass( URI uri, String rel ) {
+<span class="nc" id="L427">		qaer.cacheRelationClass( uri, rel );</span>
+<span class="nc" id="L428">		duplicates.add( uri );</span>
+<span class="nc" id="L429">	}</span>
+
+	public void cacheInstance( URI uri, String typelabel, String rawlabel ) {
+<span class="nc" id="L432">		qaer.cacheInstance( uri, typelabel, rawlabel );</span>
+<span class="nc" id="L433">		duplicates.add( uri );</span>
+<span class="nc" id="L434">	}</span>
+
+	public void cachePropertyClass( URI uri, String name ) {
+<span class="nc" id="L437">		qaer.cachePropertyClass( uri, name );</span>
+<span class="nc" id="L438">		duplicates.add( uri );</span>
+<span class="nc" id="L439">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

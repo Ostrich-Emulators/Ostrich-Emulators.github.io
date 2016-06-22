@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ModelQueryAdapter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.query.util.impl</a> &gt; <span class="el_source">ModelQueryAdapter.java</span></div><h1>ModelQueryAdapter.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.query.util.impl;
+
+import com.ostrichemulators.semtool.rdf.query.util.QueryExecutorAdapter;
+import org.apache.log4j.Logger;
+import org.openrdf.model.Model;
+import org.openrdf.model.Resource;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.LinkedHashModel;
+import org.openrdf.query.BindingSet;
+
+/**
+ *
+ * @author ryan
+ */
+public class ModelQueryAdapter extends QueryExecutorAdapter&lt;Model&gt; {
+
+<span class="nc" id="L24">	public ModelQueryAdapter() {</span>
+<span class="nc" id="L25">		result = new LinkedHashModel();</span>
+<span class="nc" id="L26">	}</span>
+
+	public ModelQueryAdapter( String sparq ) {
+<span class="nc" id="L29">		this( sparq, new LinkedHashModel() );</span>
+<span class="nc" id="L30">	}</span>
+
+	public ModelQueryAdapter( String sparql, Model model ) {
+<span class="nc" id="L33">		super( sparql );</span>
+<span class="nc" id="L34">		result = model;</span>
+<span class="nc" id="L35">	}</span>
+
+	/**
+	 * Sets the model to fill as the query gets executed
+	 *
+	 * @param m
+	 */
+	public void setModel( Model m ) {
+<span class="nc" id="L43">		result = m;</span>
+<span class="nc" id="L44">	}</span>
+
+	@Override
+	public void handleTuple( BindingSet set, ValueFactory fac ) {
+		// we can *sometimes* use a binding set instead of getResult().add(...)
+		// *) if it has only three elements of the type Resource URI Value,
+
+<span class="nc" id="L51">		boolean ok = false;</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">		if ( 3 == set.size() ) {</span>
+<span class="nc" id="L53">			String[] names = new String[3];</span>
+<span class="nc" id="L54">			getBindingNames().toArray( names );</span>
+
+<span class="nc" id="L56">			Resource subject = null;</span>
+<span class="nc" id="L57">			URI predicate = null;</span>
+<span class="nc" id="L58">			Value object = set.getValue( names[2] );</span>
+
+<span class="nc bnc" id="L60" title="All 2 branches missed.">			if ( set.hasBinding( names[0] )</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">					&amp;&amp; set.getValue( names[0] ) instanceof Resource ) {</span>
+<span class="nc" id="L62">				subject = Resource.class.cast( set.getValue( names[0] ) );</span>
+			}
+<span class="nc bnc" id="L64" title="All 2 branches missed.">			if ( set.hasBinding( names[1] )</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">					&amp;&amp; set.getValue( names[1] ) instanceof URI ) {</span>
+<span class="nc" id="L66">				predicate = URI.class.cast( set.getValue( names[1] ) );</span>
+			}
+
+<span class="nc bnc" id="L69" title="All 6 branches missed.">			if ( !( null == subject || null == predicate || null == object ) ) {</span>
+<span class="nc" id="L70">				ok = true;</span>
+<span class="nc" id="L71">				result.add( subject, predicate, object );</span>
+			}
+		}
+
+<span class="nc bnc" id="L75" title="All 2 branches missed.">		if ( !ok ) {</span>
+<span class="nc" id="L76">			Logger.getLogger( getClass() ).error( &quot;use getResults().add() instead&quot; );</span>
+		}
+<span class="nc" id="L78">	}</span>
+
+	public static ModelQueryAdapter describe( Resource rsr ) {
+<span class="nc" id="L81">		String query = &quot;CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }&quot;;</span>
+<span class="nc" id="L82">		ModelQueryAdapter mqa = new ModelQueryAdapter( query );</span>
+<span class="nc" id="L83">		mqa.bind( &quot;s&quot;, rsr );</span>
+<span class="nc" id="L84">		return mqa;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

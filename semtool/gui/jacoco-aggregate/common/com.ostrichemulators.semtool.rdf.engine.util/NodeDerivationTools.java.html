@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>NodeDerivationTools.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.util</a> &gt; <span class="el_source">NodeDerivationTools.java</span></div><h1>NodeDerivationTools.java</h1><pre class="source lang-java linenums">package com.ostrichemulators.semtool.rdf.engine.util;
+
+import com.ostrichemulators.semtool.model.vocabulary.SEMTOOL;
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import com.ostrichemulators.semtool.rdf.query.util.MetadataQuery;
+import com.ostrichemulators.semtool.rdf.query.util.impl.ListQueryAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.impl.MapQueryAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.impl.ModelQueryAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.impl.OneValueQueryAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.impl.OneVarListQueryAdapter;
+import com.ostrichemulators.semtool.util.Constants;
+import com.ostrichemulators.semtool.util.Utility;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+
+import java.util.Map;
+import java.util.Set;
+import org.apache.log4j.Logger;
+import org.openrdf.model.Model;
+import org.openrdf.model.Statement;
+import org.openrdf.model.URI;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.StatementImpl;
+import org.openrdf.model.vocabulary.SKOS;
+import org.openrdf.query.BindingSet;
+
+/**
+ * This class analogous to {@link StructureManager}, but instances instead of
+ * top-level URIs.
+ *
+ * @author ryan
+ *
+ */
+public class NodeDerivationTools {
+
+	/**
+	 * The logger for this class
+	 */
+<span class="nc" id="L41">	private static final Logger log = Logger.getLogger( NodeDerivationTools.class );</span>
+
+	/**
+	 * Private singleton default constructor
+	 */
+<span class="nc" id="L46">	private NodeDerivationTools() {</span>
+
+<span class="nc" id="L48">	}</span>
+
+	public static String getConceptQuery( IEngine engine ) {
+<span class="nc" id="L51">		MetadataQuery mq = new MetadataQuery( SEMTOOL.ReificationModel );</span>
+<span class="nc" id="L52">		engine.queryNoEx( mq );</span>
+<span class="nc" id="L53">		URI reif = URI.class.cast( mq.getOne() );</span>
+
+<span class="nc bnc" id="L55" title="All 2 branches missed.">		if ( SEMTOOL.Custom_Reification.equals( reif ) ) {</span>
+<span class="nc" id="L56">			OneValueQueryAdapter&lt;String&gt; qq = OneValueQueryAdapter.</span>
+<span class="nc" id="L57">					getString( &quot;SELECT ?val WHERE { ?base ?pred ?val }&quot; );</span>
+<span class="nc" id="L58">			qq.bind( &quot;base&quot;, engine.getBaseUri() );</span>
+<span class="nc" id="L59">			qq.bind( &quot;pred&quot;, SEMTOOL.ConceptsSparql );</span>
+
+<span class="nc" id="L61">			return engine.queryNoEx( qq );</span>
+		}
+		else {
+<span class="nc" id="L64">			String query = &quot;SELECT ?concept WHERE &quot;</span>
+					+ &quot;{ &quot;
+					+ &quot;  ?concept rdfs:subClassOf+ ?top .&quot;
+					+ &quot;  FILTER( ?concept != ?top &amp;&amp; \n&quot;
+					+ &quot;    ?concept != &lt;http://www.w3.org/2004/02/skos/core#Concept&gt; ) .&quot;
+					+ &quot;  VALUES ?top {&lt;replace-with-binding&gt;} &quot;
+					+ &quot; }&quot;;
+
+<span class="nc" id="L72">			return query.replaceAll( &quot;replace-with-binding&quot;,</span>
+<span class="nc" id="L73">					engine.getSchemaBuilder().getConceptUri().build().stringValue() );</span>
+		}
+	}
+
+	public static List&lt;URI&gt; createInstanceList( URI concept, IEngine engine ) {
+<span class="nc" id="L78">		String query = &quot;SELECT DISTINCT ?instance WHERE { &quot;</span>
+				+ &quot;  ?instance rdfs:subClassOf+|rdfs:subPropertyOf+ ?concept .&quot;
+				+ &quot;  FILTER( ?instance != ?concept ) .&quot;
+				+ &quot;}&quot;;
+<span class="nc" id="L82">		ListQueryAdapter&lt;URI&gt; qa = OneVarListQueryAdapter.getUriList( query );</span>
+<span class="nc" id="L83">		qa.bind( &quot;concept&quot;, concept );</span>
+
+<span class="nc" id="L85">		return engine.queryNoEx( qa );</span>
+	}
+
+	public static Model getInstances( URI subtype, URI predtype, URI objtype,
+			Collection&lt;URI&gt; propsToInclude, IEngine engine ) {
+
+		// round one: get the relationships themselves
+<span class="nc" id="L92">		String query = &quot;CONSTRUCT { ?s ?p ?o } WHERE {\n&quot;</span>
+				+ &quot;  ?s a|rdfs:subClassOf+ ?subtype .\n&quot;
+				+ &quot;  ?o a|rdfs:subClassOf+ ?objtype .\n&quot;
+				+ &quot;  ?p a|rdfs:subPropertyOf+ ?predtype .\n&quot;
+				+ &quot;  FILTER( ?s != ?subtype &amp;&amp; ?o != ?objtype ) .\n&quot;
+				+ &quot;  ?s ?p ?o .\n&quot;
+				+ &quot;}&quot;;
+
+<span class="nc" id="L100">		ModelQueryAdapter mqa = new ModelQueryAdapter( query );</span>
+<span class="nc" id="L101">		mqa.bind( &quot;subtype&quot;, subtype );</span>
+<span class="nc" id="L102">		mqa.bind( &quot;objtype&quot;, objtype );</span>
+<span class="nc" id="L103">		mqa.bind( &quot;predtype&quot;, predtype );</span>
+<span class="nc" id="L104">		mqa.useInferred( true );</span>
+
+<span class="nc" id="L106">		Model model = engine.constructNoEx( mqa );</span>
+
+		// we get inferred rel types as well as declared types, so if we have
+		// both, use the declared type
+<span class="nc" id="L110">		List&lt;Statement&gt; removers = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">		for ( Statement s : model ) {</span>
+<span class="nc" id="L112">			URI subj = URI.class.cast( s.getSubject() );</span>
+<span class="nc" id="L113">			URI obj = URI.class.cast( s.getObject() );</span>
+
+<span class="nc" id="L115">			Model filts = model.filter( subj, null, obj );</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">			if ( filts.size() &gt; 1 ) {</span>
+<span class="nc" id="L117">				removers.add( new StatementImpl( subj, predtype, obj ) );</span>
+			}
+<span class="nc" id="L119">		}</span>
+<span class="nc" id="L120">		model.removeAll( removers );</span>
+
+		// round two: get properties for the relationships if they exist
+<span class="nc bnc" id="L123" title="All 4 branches missed.">		if ( !( null == propsToInclude || propsToInclude.isEmpty() ) ) {</span>
+<span class="nc" id="L124">			String propq = &quot;CONSTRUCT { ?p ?prop ?propval } WHERE {\n&quot;</span>
+					+ &quot;  ?p rdfs:subPropertyOf+ ?predtype ; ?prop ?propval .\n&quot;
+<span class="nc" id="L126">					+ &quot;  VALUES ?prop {&quot; + Utility.implode( propsToInclude ) + &quot;}.\n&quot;</span>
+					+ &quot;}&quot;;
+
+<span class="nc" id="L129">			ModelQueryAdapter propqa = new ModelQueryAdapter( propq );</span>
+<span class="nc" id="L130">			propqa.bind( &quot;predtype&quot;, predtype );</span>
+
+<span class="nc" id="L132">			propqa.setModel( model );</span>
+<span class="nc" id="L133">			propqa.useInferred( false );</span>
+
+<span class="nc" id="L135">			engine.constructNoEx( propqa );</span>
+		}
+
+<span class="nc" id="L138">		return model;</span>
+	}
+
+	/**
+	 * Derives a query adapter capable of pulling out the predicates that connect
+	 * all subject nodes of a given type and all object nodes of a given type. The
+	 * results will contain *all* types, so they will generally be run through {@link
+	 * #getTopLevelRelations(java.util.Collection,
+	 * com.ostrichemulators.semtool.rdf.engine.api.IEngine) } to get only the
+	 * top-level relationships
+	 *
+	 * @param subjectNodeType The type (in URI form) of the subject node
+	 * @param objectNodeType The type (in URI form) of the object node
+	 * @param engine
+	 * @return A proper query adapter capable of querying a knowledgebase for the
+	 * desired predicates
+	 */
+	public static ListQueryAdapter&lt;URI&gt; getPredicatesBetweenQA( URI subjectNodeType,
+			URI objectNodeType, IEngine engine ) {
+<span class="nc" id="L157">		String q</span>
+				= &quot;SELECT DISTINCT ?relationship WHERE {\n&quot;
+				+ &quot;  ?in  a ?stype . \n&quot;
+				+ &quot;  ?out a ?otype . \n&quot;
+				+ &quot;  ?in ?relationship ?out .\n&quot;
+				+ &quot;  FILTER( ?relationship != ?semrel )\n&quot;
+				+ &quot;}&quot;;
+<span class="nc" id="L164">		OneVarListQueryAdapter&lt;URI&gt; varq = OneVarListQueryAdapter.getUriList( q );</span>
+<span class="nc" id="L165">		varq.useInferred( false );</span>
+<span class="nc" id="L166">		varq.bind( &quot;semrel&quot;, engine.getSchemaBuilder().getRelationUri().build() );</span>
+<span class="nc" id="L167">		varq.bind( &quot;stype&quot;, subjectNodeType );</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">		if ( !objectNodeType.equals( Constants.ANYNODE ) ) {</span>
+<span class="nc" id="L169">			varq.bind( &quot;otype&quot;, objectNodeType );</span>
+		}
+
+<span class="nc" id="L172">		log.debug( varq.bindAndGetSparql() );</span>
+<span class="nc" id="L173">		return varq;</span>
+	}
+
+	/**
+	 * Get a list of predicates that connect subjects and objects of given types
+	 *
+	 * @param subjectNodeType The type of subject node
+	 * @param objectNodeType The type of object node
+	 * @param engine The engine, which contains a digested knowledgebase, which
+	 * will run the query designed to derive the various predicates between the
+	 * node types
+	 * @return A list of predicates, in URI
+	 * @deprecated use {@link StructureManager#getLinksBetween(org.openrdf.model.URI,
+	 * org.openrdf.model.URI) } instead
+	 */
+	@Deprecated
+	public static List&lt;URI&gt; getPredicatesBetween( URI subjectNodeType, URI objectNodeType,
+			IEngine engine ) {
+<span class="nc" id="L191">		List&lt;URI&gt; values = engine.queryNoEx( getPredicatesBetweenQA( subjectNodeType,</span>
+				objectNodeType, engine ) );
+<span class="nc" id="L193">		return new ArrayList&lt;&gt;( getTopLevelRelations( values, engine ) );</span>
+	}
+
+	/**
+	 *
+	 * @param instance
+	 * @param engine
+	 * @param instanceIsSubject
+	 * @return
+	 * @deprecated use {@link StructureManager#getConnectedConceptTypes(java.util.Collection)
+	 * } instead
+	 */
+	@Deprecated
+	public static List&lt;URI&gt; getConnectedConceptTypes( URI instance, IEngine engine,
+			boolean instanceIsSubject ) {
+<span class="nc" id="L208">		String query = &quot;SELECT DISTINCT ?subtype ?objtype \n&quot;</span>
+				+ &quot;WHERE { \n&quot;
+				+ &quot;  ?subject ?predicate ?object .\n&quot;
+				+ &quot;  ?subject a ?subtype .\n&quot;
+				+ &quot;  ?subtype rdfs:subClassOf ?concept . FILTER( ?subtype != ?concept &amp;&amp; ?subtype != ?skos ) .\n&quot;
+				+ &quot;  ?object a ?objtype .\n&quot;
+				+ &quot;  ?objtype rdfs:subClassOf ?concept . FILTER( ?objtype != ?concept &amp;&amp; ?objtype != ?skos ) .\n&quot;
+				+ &quot;}&quot;;
+
+<span class="nc" id="L217">		OneVarListQueryAdapter&lt;URI&gt; lqa = OneVarListQueryAdapter.getUriList( query );</span>
+<span class="nc" id="L218">		lqa.bind( &quot;concept&quot;, engine.getSchemaBuilder().getConceptUri().build() );</span>
+<span class="nc" id="L219">		lqa.bind( &quot;skos&quot;, SKOS.CONCEPT );</span>
+
+<span class="nc bnc" id="L221" title="All 2 branches missed.">		if ( instanceIsSubject ) {</span>
+<span class="nc" id="L222">			lqa.setVariableName( &quot;objtype&quot; );</span>
+<span class="nc" id="L223">			lqa.bind( &quot;subject&quot;, instance );</span>
+		}
+		else {
+<span class="nc" id="L226">			lqa.setVariableName( &quot;subtype&quot; );</span>
+<span class="nc" id="L227">			lqa.bind( &quot;object&quot;, instance );</span>
+		}
+
+<span class="nc" id="L230">		log.debug( &quot;connected types (one instance) is: &quot; + lqa.bindAndGetSparql() );</span>
+
+<span class="nc" id="L232">		return engine.queryNoEx( lqa );</span>
+	}
+
+	/**
+	 * Gets the top-level connections between the give node types
+	 *
+	 * @param subtype
+	 * @param objtype
+	 * @param engine
+	 * @return
+	 * @deprecated use {@link StructureManager#getLinksBetween(org.openrdf.model.URI,
+	 * org.openrdf.model.URI) } instead
+	 */
+	@Deprecated
+	public static Collection&lt;URI&gt; getConnections( URI subtype, URI objtype, IEngine engine ) {
+<span class="nc" id="L247">		String query = &quot;SELECT DISTINCT ?rel {\n&quot;</span>
+				+ &quot;  ?s a ?subtype .\n&quot;
+				+ &quot;  ?o a ?objtype .\n&quot;
+				+ &quot;  ?s ?rel ?o .\n&quot;
+				+ &quot;  ?rel rdfs:subPropertyOf ?semrel .\n&quot;
+				+ &quot;  FILTER( ?rel != ?semrel ) .\n&quot;
+				+ &quot;  FILTER( ?subtype != ?concept &amp;&amp; ?subtype != ?skos ) .\n&quot;
+				+ &quot;  FILTER( ?objtype != ?concept &amp;&amp; ?objtype != ?skos ) .\n&quot;
+				+ &quot;}&quot;;
+<span class="nc" id="L256">		ListQueryAdapter&lt;URI&gt; lqa = OneVarListQueryAdapter.getUriList( query );</span>
+<span class="nc" id="L257">		lqa.bind( &quot;semrel&quot;, engine.getSchemaBuilder().getRelationUri().build() );</span>
+<span class="nc" id="L258">		lqa.bind( &quot;concept&quot;, engine.getSchemaBuilder().getConceptUri().build() );</span>
+<span class="nc" id="L259">		lqa.bind( &quot;skos&quot;, SKOS.CONCEPT );</span>
+<span class="nc" id="L260">		lqa.bind( &quot;subtype&quot;, subtype );</span>
+<span class="nc" id="L261">		lqa.bind( &quot;objtype&quot;, objtype );</span>
+<span class="nc" id="L262">		Set&lt;URI&gt; edges = getTopLevelRelations( engine.queryNoEx( lqa ), engine );</span>
+
+<span class="nc" id="L264">		return edges;</span>
+	}
+
+	/**
+	 * Gets the subject (or object) types connected
+	 *
+	 * @param instances
+	 * @param engine
+	 * @param instanceIsSubject
+	 * @return
+	 * @deprecated use {@link StructureManager#getConnectedConceptTypes(java.util.Collection)
+	 * }
+	 * instead
+	 */
+	@Deprecated
+	public static List&lt;URI&gt; getConnectedConceptTypes( Collection&lt;URI&gt; instances,
+			IEngine engine, boolean instanceIsSubject ) {
+
+<span class="nc" id="L282">		StringBuilder query = new StringBuilder( &quot;SELECT DISTINCT ?subtype ?objtype &quot; )</span>
+<span class="nc" id="L283">				.append( &quot;WHERE { &quot; )</span>
+<span class="nc" id="L284">				.append( &quot;  ?subject ?predicate ?object .&quot; )</span>
+<span class="nc" id="L285">				.append( &quot;  ?subject a ?subtype . FILTER( ?subtype != ?skos ) .&quot; )</span>
+<span class="nc" id="L286">				.append( &quot;  ?object a ?objtype . FILTER isUri( ?object ) .&quot; )</span>
+<span class="nc" id="L287">				.append( &quot;  FILTER( ?objtype != ?skos &amp;&amp; ?objtype != owl:Thing &amp;&amp; ?objtype != rdfs:Resource &amp;&amp; ?objtype != ?concept ) .&quot; )</span>
+<span class="nc" id="L288">				.append( &quot;  FILTER( ?subtype != ?skos &amp;&amp; ?subtype != owl:Thing &amp;&amp; ?subtype != rdfs:Resource &amp;&amp; ?subtype != ?concept ) .&quot; )</span>
+<span class="nc" id="L289">				.append( &quot;  MINUS { ?subject a ?object } &quot; )</span>
+<span class="nc" id="L290">				.append( &quot;} VALUES ?&quot; );</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">		query.append( instanceIsSubject ? &quot;subject &quot; : &quot;object&quot; );</span>
+<span class="nc" id="L292">		query.append( &quot;{&quot; );</span>
+<span class="nc" id="L293">		query.append( Utility.implode( instances ) );</span>
+<span class="nc" id="L294">		query.append( &quot;}&quot; );</span>
+
+<span class="nc" id="L296">		OneVarListQueryAdapter&lt;URI&gt; lqa</span>
+<span class="nc" id="L297">				= OneVarListQueryAdapter.getUriList( query.toString() );</span>
+<span class="nc" id="L298">		lqa.bind( &quot;skos&quot;, SKOS.CONCEPT );</span>
+<span class="nc" id="L299">		lqa.bind( &quot;concept&quot;, engine.getSchemaBuilder().getConceptUri().build() );</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">		if ( instanceIsSubject ) {</span>
+<span class="nc" id="L301">			lqa.setVariableName( &quot;objtype&quot; );</span>
+		}
+		else {
+<span class="nc" id="L304">			lqa.setVariableName( &quot;subtype&quot; );</span>
+		}
+
+<span class="nc" id="L307">		log.debug( &quot;connected types (many instances) is: &quot; + lqa.bindAndGetSparql() );</span>
+
+<span class="nc" id="L309">		return engine.queryNoEx( lqa );</span>
+	}
+
+	/**
+	 * Gets the set of top-level relations for the given set. The input may
+	 * contain all &quot;specific&quot; relationships, all &quot;top level&quot;, or a mixture of both
+	 *
+	 * @param rels
+	 * @param engine
+	 * @return the smallest set of relations that cover the input rels. All the
+	 * returned URIs will be &lt;code&gt;rdfs:subClassOf semonto:Relation&lt;/code&gt;
+	 * @deprecated use
+	 * {@link StructureManager#getTopLevelRelations(java.util.Collection)}
+	 */
+	@Deprecated
+	public static Set&lt;URI&gt; getTopLevelRelations( Collection&lt;URI&gt; rels,
+			IEngine engine ) {
+
+<span class="nc" id="L327">		Set&lt;URI&gt; todo = new HashSet&lt;&gt;( rels ); // get unique set of input</span>
+
+<span class="nc bnc" id="L329" title="All 2 branches missed.">		if ( todo.isEmpty() ) {</span>
+<span class="nc" id="L330">			return todo;</span>
+		}
+
+		// this query gets the top level URI for any specific URI
+<span class="nc" id="L334">		String query = &quot;SELECT ?rel ?superrel WHERE {\n&quot;</span>
+				+ &quot;  ?rel rdfs:subPropertyOf ?superrel .\n&quot;
+				+ &quot;  ?superrel rdfs:subPropertyOf ?semrel .\n&quot;
+				+ &quot;  FILTER( ?superrel != ?semrel ) .\n&quot;
+				+ &quot;  FILTER( ?rel != ?superrel ) .\n&quot;
+				+ &quot;  FILTER( ?rel != ?semrel ) .&quot;
+<span class="nc" id="L340">				+ &quot;  VALUES ?rel {&quot; + Utility.implode( todo ) + &quot;} .&quot;</span>
+				+ &quot;}&quot;;
+<span class="nc" id="L342">		MapQueryAdapter&lt;URI, URI&gt; mqa = new MapQueryAdapter&lt;URI, URI&gt;( query ) {</span>
+
+			@Override
+			public void handleTuple( BindingSet set, ValueFactory fac ) {
+<span class="nc" id="L346">				add( URI.class.cast( set.getValue( &quot;rel&quot; ) ),</span>
+<span class="nc" id="L347">						URI.class.cast( set.getValue( &quot;superrel&quot; ) ) );</span>
+<span class="nc" id="L348">			}</span>
+
+		};
+<span class="nc" id="L351">		mqa.bind( &quot;semrel&quot;, engine.getSchemaBuilder().getRelationUri().toUri() );</span>
+
+<span class="nc" id="L353">		mqa.useInferred( false );</span>
+<span class="nc" id="L354">		Map&lt;URI, URI&gt; inputOutput = engine.queryNoEx( mqa );</span>
+
+		// anything *not* in the inputOutput map wasn't a specific relation,
+		// so it must be a top-level relation. Remove the specifics from the todo
+		// set, and then add whatever's left to the output
+<span class="nc" id="L359">		todo.removeAll( inputOutput.keySet() );</span>
+<span class="nc bnc" id="L360" title="All 2 branches missed.">		for ( URI alreadytop : todo ) {</span>
+<span class="nc" id="L361">			inputOutput.put( alreadytop, alreadytop );</span>
+<span class="nc" id="L362">		}</span>
+
+<span class="nc" id="L364">		return new HashSet&lt;&gt;( inputOutput.values() );</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>EngineUtil2.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.util</a> &gt; <span class="el_source">EngineUtil2.java</span></div><h1>EngineUtil2.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.util;
+
+import com.bigdata.rdf.sail.BigdataSail;
+import com.bigdata.rdf.sail.BigdataSailRepository;
+import com.ostrichemulators.semtool.model.vocabulary.SEMCORE;
+import com.ostrichemulators.semtool.model.vocabulary.SEMONTO;
+import com.ostrichemulators.semtool.model.vocabulary.SEMTOOL;
+import com.ostrichemulators.semtool.poi.main.ImportData;
+import com.ostrichemulators.semtool.poi.main.ImportMetadata;
+import com.ostrichemulators.semtool.poi.main.ImportValidationException;
+import java.util.Map;
+import org.apache.log4j.Logger;
+import org.openrdf.model.URI;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.vocabulary.RDFS;
+import org.openrdf.query.MalformedQueryException;
+import org.openrdf.query.QueryEvaluationException;
+import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.repository.RepositoryException;
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import com.ostrichemulators.semtool.rdf.engine.api.MetadataConstants;
+import com.ostrichemulators.semtool.rdf.engine.api.ReificationStyle;
+import com.ostrichemulators.semtool.rdf.engine.impl.AbstractEngine;
+import com.ostrichemulators.semtool.rdf.engine.impl.BigDataEngine;
+import com.ostrichemulators.semtool.rdf.engine.impl.EngineFactory;
+import com.ostrichemulators.semtool.rdf.engine.impl.InsightManagerImpl;
+import com.ostrichemulators.semtool.rdf.engine.impl.SesameEngine;
+import com.ostrichemulators.semtool.rdf.query.util.MetadataQuery;
+import com.ostrichemulators.semtool.rdf.query.util.ModificationExecutorAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.QueryExecutorAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.impl.VoidQueryAdapter;
+import com.ostrichemulators.semtool.user.LocalUserImpl;
+import com.ostrichemulators.semtool.user.Security;
+import com.ostrichemulators.semtool.user.User;
+import com.ostrichemulators.semtool.util.Constants;
+import com.ostrichemulators.semtool.util.Utility;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Properties;
+import org.apache.commons.io.FilenameUtils;
+import org.openrdf.model.Resource;
+import org.openrdf.model.Statement;
+import org.openrdf.model.Value;
+import org.openrdf.model.impl.StatementImpl;
+import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.query.BindingSet;
+import org.openrdf.repository.Repository;
+import org.openrdf.repository.sail.SailRepository;
+import org.openrdf.rio.RDFFormat;
+import org.openrdf.rio.RDFParseException;
+import org.openrdf.rio.helpers.StatementCollector;
+import org.openrdf.rio.turtle.TurtleParser;
+import org.openrdf.sail.Sail;
+import org.openrdf.sail.inferencer.fc.ForwardChainingRDFSInferencer;
+import org.openrdf.sail.memory.MemoryStore;
+import org.openrdf.sail.nativerdf.NativeStore;
+
+/**
+ * A class to centralize Engine operations. This class is thread-safe, and if
+ * started as a thread and used to mount repositories, those repositories can be
+ * successfully unmounted later.
+ *
+ * @author ryan
+ */
+public class EngineUtil2 {
+
+<span class="nc" id="L78">	private static final Logger log = Logger.getLogger( EngineUtil2.class );</span>
+
+<span class="nc" id="L80">	private EngineUtil2() {</span>
+<span class="nc" id="L81">	}</span>
+
+	public static void clear( IEngine engine ) throws RepositoryException {
+		try {
+<span class="nc" id="L85">			final Map&lt;URI, Value&gt; metas = engine.query( new MetadataQuery() );</span>
+<span class="nc" id="L86">			metas.remove( SEMTOOL.Database );</span>
+
+<span class="nc" id="L88">			engine.execute( new ModificationExecutorAdapter( true ) {</span>
+
+				@Override
+				public void exec( RepositoryConnection conn ) throws RepositoryException {
+<span class="nc" id="L92">					conn.remove( (Resource) null, null, null );</span>
+<span class="nc" id="L93">					ValueFactory vf = conn.getValueFactory();</span>
+
+					// re-add the metadata
+<span class="nc bnc" id="L96" title="All 2 branches missed.">					for ( Map.Entry&lt;URI, Value&gt; en : metas.entrySet() ) {</span>
+<span class="nc" id="L97">						conn.add( engine.getBaseUri(),</span>
+<span class="nc" id="L98">								URI.class.cast( EngineLoader.cleanValue( en.getKey(), vf ) ),</span>
+<span class="nc" id="L99">								EngineLoader.cleanValue( en.getValue(), vf ) );</span>
+<span class="nc" id="L100">					}</span>
+<span class="nc" id="L101">				}</span>
+			} );
+		}
+<span class="nc" id="L104">		catch ( MalformedQueryException | QueryEvaluationException e ) {</span>
+<span class="nc" id="L105">			log.error( e, e );</span>
+<span class="nc" id="L106">		}</span>
+<span class="nc" id="L107">	}</span>
+
+	public static String getEngineLabel( IEngine engine ) {
+<span class="nc" id="L110">		String label = engine.getEngineName();</span>
+<span class="nc" id="L111">		MetadataQuery mq = new MetadataQuery( RDFS.LABEL );</span>
+<span class="nc" id="L112">		engine.queryNoEx( mq );</span>
+<span class="nc" id="L113">		String str = mq.getString();</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">		if ( null != str ) {</span>
+<span class="nc" id="L115">			label = str;</span>
+		}
+<span class="nc" id="L117">		return label;</span>
+	}
+
+	/**
+	 * Gets the reification model URI from the given engine
+	 *
+	 * @param engine
+	 * @return return the reification model, or {@link Constants#NONODE} if none
+	 * is defined
+	 */
+	public static ReificationStyle getReificationStyle( IEngine engine ) {
+<span class="nc" id="L128">		URI reif = Constants.NONODE;</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">		if ( null != engine ) {</span>
+<span class="nc" id="L130">			MetadataQuery mq = new MetadataQuery( SEMTOOL.ReificationModel );</span>
+			try {
+<span class="nc" id="L132">				engine.query( mq );</span>
+<span class="nc" id="L133">				Value str = mq.getOne();</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">				reif = ( null == str ? Constants.NONODE : URI.class.cast( str ) );</span>
+			}
+<span class="nc" id="L136">			catch ( RepositoryException | MalformedQueryException | QueryEvaluationException e ) {</span>
+				// don't care
+<span class="nc" id="L138">			}</span>
+		}
+
+<span class="nc" id="L141">		return ReificationStyle.fromUri( reif );</span>
+	}
+
+	public static ImportData createImportData( IEngine eng ) {
+<span class="nc" id="L145">		ImportMetadata metas = null;</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">		if ( null == eng ) {</span>
+<span class="nc" id="L147">			metas = new ImportMetadata();</span>
+		}
+		else {
+<span class="nc" id="L150">			metas = new ImportMetadata( eng.getBaseUri(), eng.getSchemaBuilder(),</span>
+<span class="nc" id="L151">					eng.getDataBuilder() );</span>
+<span class="nc" id="L152">			metas.setNamespaces( eng.getNamespaces() );</span>
+		}
+
+<span class="nc" id="L155">		return new ImportData( metas );</span>
+	}
+
+	/**
+	 * Prints all statements in the main database to the log's DEBUG output. This
+	 * only works in if the logger prints debug output.
+	 *
+	 * @param eng
+	 */
+	public static void logAllDataStatements( IEngine eng ) {
+<span class="nc bnc" id="L165" title="All 2 branches missed.">		if ( log.isDebugEnabled() ) {</span>
+<span class="nc" id="L166">			eng.queryNoEx( new VoidQueryAdapter( &quot;SELECT ?s ?p ?o WHERE { ?s ?p ?o }&quot; ) {</span>
+				@Override
+				public void handleTuple( BindingSet set, ValueFactory fac ) {
+<span class="nc" id="L169">					log.debug( set.getValue( &quot;s&quot; ) + &quot; &quot; + set.getValue( &quot;p&quot; ) + &quot; &quot;</span>
+<span class="nc" id="L170">							+ set.getValue( &quot;o&quot; ) );</span>
+<span class="nc" id="L171">				}</span>
+			} );
+		}
+<span class="nc" id="L174">	}</span>
+
+	/**
+	 * Creates an empty database by copying data from the db/Default directory
+	 *
+	 * @param ecb how the new database should be created
+	 * @param conformanceErrors if not null, conformance will be checked, and
+	 * errors will be placed here
+	 *
+	 * @return the newly-created smss file, or null if something goes wrong
+	 *
+	 * @throws java.io.IOException
+	 * @throws
+	 * com.ostrichemulators.semtool.rdf.engine.util.EngineManagementException
+	 */
+	public static File createNew( EngineCreateBuilder ecb, ImportData conformanceErrors )
+			throws IOException, EngineManagementException {
+
+<span class="nc" id="L192">		File dbtopdir = ecb.getEngineDir();</span>
+<span class="nc" id="L193">		dbtopdir.mkdirs();</span>
+
+<span class="nc" id="L195">		User user = new LocalUserImpl();</span>
+<span class="nc" id="L196">		File smssfile = createEngine( ecb, user );</span>
+
+<span class="nc" id="L198">		IEngine bde = EngineFactory.getEngine( smssfile.getAbsoluteFile() );</span>
+<span class="nc" id="L199">		Security.getSecurity().associateUser( bde, user );</span>
+
+<span class="nc bnc" id="L201" title="All 2 branches missed.">		if ( null != ecb.getQuestions() ) {</span>
+<span class="nc" id="L202">			InsightManagerImpl imi = new InsightManagerImpl();</span>
+<span class="nc" id="L203">			createInsightStatements( ecb.getQuestions(), imi );</span>
+<span class="nc" id="L204">			bde.updateInsights( imi );</span>
+		}
+
+<span class="nc" id="L207">		EngineLoader el = new EngineLoader( ecb.isStageInMemory() );</span>
+<span class="nc" id="L208">		el.setDefaultBaseUri( ecb.getDefaultBaseUri(), ecb.isDefaultBaseOverridesFiles() );</span>
+
+		try {
+<span class="nc" id="L211">			el.loadToEngine( ecb.getFiles(), bde, ecb.isDoMetamodel(), conformanceErrors );</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">			if ( ecb.isCalcInfers() ) {</span>
+<span class="nc" id="L213">				bde.calculateInferences();</span>
+			}
+		}
+<span class="nc" id="L216">		catch ( ImportValidationException | RepositoryException e ) {</span>
+<span class="nc" id="L217">			throw new EngineManagementException( e.getMessage(), e );</span>
+		}
+		finally {
+<span class="nc" id="L220">			el.release();</span>
+<span class="nc" id="L221">			bde.closeDB();</span>
+<span class="nc" id="L222">		}</span>
+
+<span class="nc" id="L224">		return smssfile;</span>
+	}
+
+	private static File createEngine( EngineCreateBuilder ecb, User user )
+			throws IOException, EngineManagementException {
+<span class="nc" id="L229">		boolean useBlazegraph = BigDataEngine.class.equals( ecb.getEngineImpl() );</span>
+
+<span class="nc" id="L231">		String dbname = ecb.getEngineName();</span>
+<span class="nc" id="L232">		File enginedir = ecb.getEngineDir();</span>
+
+<span class="nc" id="L234">		Properties smssprops = new Properties();</span>
+
+		File db;
+
+		// make the big data journal, and then write out the (empty) OWL file
+<span class="nc bnc" id="L239" title="All 2 branches missed.">		if ( useBlazegraph ) {</span>
+<span class="nc" id="L240">			db = new File( enginedir, dbname + &quot;.jnl&quot; );</span>
+<span class="nc" id="L241">			String dprop = &quot;/defaultdb/Default.properties&quot;;</span>
+<span class="nc" id="L242">			smssprops.load( EngineUtil2.class.getResourceAsStream( dprop ) );</span>
+<span class="nc" id="L243">			smssprops.setProperty( BigdataSail.Options.FILE, db.getAbsolutePath() );</span>
+<span class="nc" id="L244">		}</span>
+		else {
+			// right now, we only support Blazegraph and OpenRDF
+<span class="nc" id="L247">			db = new File( enginedir, dbname );</span>
+<span class="nc" id="L248">			smssprops = SesameEngine.generateProperties( db );</span>
+		}
+
+<span class="nc bnc" id="L251" title="All 2 branches missed.">		if ( db.exists() ) {</span>
+<span class="nc" id="L252">			throw new IOException( &quot;KB journal already exists&quot; );</span>
+		}
+
+<span class="nc bnc" id="L255" title="All 2 branches missed.">		if ( log.isDebugEnabled() ) {</span>
+<span class="nc" id="L256">			StringBuilder sb = new StringBuilder( &quot;creation properties:&quot; );</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">			for ( String key : smssprops.stringPropertyNames() ) {</span>
+<span class="nc" id="L258">				sb.append( System.getProperty( &quot;line.separator&quot; ) )</span>
+<span class="nc" id="L259">						.append( key ).append( &quot;=&gt;&quot; ).append( smssprops.getProperty( key ) );</span>
+<span class="nc" id="L260">			}</span>
+<span class="nc" id="L261">			log.debug( sb.toString() );</span>
+		}
+
+		Repository repo;
+<span class="nc bnc" id="L265" title="All 2 branches missed.">		if ( useBlazegraph ) {</span>
+<span class="nc" id="L266">			BigdataSail sail = new BigdataSail( smssprops );</span>
+<span class="nc" id="L267">			repo = new BigdataSailRepository( sail );</span>
+<span class="nc" id="L268">		}</span>
+		else {
+<span class="nc" id="L270">			NativeStore store</span>
+<span class="nc" id="L271">					= new NativeStore( new File( smssprops.getProperty( SesameEngine.REPOSITORY_KEY ) ) );</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">			Sail sail = ( ecb.isCalcInfers()</span>
+					? new ForwardChainingRDFSInferencer( store )
+					: store );
+<span class="nc" id="L275">			repo = new SailRepository( sail );</span>
+		}
+		try {
+<span class="nc" id="L278">			repo.initialize();</span>
+<span class="nc" id="L279">			RepositoryConnection rc = repo.getConnection();</span>
+
+<span class="nc bnc" id="L281" title="All 2 branches missed.">			if ( ecb.isDoMetamodel() ) {</span>
+<span class="nc" id="L282">				rc.begin();</span>
+<span class="nc bnc" id="L283" title="All 2 branches missed.">				for ( URL url : ecb.getVocabularies() ) {</span>
+<span class="nc" id="L284">					rc.add( getStatementsFromResource( url, RDFFormat.TURTLE ) );</span>
+<span class="nc" id="L285">				}</span>
+<span class="nc" id="L286">				rc.commit();</span>
+			}
+
+<span class="nc" id="L289">			URI baseuri = AbstractEngine.getNewBaseUri();</span>
+
+			// add the metadata
+<span class="nc" id="L292">			rc.begin();</span>
+<span class="nc" id="L293">			ValueFactory vf = rc.getValueFactory();</span>
+<span class="nc" id="L294">			rc.add( new StatementImpl( baseuri, RDF.TYPE, SEMTOOL.Database ) );</span>
+<span class="nc" id="L295">			Date today = new Date();</span>
+<span class="nc" id="L296">			rc.add( new StatementImpl( baseuri, MetadataConstants.DCT_CREATED,</span>
+<span class="nc" id="L297">					vf.createLiteral( QueryExecutorAdapter.getCal( today ) ) ) );</span>
+<span class="nc" id="L298">			rc.add( new StatementImpl( baseuri, MetadataConstants.DCT_MODIFIED,</span>
+<span class="nc" id="L299">					vf.createLiteral( QueryExecutorAdapter.getCal( today ) ) ) );</span>
+
+<span class="nc" id="L301">			rc.add( new StatementImpl( baseuri, SEMTOOL.ReificationModel,</span>
+<span class="nc" id="L302">					ecb.getReificationModel().uri ) );</span>
+
+<span class="nc" id="L304">			String tooling = Utility.getBuildProperties( EngineUtil2.class )</span>
+<span class="nc" id="L305">					.getProperty( &quot;name&quot;, &quot;unknown&quot; );</span>
+<span class="nc" id="L306">			rc.add( new StatementImpl( baseuri, SEMCORE.SOFTWARE_AGENT,</span>
+<span class="nc" id="L307">					vf.createLiteral( tooling ) ) );</span>
+
+<span class="nc" id="L309">			String username = user.getProperty( User.UserProperty.USER_FULLNAME );</span>
+<span class="nc" id="L310">			String email = user.getProperty( User.UserProperty.USER_EMAIL );</span>
+<span class="nc" id="L311">			String org = user.getProperty( User.UserProperty.USER_ORG );</span>
+
+<span class="nc bnc" id="L313" title="All 4 branches missed.">			if ( !( username.isEmpty() &amp;&amp; email.isEmpty() ) ) {</span>
+<span class="nc" id="L314">				StringBuilder poc = new StringBuilder();</span>
+<span class="nc bnc" id="L315" title="All 2 branches missed.">				if ( username.isEmpty() ) {</span>
+<span class="nc" id="L316">					poc.append( email );</span>
+				}
+				else {
+<span class="nc" id="L319">					poc.append( username );</span>
+				}
+<span class="nc bnc" id="L321" title="All 2 branches missed.">				if ( !email.isEmpty() ) {</span>
+<span class="nc" id="L322">					poc.append( &quot; &lt;&quot; ).append( email ).append( &quot;&gt;&quot; );</span>
+				}
+
+<span class="nc" id="L325">				rc.add( new StatementImpl( baseuri, MetadataConstants.DCT_PUBLISHER,</span>
+<span class="nc" id="L326">						vf.createLiteral( poc.toString() ) ) );</span>
+			}
+<span class="nc bnc" id="L328" title="All 2 branches missed.">			if ( !org.isEmpty() ) {</span>
+<span class="nc" id="L329">				rc.add( new StatementImpl( baseuri, MetadataConstants.DCT_CREATOR,</span>
+<span class="nc" id="L330">						vf.createLiteral( org ) ) );</span>
+			}
+
+<span class="nc" id="L333">			rc.commit();</span>
+
+<span class="nc" id="L335">			rc.close();</span>
+<span class="nc" id="L336">			repo.shutDown();</span>
+		}
+<span class="nc" id="L338">		catch ( RepositoryException e ) {</span>
+<span class="nc" id="L339">			log.error( e, e );</span>
+<span class="nc" id="L340">			return null;</span>
+<span class="nc" id="L341">		}</span>
+
+<span class="nc" id="L343">		return db;</span>
+	}
+
+	private static List&lt;Statement&gt; getStatementsFromResource( URL resource,
+			RDFFormat fmt ) {
+
+<span class="nc" id="L349">		TurtleParser tp = new TurtleParser();</span>
+<span class="nc" id="L350">		StatementCollector coll = new StatementCollector();</span>
+<span class="nc" id="L351">		tp.setRDFHandler( coll );</span>
+<span class="nc" id="L352">		try ( InputStream is = resource.openStream() ) {</span>
+<span class="nc" id="L353">			tp.parse( is, SEMONTO.BASE_URI );</span>
+<span class="nc bnc" id="L354" title="All 8 branches missed.">		}</span>
+<span class="nc" id="L355">		catch ( Exception e ) {</span>
+<span class="nc" id="L356">			log.warn( &quot;could not open/parse model resource: &quot; + resource, e );</span>
+<span class="nc" id="L357">		}</span>
+
+<span class="nc" id="L359">		return new ArrayList&lt;&gt;( coll.getStatements() );</span>
+	}
+
+	public static void createInsightStatements( File modelquestions,
+			InsightManagerImpl imi ) throws IOException, EngineManagementException {
+
+<span class="nc bnc" id="L365" title="All 4 branches missed.">		if ( null == modelquestions || !modelquestions.exists() ) {</span>
+<span class="nc" id="L366">			return;</span>
+		}
+
+<span class="nc" id="L369">		Map&lt;String, RDFFormat&gt; extfmt = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L371">		extfmt.put( &quot;ttl&quot;, RDFFormat.TURTLE );</span>
+<span class="nc" id="L372">		extfmt.put( &quot;rdf&quot;, RDFFormat.RDFXML );</span>
+<span class="nc" id="L373">		extfmt.put( &quot;n3&quot;, RDFFormat.N3 );</span>
+<span class="nc" id="L374">		extfmt.put( &quot;nt&quot;, RDFFormat.NTRIPLES );</span>
+
+		// we need to check that we actually loaded SOME perspectives, so we'll load
+		// a temporary InsightManager first
+<span class="nc" id="L378">		InsightManagerImpl loader = new InsightManagerImpl();</span>
+
+		try {
+<span class="nc" id="L381">			Repository repo = new SailRepository( new MemoryStore() );</span>
+<span class="nc" id="L382">			repo.initialize();</span>
+<span class="nc bnc" id="L383" title="All 2 branches missed.">			if ( FilenameUtils.isExtension( modelquestions.toString(), extfmt.keySet() ) ) {</span>
+<span class="nc" id="L384">				RepositoryConnection rc = repo.getConnection();</span>
+<span class="nc" id="L385">				rc.add( modelquestions, &quot;&quot;,</span>
+<span class="nc" id="L386">						extfmt.get( FilenameUtils.getExtension( modelquestions.toString() ) ) );</span>
+<span class="nc" id="L387">				loader.loadFromRepository( rc );</span>
+<span class="nc" id="L388">				rc.close();</span>
+<span class="nc" id="L389">				repo.shutDown();</span>
+			}
+		}
+<span class="nc" id="L392">		catch ( RepositoryException | RDFParseException e ) {</span>
+<span class="nc" id="L393">			throw new EngineManagementException( EngineManagementException.ErrorCode.FILE_ERROR,</span>
+					e );
+<span class="nc" id="L395">		}</span>
+
+<span class="nc bnc" id="L397" title="All 2 branches missed.">		boolean ok = !loader.getPerspectives().isEmpty();</span>
+
+<span class="nc bnc" id="L399" title="All 2 branches missed.">		if ( !ok ) {</span>
+<span class="nc" id="L400">			throw new EngineManagementException( EngineManagementException.ErrorCode.MISSING_REQUIRED_TUPLE,</span>
+					modelquestions + &quot; does not contain any Perspectives&quot; );
+		}
+
+<span class="nc" id="L404">		imi.addAll( loader.getPerspectives(), false );</span>
+<span class="nc" id="L405">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

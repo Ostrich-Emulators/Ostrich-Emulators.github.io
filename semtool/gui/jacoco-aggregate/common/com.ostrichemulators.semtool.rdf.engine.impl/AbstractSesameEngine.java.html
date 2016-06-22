@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractSesameEngine.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.impl</a> &gt; <span class="el_source">AbstractSesameEngine.java</span></div><h1>AbstractSesameEngine.java</h1><pre class="source lang-java linenums">/**
+ * *****************************************************************************
+ * Copyright 2013 SEMOSS.ORG
+ *
+ * This file is part of SEMOSS.
+ *
+ * SEMOSS is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * SEMOSS is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * SEMOSS. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ * ****************************************************************************
+ */
+package com.ostrichemulators.semtool.rdf.engine.impl;
+
+import com.ostrichemulators.semtool.model.vocabulary.SEMTOOL;
+import com.ostrichemulators.semtool.rdf.engine.api.Bindable;
+import info.aduna.iteration.Iterations;
+import java.util.Properties;
+
+import org.apache.log4j.Logger;
+import org.openrdf.model.URI;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.query.BindingSet;
+import org.openrdf.query.MalformedQueryException;
+import org.openrdf.query.QueryEvaluationException;
+import org.openrdf.query.QueryLanguage;
+import org.openrdf.query.TupleQuery;
+import org.openrdf.query.TupleQueryResult;
+import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.repository.RepositoryException;
+
+import com.ostrichemulators.semtool.util.Constants;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.openrdf.model.Resource;
+import org.openrdf.model.Statement;
+import org.openrdf.model.impl.StatementImpl;
+import org.openrdf.model.impl.URIImpl;
+import org.openrdf.model.impl.ValueFactoryImpl;
+import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.repository.RepositoryResult;
+import org.openrdf.repository.sail.SailRepository;
+import org.openrdf.sail.inferencer.fc.ForwardChainingRDFSInferencer;
+import org.openrdf.sail.memory.MemoryStore;
+import com.ostrichemulators.semtool.rdf.engine.api.InsightManager;
+import com.ostrichemulators.semtool.rdf.engine.api.MetadataConstants;
+import com.ostrichemulators.semtool.rdf.engine.api.ModificationExecutor;
+import com.ostrichemulators.semtool.rdf.engine.api.QueryExecutor;
+import com.ostrichemulators.semtool.rdf.engine.api.UpdateExecutor;
+import com.ostrichemulators.semtool.rdf.query.util.MetadataQuery;
+import com.ostrichemulators.semtool.rdf.query.util.QueryExecutorAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.impl.VoidQueryAdapter;
+import com.ostrichemulators.semtool.user.Security;
+import com.ostrichemulators.semtool.user.User;
+import com.ostrichemulators.semtool.util.UriBuilder;
+import com.ostrichemulators.semtool.util.Utility;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.commons.io.FilenameUtils;
+import org.openrdf.model.Model;
+import org.openrdf.model.Namespace;
+import org.openrdf.model.vocabulary.OWL;
+import org.openrdf.model.vocabulary.RDFS;
+import org.openrdf.query.GraphQuery;
+import org.openrdf.query.GraphQueryResult;
+import org.openrdf.query.Update;
+import org.openrdf.query.UpdateExecutionException;
+import org.openrdf.query.impl.DatasetImpl;
+
+/**
+ * An Abstract Engine that sets up the base constructs needed to create an
+ * engine.
+ */
+public abstract class AbstractSesameEngine extends AbstractEngine {
+
+<span class="nc" id="L87">	private static final Logger log = Logger.getLogger( AbstractSesameEngine.class );</span>
+	public static final String REPOSITORY_KEY = &quot;repository&quot;;
+	public static final String INSIGHTS_KEY = &quot;insights&quot;;
+
+<span class="nc" id="L91">	public AbstractSesameEngine() {</span>
+<span class="nc" id="L92">	}</span>
+
+	protected RepositoryConnection createOwlRc() throws RepositoryException {
+<span class="nc" id="L95">		ForwardChainingRDFSInferencer inferencer</span>
+				= new ForwardChainingRDFSInferencer( new MemoryStore() );
+<span class="nc" id="L97">		SailRepository owlRepo = new SailRepository( inferencer );</span>
+<span class="nc" id="L98">		owlRepo.initialize();</span>
+<span class="nc" id="L99">		return owlRepo.getConnection();</span>
+	}
+
+	/**
+	 * Initiates the loading process with the given properties. Subclasses will
+	 * usually use this function to open their repositories before the rest of the
+	 * loading process occurs. If overridden, subclasses should be sure to call
+	 * their superclass's version of this function in addition to whatever other
+	 * processing they do.
+	 *
+	 * @param props
+	 * @throws RepositoryException
+	 */
+	@Override
+	protected void startLoading( Properties props ) throws RepositoryException {
+<span class="nc" id="L114">		createRc( props );</span>
+<span class="nc" id="L115">		super.startLoading( props );</span>
+<span class="nc" id="L116">	}</span>
+
+	/**
+	 * An extension point for subclasses to create their RepositoryConnection
+	 *
+	 * @param props
+	 * @throws RepositoryException
+	 */
+	protected abstract void createRc( Properties props ) throws RepositoryException;
+
+	@Override
+	protected URI setUris( String data, String schema ) throws RepositoryException {
+<span class="nc" id="L128">		URI baseuri = null;</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">		if ( data.isEmpty() ) {</span>
+			// if the baseuri isn't already set, then query the kb for void:Dataset
+<span class="nc" id="L131">			RepositoryResult&lt;Statement&gt; rr</span>
+<span class="nc" id="L132">					= getRawConnection().getStatements( null, RDF.TYPE, SEMTOOL.Database, false );</span>
+<span class="nc" id="L133">			List&lt;Statement&gt; stmts = Iterations.asList( rr );</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">			for ( Statement s : stmts ) {</span>
+<span class="nc" id="L135">				baseuri = URI.class.cast( s.getSubject() );</span>
+<span class="nc" id="L136">				break;</span>
+			}
+
+<span class="nc bnc" id="L139" title="All 2 branches missed.">			if ( null == baseuri ) {</span>
+				// not set yet, so make one (this is a silent upgrade)
+<span class="nc" id="L141">				RepositoryConnection rc = getRawConnection();</span>
+<span class="nc" id="L142">				rc.begin();</span>
+				try {
+<span class="nc" id="L144">					baseuri = silentlyUpgrade( rc );</span>
+<span class="nc" id="L145">					rc.commit();</span>
+				}
+<span class="nc" id="L147">				catch ( RepositoryException e ) {</span>
+<span class="nc" id="L148">					log.error( e, e );</span>
+<span class="nc" id="L149">					rc.rollback();</span>
+<span class="nc" id="L150">				}</span>
+			}
+<span class="nc" id="L152">		}</span>
+		else {
+<span class="nc" id="L154">			baseuri = new URIImpl( data );</span>
+		}
+
+<span class="nc bnc" id="L157" title="All 2 branches missed.">		if ( null == baseuri ) {</span>
+<span class="nc" id="L158">			log.fatal( &quot;no base uri set&quot; );</span>
+		}
+
+<span class="nc" id="L161">		setSchemaBuilder( UriBuilder.getBuilder( schema ) );</span>
+<span class="nc" id="L162">		setDataBuilder( UriBuilder.getBuilder( baseuri ) );</span>
+<span class="nc" id="L163">		return baseuri;</span>
+	}
+
+	protected URI silentlyUpgrade( RepositoryConnection rc ) throws RepositoryException {
+<span class="nc" id="L167">		URI baseuri = getNewBaseUri();</span>
+<span class="nc" id="L168">		rc.add( baseuri, RDF.TYPE, SEMTOOL.Database );</span>
+
+		// see if we have some old metadata we can move over, too
+<span class="nc" id="L171">		VoidQueryAdapter q = new VoidQueryAdapter( &quot;SELECT ?pred ?val { ?uri a ?voidds . ?uri ?pred ?val}&quot; ) {</span>
+
+			@Override
+			public void handleTuple( BindingSet set, ValueFactory fac ) {
+<span class="nc" id="L175">				URI pred = URI.class.cast( set.getValue( &quot;pred&quot; ) );</span>
+<span class="nc bnc" id="L176" title="All 4 branches missed.">				if ( !( MetadataConstants.OWLIRI.equals( pred ) || RDF.TYPE.equals( pred )</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">						|| OWL.VERSIONINFO.equals( pred ) ) ) {</span>
+
+					try {
+<span class="nc" id="L180">						rc.add( baseuri, pred, set.getValue( &quot;val&quot; ) );</span>
+					}
+<span class="nc" id="L182">					catch ( RepositoryException re ) {</span>
+<span class="nc" id="L183">						log.warn( &quot;Could not move metadata to new URI&quot;, re );</span>
+<span class="nc" id="L184">					}</span>
+				}
+<span class="nc" id="L186">			}</span>
+		};
+<span class="nc" id="L188">		q.bind( &quot;voidds&quot;, MetadataConstants.VOID_DS );</span>
+		try {
+<span class="nc" id="L190">			query( q );</span>
+		}
+<span class="nc" id="L192">		catch ( RepositoryException | MalformedQueryException | QueryEvaluationException e ) {</span>
+<span class="nc" id="L193">			log.error( e, e );</span>
+<span class="nc" id="L194">		}</span>
+<span class="nc" id="L195">		return baseuri;</span>
+	}
+
+	@Override
+	protected void finishLoading( Properties props ) throws RepositoryException {
+<span class="nc bnc" id="L200" title="All 2 branches missed.">		String realname = ( null == getEngineName()</span>
+<span class="nc" id="L201">				? props.getProperty( Constants.ENGINE_NAME,</span>
+<span class="nc" id="L202">						FilenameUtils.getBaseName( props.getProperty( Constants.SMSS_LOCATION ) ) )</span>
+<span class="nc" id="L203">				: getEngineName() );</span>
+<span class="nc" id="L204">		MetadataQuery mq = new MetadataQuery( RDFS.LABEL );</span>
+<span class="nc" id="L205">		queryNoEx( mq );</span>
+<span class="nc" id="L206">		String str = mq.getString();</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">		if ( null != str ) {</span>
+<span class="nc" id="L208">			realname = str;</span>
+		}
+<span class="nc" id="L210">		setEngineName( realname );</span>
+
+<span class="nc" id="L212">		RepositoryConnection rc = getRawConnection();</span>
+<span class="nc" id="L213">		rc.begin();</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">		for ( Map.Entry&lt;String, String&gt; en : Utility.DEFAULTNAMESPACES.entrySet() ) {</span>
+<span class="nc" id="L215">			rc.setNamespace( en.getKey(), en.getValue() );</span>
+<span class="nc" id="L216">		}</span>
+<span class="nc" id="L217">		rc.commit();</span>
+<span class="nc" id="L218">	}</span>
+
+	@Override
+	protected InsightManager createInsightManager() throws RepositoryException {
+<span class="nc" id="L222">		log.debug( &quot;creating default (in-memory) insight repository&quot; );</span>
+<span class="nc" id="L223">		return new InsightManagerImpl();</span>
+	}
+
+	@Override
+	public void closeDB() {
+<span class="nc" id="L228">		log.debug( &quot;closing db: &quot; + getEngineName() );</span>
+
+<span class="nc bnc" id="L230" title="All 2 branches missed.">		if ( null != getRawConnection() ) {</span>
+<span class="nc" id="L231">			RepositoryConnection rc = getRawConnection();</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">			if ( null != rc ) {</span>
+				try {
+<span class="nc" id="L234">					rc.close();</span>
+				}
+<span class="nc" id="L236">				catch ( Exception e ) {</span>
+<span class="nc" id="L237">					log.warn( &quot;could not close repo connection&quot;, e );</span>
+<span class="nc" id="L238">				}</span>
+
+				try {
+<span class="nc" id="L241">					rc.getRepository().shutDown();</span>
+				}
+<span class="nc" id="L243">				catch ( Exception e ) {</span>
+<span class="nc" id="L244">					log.warn( &quot;could not close repo&quot;, e );</span>
+<span class="nc" id="L245">				}</span>
+			}
+		}
+<span class="nc" id="L248">	}</span>
+
+	@Override
+	public boolean isConnected() {
+		try {
+<span class="nc" id="L253">			return getRawConnection().isOpen();</span>
+		}
+<span class="nc" id="L255">		catch ( RepositoryException e ) {</span>
+<span class="nc" id="L256">			return false;</span>
+		}
+	}
+
+	public static String processNamespaces( String rawsparql,
+			Map&lt;String, String&gt; customNamespaces ) {
+<span class="nc" id="L262">		Map&lt;String, String&gt; namespaces = new HashMap&lt;&gt;( Utility.DEFAULTNAMESPACES );</span>
+<span class="nc" id="L263">		namespaces.putAll( customNamespaces );</span>
+
+<span class="nc" id="L265">		Set&lt;String&gt; existingNamespaces = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L266" title="All 2 branches missed.">		if ( rawsparql.toUpperCase().contains( &quot;PREFIX&quot; ) ) {</span>
+<span class="nc" id="L267">			Pattern pat = Pattern.compile( &quot;prefix[\\s]+([A-Za-z0-9_-]+)[\\s]*:&quot;,</span>
+					Pattern.CASE_INSENSITIVE );
+<span class="nc" id="L269">			Matcher m = pat.matcher( rawsparql );</span>
+<span class="nc bnc" id="L270" title="All 2 branches missed.">			while ( m.find() ) {</span>
+<span class="nc" id="L271">				existingNamespaces.add( m.group( 1 ) );</span>
+			}
+		}
+
+<span class="nc" id="L275">		StringBuilder sparql = new StringBuilder();</span>
+<span class="nc bnc" id="L276" title="All 2 branches missed.">		for ( Map.Entry&lt;String, String&gt; en : namespaces.entrySet() ) {</span>
+<span class="nc bnc" id="L277" title="All 2 branches missed.">			if ( !existingNamespaces.contains( en.getKey() ) ) {</span>
+<span class="nc" id="L278">				sparql.append( &quot;PREFIX &quot; ).append( en.getKey() );</span>
+<span class="nc" id="L279">				sparql.append( &quot;: &lt;&quot; ).append( en.getValue() ).append( &quot;&gt; &quot; );</span>
+			}
+<span class="nc" id="L281">		}</span>
+
+<span class="nc" id="L283">		sparql.append( rawsparql );</span>
+<span class="nc" id="L284">		return sparql.toString();</span>
+	}
+
+	public static final void doUpdate( UpdateExecutor query,
+			RepositoryConnection rc, boolean dobindings ) throws RepositoryException,
+			MalformedQueryException, UpdateExecutionException {
+
+<span class="nc bnc" id="L291" title="All 2 branches missed.">		String sparql = processNamespaces( dobindings ? query.getSparql()</span>
+<span class="nc" id="L292">				: query.bindAndGetSparql(), query.getNamespaces() );</span>
+
+<span class="nc" id="L294">		ValueFactory vfac = new ValueFactoryImpl();</span>
+<span class="nc" id="L295">		Update upd = rc.prepareUpdate( QueryLanguage.SPARQL, sparql );</span>
+
+<span class="nc bnc" id="L297" title="All 2 branches missed.">		if ( dobindings ) {</span>
+<span class="nc" id="L298">			upd.setIncludeInferred( query.usesInferred() );</span>
+<span class="nc" id="L299">			query.setBindings( upd, vfac );</span>
+		}
+
+<span class="nc" id="L302">		upd.execute();</span>
+<span class="nc" id="L303">		query.done();</span>
+<span class="nc" id="L304">	}</span>
+
+	public static final &lt;T&gt; T getSelect( QueryExecutor&lt;T&gt; query,
+			RepositoryConnection rc, boolean dobindings ) throws RepositoryException,
+			MalformedQueryException, QueryEvaluationException {
+
+<span class="nc bnc" id="L310" title="All 2 branches missed.">		String sparql = processNamespaces( dobindings ? query.getSparql()</span>
+<span class="nc" id="L311">				: query.bindAndGetSparql(), query.getNamespaces() );</span>
+
+<span class="nc" id="L313">		ValueFactory vfac = new ValueFactoryImpl();</span>
+<span class="nc" id="L314">		TupleQuery tq = rc.prepareTupleQuery( QueryLanguage.SPARQL, sparql );</span>
+
+<span class="nc bnc" id="L316" title="All 2 branches missed.">		if ( null != query.getContext() ) {</span>
+<span class="nc" id="L317">			DatasetImpl dataset = new DatasetImpl();</span>
+<span class="nc" id="L318">			dataset.addDefaultGraph( query.getContext() );</span>
+<span class="nc" id="L319">			tq.setDataset( dataset );</span>
+		}
+
+<span class="nc bnc" id="L322" title="All 2 branches missed.">		if ( dobindings ) {</span>
+<span class="nc" id="L323">			tq.setIncludeInferred( query.usesInferred() );</span>
+<span class="nc" id="L324">			query.setBindings( tq, vfac );</span>
+		}
+
+<span class="nc" id="L327">		TupleQueryResult rslt = tq.evaluate();</span>
+<span class="nc" id="L328">		query.start( rslt.getBindingNames() );</span>
+<span class="nc bnc" id="L329" title="All 2 branches missed.">		while ( rslt.hasNext() ) {</span>
+<span class="nc" id="L330">			query.handleTuple( rslt.next(), vfac );</span>
+		}
+<span class="nc" id="L332">		query.done();</span>
+<span class="nc" id="L333">		rslt.close();</span>
+<span class="nc" id="L334">		return query.getResults();</span>
+	}
+
+	protected abstract RepositoryConnection getRawConnection();
+
+	public static final &lt;T&gt; T getSelectNoEx( QueryExecutor&lt;T&gt; query,
+			RepositoryConnection rc, boolean dobindings ) {
+		try {
+<span class="nc" id="L342">			return getSelect( query, rc, dobindings );</span>
+		}
+<span class="nc" id="L344">		catch ( RepositoryException | MalformedQueryException | QueryEvaluationException e ) {</span>
+<span class="nc" id="L345">			log.error( &quot;could not execute select: &quot; + query.getSparql(), e );</span>
+<span class="nc" id="L346">			return null;</span>
+		}
+	}
+
+	public static Model getConstruct( QueryExecutor&lt;Model&gt; query,
+			RepositoryConnection rc, boolean dobindings )
+			throws RepositoryException, MalformedQueryException, QueryEvaluationException {
+
+<span class="nc bnc" id="L354" title="All 2 branches missed.">		String sparql = processNamespaces( dobindings ? query.getSparql()</span>
+<span class="nc" id="L355">				: query.bindAndGetSparql(), query.getNamespaces() );</span>
+
+<span class="nc" id="L357">		GraphQuery tq = rc.prepareGraphQuery( QueryLanguage.SPARQL, sparql );</span>
+<span class="nc" id="L358">		tq.setIncludeInferred( query.usesInferred() );</span>
+<span class="nc bnc" id="L359" title="All 2 branches missed.">		if ( dobindings ) {</span>
+<span class="nc" id="L360">			query.setBindings( tq, rc.getValueFactory() );</span>
+		}
+
+<span class="nc" id="L363">		GraphQueryResult gqr = tq.evaluate();</span>
+<span class="nc bnc" id="L364" title="All 2 branches missed.">		while ( gqr.hasNext() ) {</span>
+<span class="nc" id="L365">			query.getResults().add( gqr.next() );</span>
+		}
+<span class="nc" id="L367">		gqr.close();</span>
+
+<span class="nc" id="L369">		return query.getResults();</span>
+	}
+
+	private void addUserNamespaces( Bindable ab ) {
+<span class="nc" id="L373">		User user = Security.getSecurity().getAssociatedUser( this );</span>
+<span class="nc" id="L374">		ab.addNamespaces( user.getNamespaces() );</span>
+<span class="nc" id="L375">	}</span>
+
+	@Override
+	public &lt;T&gt; T query( QueryExecutor&lt;T&gt; exe )
+			throws RepositoryException, MalformedQueryException, QueryEvaluationException {
+<span class="nc bnc" id="L380" title="All 2 branches missed.">		if ( isConnected() ) {</span>
+<span class="nc" id="L381">			addUserNamespaces( exe );</span>
+<span class="nc" id="L382">			RepositoryConnection rc = getRawConnection();</span>
+<span class="nc" id="L383">			return getSelect( exe, rc, supportsSparqlBindings() );</span>
+		}
+
+<span class="nc" id="L386">		throw new RepositoryException( &quot;The engine is not connected&quot; );</span>
+	}
+
+	@Override
+	public &lt;T&gt; T queryNoEx( QueryExecutor&lt;T&gt; exe ) {
+<span class="nc bnc" id="L391" title="All 2 branches missed.">		if ( isConnected() ) {</span>
+<span class="nc" id="L392">			addUserNamespaces( exe );</span>
+<span class="nc" id="L393">			RepositoryConnection rc = getRawConnection();</span>
+<span class="nc" id="L394">			return getSelectNoEx( exe, rc, supportsSparqlBindings() );</span>
+		}
+
+<span class="nc" id="L397">		return null;</span>
+	}
+
+	@Override
+	public void update( UpdateExecutor ue ) throws RepositoryException,
+			MalformedQueryException, UpdateExecutionException {
+<span class="nc bnc" id="L403" title="All 2 branches missed.">		if ( isConnected() ) {</span>
+<span class="nc" id="L404">			addUserNamespaces( ue );</span>
+<span class="nc" id="L405">			RepositoryConnection rc = getRawConnection();</span>
+<span class="nc" id="L406">			doUpdate( ue, rc, supportsSparqlBindings() );</span>
+<span class="nc" id="L407">			updateLastModifiedDate( rc, getBaseUri() );</span>
+<span class="nc" id="L408">			logProvenance( ue );</span>
+		}
+<span class="nc" id="L410">	}</span>
+
+	@Override
+	public Model construct( QueryExecutor&lt;Model&gt; q ) throws RepositoryException,
+			MalformedQueryException, QueryEvaluationException {
+<span class="nc" id="L415">		addUserNamespaces( q );</span>
+<span class="nc" id="L416">		return getConstruct( q, getRawConnection(), supportsSparqlBindings() );</span>
+	}
+
+	@Override
+	public Model constructNoEx( QueryExecutor&lt;Model&gt; q ) {
+<span class="nc" id="L421">		addUserNamespaces( q );</span>
+		try {
+<span class="nc" id="L423">			return getConstruct( q, getRawConnection(), supportsSparqlBindings() );</span>
+		}
+<span class="nc" id="L425">		catch ( RepositoryException | MalformedQueryException | QueryEvaluationException e ) {</span>
+<span class="nc" id="L426">			log.error( &quot;could not execute construct: &quot; + q.getSparql(), e );</span>
+<span class="nc" id="L427">			return null;</span>
+		}
+	}
+
+	@Override
+	public void execute( ModificationExecutor exe ) throws RepositoryException {
+<span class="nc" id="L433">		RepositoryConnection rc = getRawConnection();</span>
+
+		try {
+<span class="nc bnc" id="L436" title="All 2 branches missed.">			if ( exe.execInTransaction() ) {</span>
+<span class="nc" id="L437">				rc.begin();</span>
+			}
+
+<span class="nc" id="L440">			exe.exec( rc );</span>
+
+<span class="nc bnc" id="L442" title="All 2 branches missed.">			if ( exe.execInTransaction() ) {</span>
+<span class="nc" id="L443">				rc.commit();</span>
+			}
+		}
+<span class="nc" id="L446">		catch ( RepositoryException e ) {</span>
+<span class="nc bnc" id="L447" title="All 2 branches missed.">			if ( exe.execInTransaction() ) {</span>
+<span class="nc" id="L448">				rc.rollback();</span>
+			}
+
+<span class="nc" id="L451">			throw e;</span>
+<span class="nc" id="L452">		}</span>
+<span class="nc" id="L453">	}</span>
+
+	/**
+	 * Does this engine support binding variables within the Sparql execution?
+	 *
+	 * @return true, if the engine supports sparql variable binding
+	 */
+	@Override
+	public boolean supportsSparqlBindings() {
+<span class="nc" id="L462">		return true;</span>
+	}
+
+	public static void updateLastModifiedDate( RepositoryConnection rc,
+			Resource baseuri ) {
+		// updates the base uri's last modified key
+		// 1) if we don't know it already, figure out what our base uri is
+		// 2) remove any last modified value
+		// 3) add the new last modified value
+
+<span class="nc" id="L472">		ValueFactory vf = rc.getValueFactory();</span>
+		try {
+<span class="nc bnc" id="L474" title="All 2 branches missed.">			if ( null == baseuri ) {</span>
+<span class="nc" id="L475">				RepositoryResult&lt;Statement&gt; rr = rc.getStatements( null, RDF.TYPE,</span>
+						SEMTOOL.Database, false );
+<span class="nc" id="L477">				List&lt;Statement&gt; stmts = Iterations.asList( rr );</span>
+<span class="nc bnc" id="L478" title="All 2 branches missed.">				for ( Statement s : stmts ) {</span>
+<span class="nc" id="L479">					baseuri = s.getSubject();</span>
+<span class="nc" id="L480">				}</span>
+			}
+
+<span class="nc bnc" id="L483" title="All 2 branches missed.">			if ( null == baseuri ) {</span>
+<span class="nc" id="L484">				log.warn( &quot;cannot update last modified date when no base uri is set&quot; );</span>
+			}
+			else {
+<span class="nc" id="L487">				rc.remove( baseuri, MetadataConstants.DCT_MODIFIED, null );</span>
+
+<span class="nc" id="L489">				rc.add( new StatementImpl( baseuri, MetadataConstants.DCT_MODIFIED,</span>
+<span class="nc" id="L490">						vf.createLiteral( QueryExecutorAdapter.getCal( new Date() ) ) ) );</span>
+			}
+		}
+<span class="nc" id="L493">		catch ( RepositoryException e ) {</span>
+<span class="nc" id="L494">			log.warn( &quot;could not update last modified date&quot;, e );</span>
+<span class="nc" id="L495">		}</span>
+<span class="nc" id="L496">	}</span>
+
+	@Override
+	public void commit() {
+		try {
+<span class="nc" id="L501">			RepositoryConnection rc = getRawConnection();</span>
+			// updateLastModifiedDate();
+<span class="nc" id="L503">			rc.commit();</span>
+		}
+<span class="nc" id="L505">		catch ( Exception e ) {</span>
+<span class="nc" id="L506">			log.error( e, e );</span>
+<span class="nc" id="L507">		}</span>
+<span class="nc" id="L508">	}</span>
+
+	@Override
+	public Map&lt;String, String&gt; getNamespaces() {
+<span class="nc" id="L512">		Map&lt;String, String&gt; ret = new HashMap&lt;&gt;();</span>
+		try {
+<span class="nc" id="L514">			RepositoryConnection rc = getRawConnection();</span>
+
+<span class="nc bnc" id="L516" title="All 2 branches missed.">			for ( Namespace ns : Iterations.asList( rc.getNamespaces() ) ) {</span>
+<span class="nc" id="L517">				ret.put( ns.getPrefix(), ns.getName() );</span>
+<span class="nc" id="L518">			}</span>
+		}
+<span class="nc" id="L520">		catch ( RepositoryException re ) {</span>
+<span class="nc" id="L521">			log.warn( &quot;could not retrieve namespaces&quot;, re );</span>
+<span class="nc" id="L522">		}</span>
+<span class="nc" id="L523">		return ret;</span>
+	}
+
+	@Override
+	protected void updateLastModifiedDate() {
+<span class="nc" id="L528">		RepositoryConnection rc = getRawConnection();</span>
+<span class="nc" id="L529">		updateLastModifiedDate( rc, getBaseUri() );</span>
+<span class="nc" id="L530">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

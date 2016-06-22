@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>POIReader.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.poi.main</a> &gt; <span class="el_source">POIReader.java</span></div><h1>POIReader.java</h1><pre class="source lang-java linenums">/**
+ * *****************************************************************************
+ * Copyright 2013 SEMOSS.ORG
+ *
+ * This file is part of SEMOSS.
+ *
+ * SEMOSS is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * SEMOSS is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * SEMOSS. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ * ****************************************************************************
+ */
+package com.ostrichemulators.semtool.poi.main;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.log4j.Logger;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.openrdf.model.ValueFactory;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.openrdf.model.Value;
+import org.openrdf.model.impl.URIImpl;
+import org.openrdf.model.impl.ValueFactoryImpl;
+
+/**
+ * Loading data into SEMOSS using Microsoft Excel Loading Sheet files
+ */
+<span class="nc" id="L42">public class POIReader implements ImportFileReader {</span>
+
+<span class="nc" id="L44">	private static final Logger logger = Logger.getLogger( POIReader.class );</span>
+<span class="nc" id="L45">	private boolean keepLoadInMemory = false;</span>
+
+	public static ImportData readNonloadingSheet( File file ) throws IOException {
+<span class="nc" id="L48">		ImportData d</span>
+<span class="nc" id="L49">				= readNonloadingSheet( new XSSFWorkbook( new FileInputStream( file ) ) );</span>
+<span class="nc" id="L50">		d.getMetadata().setSourceOfData( new URIImpl( file.toURI().toString() ) );</span>
+<span class="nc" id="L51">		return d;</span>
+	}
+
+	public static ImportData readNonloadingSheet( Workbook workbook ) {
+<span class="nc" id="L55">		ImportData id = new ImportData();</span>
+
+<span class="nc" id="L57">		int sheets = workbook.getNumberOfSheets();</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">		for ( int sheetnum = 0; sheetnum &lt; sheets; sheetnum++ ) {</span>
+<span class="nc" id="L59">			Sheet sheet = workbook.getSheetAt( sheetnum );</span>
+<span class="nc" id="L60">			String sheetname = workbook.getSheetName( sheetnum );</span>
+
+			// we need to shoehorn the arbitrary data from a spreadsheet into our
+			// ImportData class, which has restrictions on the data...we're going
+			// to do it by figuring out the row with the most columns, and then
+			// naming all the columns with A, B, C...AA, AB...
+			// then load everything as if it was plain data
+			// first, figure out our max number of columns
+<span class="nc" id="L68">			int rows = sheet.getLastRowNum();</span>
+<span class="nc" id="L69">			int maxcols = Integer.MIN_VALUE;</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">			for ( int r = 0; r &lt;= rows; r++ ) {</span>
+<span class="nc" id="L71">				Row row = sheet.getRow( r );</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">				if ( null != row ) {</span>
+<span class="nc" id="L73">					int cols = (int) row.getLastCellNum();</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">					if ( cols &gt; maxcols ) {</span>
+<span class="nc" id="L75">						maxcols = cols;</span>
+					}
+				}
+			}
+
+			// second, make &quot;properties&quot; for each column
+<span class="nc" id="L81">			LoadingSheetData nlsd = new LoadingSheetData( sheetname, &quot;A&quot; );</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">			for ( int c = 1; c &lt; maxcols; c++ ) {</span>
+<span class="nc" id="L83">				nlsd.addProperty( Integer.toString( c ) );</span>
+			}
+
+			// lastly, fill the sheets
+<span class="nc" id="L87">			ValueFactory vf = new ValueFactoryImpl();</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">			for ( int r = 0; r &lt;= rows; r++ ) {</span>
+<span class="nc" id="L89">				Row row = sheet.getRow( r );</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">				if ( null != row ) {</span>
+<span class="nc" id="L91">					Map&lt;String, Value&gt; propmap = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L93">					int lastpropcol = row.getLastCellNum();</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">					for ( int c = 1; c &lt;= lastpropcol; c++ ) {</span>
+<span class="nc" id="L95">						String val = getString( row.getCell( c ) );</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">						if ( !val.isEmpty() ) {</span>
+<span class="nc" id="L97">							propmap.put( Integer.toString( c ), vf.createLiteral( val ) );</span>
+						}
+					}
+
+<span class="nc" id="L101">					nlsd.add( getString( row.getCell( 0 ) ), propmap );</span>
+				}
+			}
+
+<span class="nc bnc" id="L105" title="All 2 branches missed.">			if ( !nlsd.isEmpty() ) {</span>
+<span class="nc" id="L106">				id.add( nlsd );</span>
+			}
+		}
+
+<span class="nc" id="L110">		return id;</span>
+	}
+
+	@Override
+	public ImportMetadata getMetadata( File file ) throws IOException, ImportValidationException {
+<span class="nc" id="L115">		logger.debug( &quot;getting metadata from file: &quot; + file );</span>
+<span class="nc" id="L116">		LowMemXlsReader reader = null;</span>
+		try {
+<span class="nc" id="L118">			reader = new LowMemXlsReader( file );</span>
+<span class="nc" id="L119">			ImportMetadata data = reader.getMetadata();</span>
+<span class="nc" id="L120">			data.setSourceOfData( new URIImpl( file.toURI().toString() ) );</span>
+<span class="nc" id="L121">			return data;</span>
+		}
+		finally {
+<span class="nc bnc" id="L124" title="All 4 branches missed.">			if ( null != reader ) {</span>
+<span class="nc" id="L125">				reader.release();</span>
+			}
+		}
+	}
+
+	@Override
+	public ImportData readOneFile( File file ) throws IOException, ImportValidationException {
+<span class="nc" id="L132">		logger.debug( &quot;loading data from file: &quot; + file );</span>
+<span class="nc" id="L133">		LowMemXlsReader rdr = null;</span>
+		try {
+<span class="nc" id="L135">			rdr = new LowMemXlsReader( file );</span>
+<span class="nc" id="L136">			rdr.keepSheetDataInMemory( keepLoadInMemory );</span>
+<span class="nc" id="L137">			ImportData d = rdr.getData();</span>
+
+<span class="nc" id="L139">			d.getMetadata().setSourceOfData( new URIImpl( file.toURI().toString() ) );</span>
+<span class="nc" id="L140">			logger.debug( &quot;finished reading file: &quot; + file );</span>
+<span class="nc" id="L141">			return d;</span>
+		}
+		finally {
+<span class="nc bnc" id="L144" title="All 4 branches missed.">			if ( null != rdr ) {</span>
+<span class="nc" id="L145">				rdr.release();</span>
+			}
+		}
+	}
+
+	@Override
+	public void keepLoadInMemory( boolean b ) {
+<span class="nc" id="L152">		keepLoadInMemory = b;</span>
+<span class="nc" id="L153">	}</span>
+
+	/**
+	 * Always return a non-null string (will be &quot;&quot; for null cells).
+	 *
+	 * @param cell
+	 * @return
+	 */
+	private static String getString( Cell cell ) {
+<span class="nc bnc" id="L162" title="All 2 branches missed.">		if ( null == cell ) {</span>
+<span class="nc" id="L163">			return &quot;&quot;;</span>
+		}
+
+<span class="nc bnc" id="L166" title="All 4 branches missed.">		switch ( cell.getCellType() ) {</span>
+			case Cell.CELL_TYPE_NUMERIC:
+<span class="nc" id="L168">				return Double.toString( cell.getNumericCellValue() );</span>
+			case Cell.CELL_TYPE_BOOLEAN:
+<span class="nc" id="L170">				return Boolean.toString( cell.getBooleanCellValue() );</span>
+			case Cell.CELL_TYPE_FORMULA:
+<span class="nc" id="L172">				return cell.getCellFormula();</span>
+			default:
+<span class="nc" id="L174">				return cell.getStringCellValue();</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

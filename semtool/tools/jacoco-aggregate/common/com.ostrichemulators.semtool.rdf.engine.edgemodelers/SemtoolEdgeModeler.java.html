@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SemtoolEdgeModeler.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.edgemodelers</a> &gt; <span class="el_source">SemtoolEdgeModeler.java</span></div><h1>SemtoolEdgeModeler.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.edgemodelers;
+
+import com.ostrichemulators.semtool.poi.main.ImportMetadata;
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData;
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData.LoadingNodeAndPropertyValues;
+import com.ostrichemulators.semtool.rdf.engine.util.QaChecker;
+import com.ostrichemulators.semtool.rdf.engine.util.QaChecker.RelationCacheKey;
+import static com.ostrichemulators.semtool.util.RDFDatatypeTools.getUriFromRawString;
+import java.util.Map;
+import org.apache.log4j.Logger;
+import org.openrdf.model.URI;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.vocabulary.RDFS;
+import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.repository.RepositoryException;
+
+/**
+ *
+ * @author ryan
+ */
+public class SemtoolEdgeModeler extends AbstractEdgeModeler {
+
+<span class="nc" id="L28">	private static final Logger log = Logger.getLogger( SemtoolEdgeModeler.class );</span>
+
+	// relations that don't have properties should re-use the same edge
+	// map is relname-&gt;URI
+	// private final Map&lt;String, URI&gt; propertylessRelations = new HashMap&lt;&gt;();
+	public SemtoolEdgeModeler( QaChecker qa ) {
+<span class="nc" id="L34">		super( qa );</span>
+<span class="nc" id="L35">	}</span>
+
+	@Override
+	public URI addRel( LoadingNodeAndPropertyValues nap, Map&lt;String, String&gt; namespaces,
+			LoadingSheetData sheet, ImportMetadata metas, RepositoryConnection myrc )
+			throws RepositoryException {
+
+<span class="nc" id="L42">		final String stype = nap.getSubjectType();</span>
+<span class="nc" id="L43">		final String srawlabel = nap.getSubject();</span>
+
+<span class="nc" id="L45">		final String otype = nap.getObjectType();</span>
+<span class="nc" id="L46">		final String orawlabel = nap.getObject();</span>
+
+<span class="nc" id="L48">		final String relname = sheet.getRelname();</span>
+<span class="nc" id="L49">		URI relclass = getCachedRelationClass( relname );</span>
+
+		// get both ends of the relationship...
+<span class="nc bnc" id="L52" title="All 2 branches missed.">		if ( !hasCachedInstance( stype, srawlabel ) ) {</span>
+<span class="nc" id="L53">			LoadingNodeAndPropertyValues filler</span>
+					= sheet.new LoadingNodeAndPropertyValues( srawlabel );
+<span class="nc" id="L55">			addNode( filler, namespaces, sheet, metas, myrc );</span>
+		}
+<span class="nc" id="L57">		URI subject = getCachedInstance( stype, srawlabel );</span>
+
+<span class="nc bnc" id="L59" title="All 2 branches missed.">		if ( !hasCachedInstance( otype, orawlabel ) ) {</span>
+<span class="nc" id="L60">			LoadingSheetData lsd = LoadingSheetData.nodesheet( sheet.getName(), otype );</span>
+<span class="nc" id="L61">			LoadingNodeAndPropertyValues filler = lsd.add( orawlabel );</span>
+<span class="nc" id="L62">			addNode( filler, namespaces, lsd, metas, myrc );</span>
+		}
+<span class="nc" id="L64">		URI object = getCachedInstance( otype, orawlabel );</span>
+
+<span class="nc" id="L66">		boolean relIsAlreadyUri = isUri( relname, namespaces );</span>
+
+		// ... and get a relationship that ties them together
+<span class="nc" id="L69">		RelationCacheKey connectorkey = new RelationCacheKey( nap.getSubjectType(),</span>
+<span class="nc" id="L70">				nap.getObjectType(), relname, nap.getSubject(), nap.getObject() );</span>
+
+<span class="nc" id="L72">		URI connector = null;</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">		if ( relIsAlreadyUri ) {</span>
+<span class="nc" id="L74">			connector = getUriFromRawString( relname, namespaces );</span>
+<span class="nc" id="L75">			cacheRelationClass( connector, relname );</span>
+		}
+
+		// always add the superclass for easy querying
+		//myrc.add( subject, relclass, object );
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		if ( !hasCachedRelation( connectorkey ) ) {</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">			if ( nap.isEmpty() ) {</span>
+<span class="nc" id="L82">				connector = relclass;</span>
+			}
+			else {
+				// make a new edge so we can add properties
+<span class="nc" id="L86">				String rellocalname = srawlabel + &quot;_&quot; + sheet.getRelname() + &quot;_&quot;</span>
+						+ orawlabel;
+<span class="nc" id="L88">				connector = metas.getDataBuilder().build( rellocalname );</span>
+<span class="nc" id="L89">				connector = ensureUnique( connector );</span>
+			}
+
+<span class="nc" id="L92">			cacheRelationNode( connector, connectorkey );</span>
+		}
+		else {
+<span class="nc" id="L95">			connector = getCachedRelation( connectorkey );</span>
+		}
+
+<span class="nc" id="L98">		myrc.add( subject, connector, object );</span>
+
+		// we're going to be adding properties to our new edge type
+<span class="nc bnc" id="L101" title="All 4 branches missed.">		if ( metas.isAutocreateMetamodel() &amp;&amp; !nap.isEmpty() ) {</span>
+<span class="nc" id="L102">			ValueFactory vf = myrc.getValueFactory();</span>
+
+			// our new edge is the same as our old type
+<span class="nc" id="L105">			myrc.add( connector, RDFS.SUBPROPERTYOF, relclass );</span>
+
+<span class="nc" id="L107">			String specificName = relname;</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">			if ( isUri( relname, namespaces ) ) {</span>
+<span class="nc" id="L109">				URI uri = getUriFromRawString( relname, namespaces );</span>
+<span class="nc" id="L110">				specificName = uri.getLocalName();</span>
+			}
+<span class="nc" id="L112">			myrc.add( connector, RDFS.LABEL, vf.createLiteral( specificName ) );</span>
+		}
+
+<span class="nc" id="L115">		addProperties( connector, nap, namespaces, sheet, metas, myrc );</span>
+
+<span class="nc" id="L117">		return connector;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

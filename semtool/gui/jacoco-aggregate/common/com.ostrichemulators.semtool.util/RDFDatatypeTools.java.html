@@ -1,0 +1,479 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>RDFDatatypeTools.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.util</a> &gt; <span class="el_source">RDFDatatypeTools.java</span></div><h1>RDFDatatypeTools.java</h1><pre class="source lang-java linenums">package com.ostrichemulators.semtool.util;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.log4j.Logger;
+import org.apache.xerces.util.XMLChar;
+import org.openrdf.model.BNode;
+import org.openrdf.model.Literal;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.datatypes.XMLDatatypeUtil;
+import org.openrdf.model.impl.ValueFactoryImpl;
+import org.openrdf.model.vocabulary.XMLSchema;
+
+/**
+ * This class offers utility methods for converting between Objects and Values,
+ * as well as offering the ability to derive data types for RDF entities.
+ *
+ * @author Wayne Warren
+ *
+ */
+public class RDFDatatypeTools {
+
+	/**
+	 * The logger for this class
+	 */
+<span class="nc" id="L39">	private static final Logger logger = Logger.getLogger( RDFDatatypeTools.class );</span>
+<span class="nc" id="L40">	private static final ValueFactory vf = new ValueFactoryImpl();</span>
+<span class="nc" id="L41">	public static final Pattern NAMEPATTERN</span>
+<span class="nc" id="L42">			= Pattern.compile( &quot;(?:(?:\&quot;([^\&quot;]+)\&quot;)|([^@]+))@([a-z-A-Z]{1,8})&quot; );</span>
+<span class="nc" id="L43">	public static final Pattern DTPATTERN</span>
+<span class="nc" id="L44">			= Pattern.compile( &quot;\&quot;([^\\\\^]+)\&quot;\\^\\^(.*)&quot; );</span>
+<span class="nc" id="L45">	public static final Pattern URISTARTPATTERN</span>
+<span class="nc" id="L46">			= Pattern.compile( &quot;(^[A-Za-z_-]+://).*&quot; );</span>
+
+	/**
+	 * A lookup which stores the various static tags for the data types that one
+	 * might find in an XML Schema as keys, and the corresponding native Java
+	 * classes as values
+	 */
+<span class="nc" id="L53">	private static final Map&lt;URI, Class&lt;?&gt;&gt; TYPELOOKUP = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L54">	private static final Map&lt;Class&lt;?&gt;, URI&gt; REVTYPELOOKUP = new HashMap&lt;&gt;();</span>
+
+	static {
+<span class="nc" id="L57">		TYPELOOKUP.put( XMLSchema.INT, Integer.class );</span>
+<span class="nc" id="L58">		TYPELOOKUP.put( XMLSchema.INTEGER, Integer.class );</span>
+<span class="nc" id="L59">		TYPELOOKUP.put( XMLSchema.DOUBLE, Double.class );</span>
+<span class="nc" id="L60">		TYPELOOKUP.put( XMLSchema.FLOAT, Float.class );</span>
+<span class="nc" id="L61">		TYPELOOKUP.put( XMLSchema.DECIMAL, Double.class );</span>
+<span class="nc" id="L62">		TYPELOOKUP.put( XMLSchema.STRING, String.class );</span>
+<span class="nc" id="L63">		TYPELOOKUP.put( XMLSchema.DATE, Date.class );</span>
+<span class="nc" id="L64">		TYPELOOKUP.put( XMLSchema.DATETIME, Date.class );</span>
+<span class="nc" id="L65">		TYPELOOKUP.put( XMLSchema.BOOLEAN, Boolean.class );</span>
+
+<span class="nc" id="L67">		REVTYPELOOKUP.put( Integer.class, XMLSchema.INT );</span>
+<span class="nc" id="L68">		REVTYPELOOKUP.put( Double.class, XMLSchema.DOUBLE );</span>
+<span class="nc" id="L69">		REVTYPELOOKUP.put( Float.class, XMLSchema.FLOAT );</span>
+<span class="nc" id="L70">		REVTYPELOOKUP.put( String.class, XMLSchema.STRING );</span>
+<span class="nc" id="L71">		REVTYPELOOKUP.put( Date.class, XMLSchema.DATETIME );</span>
+<span class="nc" id="L72">		REVTYPELOOKUP.put( Boolean.class, XMLSchema.BOOLEAN );</span>
+<span class="nc" id="L73">	}</span>
+
+<span class="nc" id="L75">	private RDFDatatypeTools() {</span>
+<span class="nc" id="L76">	}</span>
+
+	/**
+	 * Derives the classes of a set of columns based on the row data that they
+	 * describe
+	 *
+	 * @param newdata The row data described by the columns
+	 * @param columns The number of columns to be &quot;classed&quot;
+	 * @return A list (ordinal) of the classes describing the data types of the
+	 * columns
+	 */
+	public static List&lt;Class&lt;?&gt;&gt; figureColumnClassesFromData( List&lt;Value[]&gt; newdata,
+			int columns ) {
+<span class="nc" id="L89">		List&lt;Class&lt;?&gt;&gt; columnClasses = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">		if ( newdata.isEmpty() ) {</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">			for ( int i = 0; i &lt; columns; i++ ) {</span>
+<span class="nc" id="L92">				columnClasses.add( Object.class );</span>
+			}
+		}
+		else {
+			// we'd like to be able to figure out column types even
+			// if a row doesn't have values for every column.
+			// we used to determine the class of a column from it's first non-null Value,
+			// but that's just not always true for every element of the column, so we
+			// need to check until we're sure all values are the same, or we can decide
+			// if the column is a String or Object.
+<span class="nc" id="L102">			List&lt;Integer&gt; colsToFigure = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">			for ( int i = 0; i &lt; columns; i++ ) {</span>
+<span class="nc" id="L104">				colsToFigure.add( i );</span>
+			}
+<span class="nc" id="L106">			Class&lt;?&gt; arr[] = new Class&lt;?&gt;[columns];</span>
+
+			// now iterate as far as we have to until we have all the column classes
+<span class="nc" id="L109">			Iterator&lt;Value[]&gt; it = newdata.iterator();</span>
+<span class="nc" id="L110">			Set&lt;Class&lt;?&gt;&gt; finalClasses</span>
+<span class="nc" id="L111">					= new HashSet&lt;&gt;( Arrays.asList( String.class, Object.class ) );</span>
+
+<span class="nc bnc" id="L113" title="All 4 branches missed.">			while ( !colsToFigure.isEmpty() &amp;&amp; it.hasNext() ) {</span>
+<span class="nc" id="L114">				Value[] first = it.next();</span>
+
+				// we have a row of data, so see if it can provide a class for 
+				// any column we don't yet have a class for
+<span class="nc" id="L118">				ListIterator&lt;Integer&gt; colit = colsToFigure.listIterator();</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">				while ( colit.hasNext() ) {</span>
+<span class="nc" id="L120">					int col = colit.next();</span>
+<span class="nc" id="L121">					Value v = first[col];</span>
+<span class="nc" id="L122">					Class&lt;?&gt; k = getClassForValue( v );</span>
+
+					// getClassForValue returns Object when the classtype can't be determined
+<span class="nc bnc" id="L125" title="All 2 branches missed.">					if ( !Object.class.equals( k ) ) {</span>
+<span class="nc" id="L126">						Class&lt;?&gt; previousK = arr[col];</span>
+
+<span class="nc bnc" id="L128" title="All 2 branches missed.">						if ( null == previousK ) {</span>
+							// first time we've set a value for this column
+<span class="nc" id="L130">							arr[col] = k;</span>
+						}
+<span class="nc bnc" id="L132" title="All 2 branches missed.">						else if ( previousK != k ) {</span>
+							// we have a previous column class, 
+<span class="nc bnc" id="L134" title="All 2 branches missed.">							if ( !finalClasses.contains( previousK ) ) {</span>
+								// we're not already at a &quot;final&quot; class, so figure out what we want
+<span class="nc bnc" id="L136" title="All 2 branches missed.">								if ( finalClasses.contains( k ) ) {</span>
+									// we're going to be final, so set it
+<span class="nc" id="L138">									arr[col] = k;</span>
+								}
+								else {
+									// we have two different classes, 
+									// assume they're irreconcilable
+<span class="nc" id="L143">									arr[col] = Object.class;</span>
+								}
+							}
+							// else we're &quot;final,&quot; so don't change
+						}
+
+<span class="nc bnc" id="L149" title="All 2 branches missed.">						if ( finalClasses.contains( arr[col] ) ) {</span>
+<span class="nc" id="L150">							colit.remove();</span>
+						}
+					}
+<span class="nc" id="L153">				}</span>
+<span class="nc" id="L154">			}</span>
+
+			// remove any columns where we have a class, albeit a non-&quot;final&quot; one
+<span class="nc" id="L157">			ListIterator&lt;Integer&gt; li = colsToFigure.listIterator();</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">			while ( li.hasNext() ) {</span>
+<span class="nc" id="L159">				int col = li.next();</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">				if ( null != arr[col] ) {</span>
+<span class="nc" id="L161">					li.remove();</span>
+				}
+<span class="nc" id="L163">			}</span>
+
+			// we don't have any data for the remaining columns, so do something safe
+<span class="nc bnc" id="L166" title="All 2 branches missed.">			for ( int col : colsToFigure ) {</span>
+<span class="nc" id="L167">				arr[col] = Object.class;</span>
+<span class="nc" id="L168">			}</span>
+
+<span class="nc" id="L170">			columnClasses.addAll( Arrays.asList( arr ) );</span>
+		}
+
+<span class="nc" id="L173">		return columnClasses;</span>
+	}
+
+	/**
+	 * Derive the data type for the value of a tabular field
+	 *
+	 * @param v The value for which we need to derive a class
+	 * @return The class describing the value's data type
+	 */
+	public static Class&lt;?&gt; getClassForValue( Value v ) {
+<span class="nc bnc" id="L183" title="All 2 branches missed.">		if ( v instanceof URI ) {</span>
+<span class="nc" id="L184">			return URI.class;</span>
+		}
+<span class="nc bnc" id="L186" title="All 2 branches missed.">		if ( v instanceof Literal ) {</span>
+<span class="nc" id="L187">			Literal l = Literal.class.cast( v );</span>
+<span class="nc" id="L188">			URI dt = l.getDatatype();</span>
+<span class="nc bnc" id="L189" title="All 2 branches missed.">			return ( TYPELOOKUP.containsKey( dt )</span>
+<span class="nc" id="L190">					? TYPELOOKUP.get( dt ) : String.class );</span>
+		}
+<span class="nc" id="L192">		return Object.class;</span>
+	}
+
+	/**
+	 * Parse the data type of an XML entity based on its string content
+	 *
+	 * @param input The XML entity, in string form
+	 * @return The entity instance, properly classed
+	 */
+	public static Object parseXMLDatatype( String input ) {
+<span class="nc bnc" id="L202" title="All 2 branches missed.">		if ( input == null ) {</span>
+<span class="nc" id="L203">			return null;</span>
+		}
+<span class="nc" id="L205">		input = input.trim();</span>
+<span class="nc" id="L206">		String[] pieces = input.split( &quot;\&quot;&quot; );</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">		if ( pieces.length != 3 ) {</span>
+<span class="nc" id="L208">			return removeExtraneousDoubleQuotes( input );</span>
+		}
+<span class="nc" id="L210">		Class&lt;?&gt; theClass = null;</span>
+<span class="nc bnc" id="L211" title="All 2 branches missed.">		for ( URI datatypeUri : TYPELOOKUP.keySet() ) {</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">			if ( pieces[2].contains( datatypeUri.stringValue() ) ) {</span>
+<span class="nc" id="L213">				theClass = TYPELOOKUP.get( datatypeUri );</span>
+			}
+<span class="nc" id="L215">		}</span>
+<span class="nc" id="L216">		String dataPiece = pieces[1];</span>
+<span class="nc bnc" id="L217" title="All 4 branches missed.">		if ( theClass == Double.class &amp;&amp; XMLDatatypeUtil.isValidDouble( dataPiece ) ) {</span>
+<span class="nc" id="L218">			return XMLDatatypeUtil.parseDouble( dataPiece );</span>
+		}
+<span class="nc bnc" id="L220" title="All 4 branches missed.">		if ( theClass == Float.class &amp;&amp; XMLDatatypeUtil.isValidFloat( dataPiece ) ) {</span>
+<span class="nc" id="L221">			return XMLDatatypeUtil.parseFloat( dataPiece );</span>
+		}
+<span class="nc bnc" id="L223" title="All 4 branches missed.">		if ( theClass == Integer.class &amp;&amp; XMLDatatypeUtil.isValidInteger( dataPiece ) ) {</span>
+<span class="nc" id="L224">			return XMLDatatypeUtil.parseInteger( dataPiece );</span>
+		}
+<span class="nc bnc" id="L226" title="All 4 branches missed.">		if ( theClass == Boolean.class &amp;&amp; XMLDatatypeUtil.isValidBoolean( dataPiece ) ) {</span>
+<span class="nc" id="L227">			return XMLDatatypeUtil.parseBoolean( dataPiece );</span>
+		}
+<span class="nc bnc" id="L229" title="All 4 branches missed.">		if ( theClass == Date.class &amp;&amp; XMLDatatypeUtil.isValidDate( dataPiece ) ) {</span>
+<span class="nc" id="L230">			return XMLDatatypeUtil.parseCalendar( dataPiece );</span>
+		}
+<span class="nc" id="L232">		return removeExtraneousDoubleQuotes( input );</span>
+	}
+
+	/**
+	 * Gets the datatype of the given val. If val is null, returns null. It
+	 * returns {@link XMLSchema#ANYURI} for a URI, {@link XMLSchema#ENTITY} for a
+	 * BNode, and {@link Literal#getDatatype()} if it's a literal. If it's not a
+	 * {@link Value}, then it is converted to a Value first, and reprocessed.
+	 * If we have a literal, but a null datatype, returns {@link XMLSchema#STRING}
+	 *
+	 * @param val
+	 * @return
+	 */
+	public static URI getDatatype( Object val ) {
+<span class="nc bnc" id="L246" title="All 2 branches missed.">		if ( null == val ) {</span>
+<span class="nc" id="L247">			return null;</span>
+		}
+
+<span class="nc bnc" id="L250" title="All 2 branches missed.">		if ( val instanceof URI ) {</span>
+<span class="nc" id="L251">			return XMLSchema.ANYURI;</span>
+		}
+<span class="nc bnc" id="L253" title="All 2 branches missed.">		else if ( val instanceof Literal ) {</span>
+<span class="nc" id="L254">			Literal l = Literal.class.cast( val );</span>
+<span class="nc bnc" id="L255" title="All 2 branches missed.">			return ( null == l.getDatatype() ? XMLSchema.STRING : l.getDatatype() );</span>
+		}
+<span class="nc bnc" id="L257" title="All 2 branches missed.">		else if ( val instanceof BNode ) {</span>
+<span class="nc" id="L258">			return XMLSchema.ENTITY;</span>
+		}
+
+<span class="nc" id="L261">		Class&lt;?&gt; theClass = val.getClass();</span>
+<span class="nc" id="L262">		return REVTYPELOOKUP.getOrDefault( theClass, XMLSchema.STRING );</span>
+	}
+
+	/**
+	 * Gets a proper native object from a given RDF value
+	 *
+	 * @param value The RDF Value
+	 * @return A proper native object
+	 */
+	public static Object getObjectFromValue( Value value ) {
+<span class="nc bnc" id="L272" title="All 2 branches missed.">		if ( value == null ) {</span>
+<span class="nc" id="L273">			return null;</span>
+		}
+
+<span class="nc" id="L276">		Class&lt;?&gt; theClass = getClassForValue( value );</span>
+
+<span class="nc bnc" id="L278" title="All 2 branches missed.">		if ( URI.class == theClass ) {</span>
+<span class="nc" id="L279">			return value;</span>
+		}
+
+<span class="nc" id="L282">		Literal input = Literal.class.cast( value );</span>
+<span class="nc" id="L283">		String val = input.getLabel();</span>
+<span class="nc" id="L284">		boolean isempty = val.isEmpty();</span>
+
+<span class="nc bnc" id="L286" title="All 2 branches missed.">		if ( theClass == Double.class ) {</span>
+<span class="nc bnc" id="L287" title="All 2 branches missed.">			return ( isempty ? null : input.doubleValue() );</span>
+		}
+
+<span class="nc bnc" id="L290" title="All 2 branches missed.">		if ( theClass == Integer.class ) {</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">			return ( isempty ? null : input.intValue() );</span>
+		}
+
+<span class="nc bnc" id="L294" title="All 2 branches missed.">		if ( theClass == Boolean.class ) {</span>
+<span class="nc bnc" id="L295" title="All 2 branches missed.">			return ( isempty ? null : input.booleanValue() );</span>
+		}
+
+<span class="nc bnc" id="L298" title="All 2 branches missed.">		if ( theClass == Float.class ) {</span>
+<span class="nc bnc" id="L299" title="All 2 branches missed.">			return ( isempty ? null : input.floatValue() );</span>
+		}
+
+<span class="nc bnc" id="L302" title="All 2 branches missed.">		if ( theClass == Date.class ) {</span>
+<span class="nc bnc" id="L303" title="All 2 branches missed.">			return ( isempty ? null : input.calendarValue() );</span>
+		}
+
+<span class="nc" id="L306">		return input.stringValue();</span>
+	}
+
+	public static boolean isNumericValue( Value value ) {
+<span class="nc bnc" id="L310" title="All 2 branches missed.">		if ( value == null ) {</span>
+<span class="nc" id="L311">			return false;</span>
+		}
+
+<span class="nc" id="L314">		Set&lt;Class&lt;?&gt;&gt; numberTypes</span>
+<span class="nc" id="L315">				= new HashSet&lt;&gt;( Arrays.asList( Double.class, Integer.class, Float.class ) );</span>
+<span class="nc" id="L316">		return numberTypes.contains( getClassForValue( value ) );</span>
+	}
+
+	/**
+	 * Converts a native object instance to its equivalent RDF value
+	 *
+	 * @param o The native object to be converted
+	 * @return A proper RDF Value
+	 */
+	public static Value getValueFromObject( Object o ) {
+<span class="nc bnc" id="L326" title="All 2 branches missed.">		if ( null == o ) {</span>
+<span class="nc" id="L327">			return null;</span>
+		}
+
+<span class="nc bnc" id="L330" title="All 2 branches missed.">		if ( o instanceof Value ) {</span>
+<span class="nc" id="L331">			return Value.class.cast( o );</span>
+		}
+
+<span class="nc bnc" id="L334" title="All 2 branches missed.">		if ( o instanceof String ) {</span>
+<span class="nc" id="L335">			return vf.createLiteral( String.class.cast( o ) );</span>
+		}
+<span class="nc bnc" id="L337" title="All 2 branches missed.">		else if ( o instanceof Double ) {</span>
+<span class="nc" id="L338">			return vf.createLiteral( Double.class.cast( o ) );</span>
+		}
+<span class="nc bnc" id="L340" title="All 2 branches missed.">		else if ( o instanceof Integer ) {</span>
+<span class="nc" id="L341">			return vf.createLiteral( Integer.class.cast( o ) );</span>
+		}
+<span class="nc bnc" id="L343" title="All 2 branches missed.">		else if ( o instanceof Boolean ) {</span>
+<span class="nc" id="L344">			return vf.createLiteral( Boolean.class.cast( o ) );</span>
+		}
+<span class="nc bnc" id="L346" title="All 2 branches missed.">		else if ( o instanceof Date ) {</span>
+<span class="nc" id="L347">			return vf.createLiteral( Date.class.cast( o ) );</span>
+		}
+<span class="nc bnc" id="L349" title="All 2 branches missed.">		else if ( o instanceof Float ) {</span>
+<span class="nc" id="L350">			return vf.createLiteral( Float.class.cast( o ) );</span>
+		}
+
+<span class="nc" id="L353">		logger.warn( &quot;unhandled data type for object: &quot; + o );</span>
+<span class="nc" id="L354">		return null;</span>
+	}
+
+	/**
+	 * Internal convenience method to eliminate unnecessary quotes
+	 *
+	 * @param input The input containing potentially unnecessary quote chars
+	 * @return The string content without the unnecessary quotes
+	 */
+	private static String removeExtraneousDoubleQuotes( String input ) {
+<span class="nc bnc" id="L364" title="All 4 branches missed.">		while ( input != null &amp;&amp; input.length() &gt; 2</span>
+<span class="nc bnc" id="L365" title="All 2 branches missed.">				&amp;&amp; input.charAt( 0 ) == '\&quot;'</span>
+<span class="nc bnc" id="L366" title="All 2 branches missed.">				&amp;&amp; input.charAt( input.length() - 1 ) == '\&quot;' ) {</span>
+<span class="nc" id="L367">			input = input.substring( 1, input.length() - 1 );</span>
+		}
+
+<span class="nc" id="L370">		return input;</span>
+	}
+
+	public static boolean isValidUriChars( String raw ) {
+		// Check if character is valid in the localpart (http://en.wikipedia.org/wiki/QName)
+		// NC is &quot;non-colonized&quot; name:  http://www.w3.org/TR/xmlschema-2/#NCName
+<span class="nc" id="L376">		return XMLChar.isValidNCName( raw );</span>
+		// return VALIDCHARS.matcher( raw ).matches();
+	}
+
+	/**
+	 * Derives an RDF Value from a proper datatype and the stringified version of
+	 * the content
+	 *
+	 * @param datatype URI describing the datatype of the RDF entity
+	 * @param content The stringified version of the value
+	 * @return A proper RDF value
+	 */
+	public static Value getValueFromDatatypeAndString( URI datatype, String content ) {
+<span class="nc" id="L389">		return vf.createLiteral( content, datatype );</span>
+	}
+
+	public static URI getUriFromRawString( String raw, Map&lt;String, String&gt; namespaces ) {
+		//resolve namespace
+<span class="nc" id="L394">		URI uri = null;</span>
+
+<span class="nc bnc" id="L396" title="All 4 branches missed.">		if ( raw.startsWith( &quot;&lt;&quot; ) &amp;&amp; raw.endsWith( &quot;&gt;&quot; ) ) {</span>
+<span class="nc" id="L397">			uri = vf.createURI( raw.substring( 1, raw.length() - 1 ) );</span>
+<span class="nc" id="L398">			return uri;</span>
+		}
+
+		// if raw starts with &lt;something&gt;://, then assume it's just a URI
+<span class="nc" id="L402">		Matcher m = URISTARTPATTERN.matcher( raw );</span>
+<span class="nc bnc" id="L403" title="All 2 branches missed.">		if ( m.matches() ) {</span>
+<span class="nc" id="L404">			return vf.createURI( raw );</span>
+		}
+
+<span class="nc bnc" id="L407" title="All 2 branches missed.">		if ( raw.contains( &quot;:&quot; ) ) {</span>
+<span class="nc" id="L408">			String[] pieces = raw.split( &quot;:&quot; );</span>
+<span class="nc bnc" id="L409" title="All 2 branches missed.">			if ( 2 == pieces.length ) {</span>
+<span class="nc" id="L410">				String namespace = namespaces.get( pieces[0] );</span>
+<span class="nc bnc" id="L411" title="All 4 branches missed.">				if ( null == namespace || namespace.trim().isEmpty() ) {</span>
+<span class="nc" id="L412">					logger.warn( &quot;No namespace found for raw value: &quot; + raw );</span>
+				}
+				else {
+<span class="nc" id="L415">					uri = vf.createURI( namespace, pieces[1] );</span>
+				}
+<span class="nc" id="L417">			}</span>
+			else {
+<span class="nc" id="L419">				logger.warn( &quot;cannot resolve namespace for: &quot; + raw + &quot; (too many colons)&quot; );</span>
+			}
+		}
+		//else {
+		// since this will will always throw an error (it can't be an absolute URI)
+		// we'll just return null, as usual
+		//uri = vf.createURI( raw );
+		//}
+
+<span class="nc" id="L428">		return uri;</span>
+	}
+
+	public static Value getRDFStringValue( String rawval, Map&lt;String, String&gt; namespaces,
+			ValueFactory vf ) {
+		// if rawval looks like a URI, assume it is
+<span class="nc" id="L434">		Matcher urimatcher = URISTARTPATTERN.matcher( rawval );</span>
+<span class="nc bnc" id="L435" title="All 2 branches missed.">		if ( urimatcher.matches() ) {</span>
+<span class="nc" id="L436">			return vf.createURI( rawval );</span>
+		}
+
+<span class="nc" id="L439">		Matcher m = NAMEPATTERN.matcher( rawval );</span>
+		String val;
+		String lang;
+<span class="nc bnc" id="L442" title="All 2 branches missed.">		if ( m.matches() ) {</span>
+<span class="nc" id="L443">			String g1 = m.group( 1 );</span>
+<span class="nc" id="L444">			String g2 = m.group( 2 );</span>
+<span class="nc bnc" id="L445" title="All 2 branches missed.">			val = ( null == g1 ? g2 : g1 );</span>
+<span class="nc" id="L446">			lang = m.group( 3 );</span>
+<span class="nc" id="L447">		}</span>
+		else {
+<span class="nc" id="L449">			val = rawval;</span>
+<span class="nc" id="L450">			lang = &quot;&quot;;</span>
+
+<span class="nc" id="L452">			m = DTPATTERN.matcher( rawval );</span>
+<span class="nc bnc" id="L453" title="All 2 branches missed.">			if ( m.matches() ) {</span>
+<span class="nc" id="L454">				val = m.group( 1 );</span>
+<span class="nc" id="L455">				String typestr = m.group( 2 );</span>
+				try {
+<span class="nc" id="L457">					URI type = getUriFromRawString( typestr, namespaces );</span>
+<span class="nc bnc" id="L458" title="All 2 branches missed.">					if ( null == type ) {</span>
+<span class="nc" id="L459">						logger.warn( &quot;probably misinterpreting as string (unknown type URI?) :&quot;</span>
+								+ rawval );
+<span class="nc" id="L461">						val = rawval;</span>
+					}
+					else {
+<span class="nc" id="L464">						return vf.createLiteral( val, type );</span>
+					}
+				}
+<span class="nc" id="L467">				catch ( Exception e ) {</span>
+<span class="nc" id="L468">					logger.warn( &quot;probably misinterpreting as string (unknown type URI?) :&quot;</span>
+							+ rawval, e );
+<span class="nc" id="L470">					val = rawval;</span>
+<span class="nc" id="L471">				}</span>
+			}
+		}
+
+<span class="nc bnc" id="L475" title="All 2 branches missed.">		return ( lang.isEmpty() ? vf.createLiteral( val )</span>
+<span class="nc" id="L476">				: vf.createLiteral( val, lang ) );</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

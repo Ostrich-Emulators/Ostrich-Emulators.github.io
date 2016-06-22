@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SEMONTO.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.model.vocabulary</a> &gt; <span class="el_source">SEMONTO.java</span></div><h1>SEMONTO.java</h1><pre class="source lang-java linenums">package com.ostrichemulators.semtool.model.vocabulary;
+
+import org.openrdf.model.Namespace;
+import org.openrdf.model.URI;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.NamespaceImpl;
+import org.openrdf.model.impl.ValueFactoryImpl;
+
+<span class="nc" id="L9">public class SEMONTO {</span>
+
+	/**
+	 * The SEMONTO Metamodel Base URI: http://semoss.org/ontologies
+	 */
+	public final static String BASE_URI = &quot;http://os-em.com/ontologies/semtool&quot;;
+
+	/**
+	 * The SEMONTO Metamodel schema namespace: http://semoss.org/ontologies/
+	 */
+	public final static String NAMESPACE = BASE_URI + &quot;/&quot;;
+
+	/**
+	 * Recommend prefix for the V-CAMP SEMONTO Tool namespace: &quot;semoss&quot;
+	 */
+	public final static String PREFIX = &quot;semonto&quot;;
+
+	/**
+	 * An immutable {@link Namespace} constant that represents the SEMONTO
+	 * namespace.
+	 */
+<span class="nc" id="L30">	public static final Namespace NS = new NamespaceImpl( PREFIX, NAMESPACE );</span>
+
+	// ----- Classes ------
+	/**
+	 * http://semoss.org/ontologies/Concept
+	 */
+	public final static URI Concept;
+
+	/**
+	 * http://semoss.org/ontologies/Relation
+	 */
+	public final static URI Relation;
+
+	// ----- Properties ------
+	/**
+	 * http://semoss.org/ontologies/has
+	 */
+	public static final URI has;
+
+	static {
+<span class="nc" id="L50">		final ValueFactory factory = ValueFactoryImpl.getInstance();</span>
+
+		// ----- Classes ------
+<span class="nc" id="L53">		Concept = factory.createURI( NAMESPACE, &quot;Concept&quot; );</span>
+<span class="nc" id="L54">		Relation = factory.createURI( NAMESPACE, &quot;Relation&quot; );</span>
+
+		// ----- Properties ------
+<span class="nc" id="L57">		has = factory.createURI( NAMESPACE, &quot;has&quot; );</span>
+<span class="nc" id="L58">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

@@ -1,0 +1,476 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SemtoolStructureManagerImpl.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.util</a> &gt; <span class="el_source">SemtoolStructureManagerImpl.java</span></div><h1>SemtoolStructureManagerImpl.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.util;
+
+import com.ostrichemulators.semtool.model.vocabulary.SEMTOOL;
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import com.ostrichemulators.semtool.rdf.engine.api.ModificationExecutor;
+import com.ostrichemulators.semtool.rdf.query.util.ModificationExecutorAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.impl.ListQueryAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.impl.ModelQueryAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.impl.OneValueQueryAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.impl.OneVarListQueryAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.impl.VoidQueryAdapter;
+import com.ostrichemulators.semtool.util.Constants;
+import com.ostrichemulators.semtool.util.UriBuilder;
+import com.ostrichemulators.semtool.util.Utility;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.apache.log4j.Logger;
+import org.openrdf.model.Model;
+import org.openrdf.model.Resource;
+import org.openrdf.model.Statement;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.LinkedHashModel;
+import org.openrdf.model.vocabulary.OWL;
+import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.model.vocabulary.RDFS;
+import org.openrdf.query.BindingSet;
+import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.repository.RepositoryException;
+
+/**
+ * An implementation that queries the IEngine for {@link SEMTOOL#Structure}
+ * triples. This class is *not* thread-safe, but it is very lightweight. Note
+ * that no matter what is passed into these functions, top-level results are
+ * returned...so, for example, if the Person concept has three possible
+ * properties, but an instance of Person is passed into getPropertiesOf, three
+ * properties will be returned, even if that particular instance doesn't have
+ * any of them set.
+ *
+ * @author ryan
+ */
+public final class SemtoolStructureManagerImpl implements StructureManager {
+
+<span class="nc" id="L54">	private static final Logger log = Logger.getLogger( SemtoolStructureManagerImpl.class );</span>
+
+	private final IEngine engine;
+<span class="nc" id="L57">	private final ListQueryAdapter&lt;URI&gt; propqa = OneVarListQueryAdapter.getUriList(</span>
+			&quot;SELECT ?prop WHERE {\n&quot;
+			+ &quot;  ?s a semtool:StructureData ;&quot;
+			+ &quot;    rdfs:domain ?domain ;&quot;
+			+ &quot;    owl:DatatypeProperty ?prop .&quot;
+			+ &quot;    FILTER NOT EXISTS { ?s rdf:predicate ?x  }\n&quot;
+			+ &quot;  ?dom a|rdfs:subPropertyOf* ?domain .\n&quot;
+			+ &quot;}&quot; );
+
+<span class="nc" id="L66">	protected SemtoolStructureManagerImpl( IEngine engine ) {</span>
+<span class="nc" id="L67">		this.engine = engine;</span>
+<span class="nc" id="L68">	}</span>
+
+	@Override
+	public Set&lt;URI&gt; getPropertiesOf( URI type ) {
+<span class="nc" id="L72">		propqa.bind( &quot;dom&quot;, type );</span>
+<span class="nc" id="L73">		Set&lt;URI&gt; set = new HashSet&lt;&gt;( engine.queryNoEx( propqa ) );</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">		if ( set.isEmpty() ) {</span>
+			// check to see if type is actually a relation
+<span class="nc" id="L76">			set.addAll( getPropertiesOf( null, type, null ) );</span>
+		}
+
+<span class="nc" id="L79">		return set;</span>
+	}
+
+	@Override
+	public Set&lt;URI&gt; getPropertiesOf( URI subtype, URI predtype, URI objtype ) {
+<span class="nc" id="L84">		Map&lt;String, Value&gt; bindings = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L85">		bindings.put( &quot;pred&quot;, predtype );</span>
+
+<span class="nc" id="L87">		String query = &quot;SELECT ?prop WHERE {\n&quot;</span>
+				+ &quot;  ?s a semtool:StructureData ;&quot;
+				+ &quot;     rdfs:domain ?domain ;&quot;
+				+ &quot;     rdfs:range ?range ;&quot;
+				+ &quot;     rdf:predicate ?predicate ;&quot;
+				+ &quot;     owl:DatatypeProperty ?prop .\n&quot;
+				+ &quot;  ?pred a|rdfs:subPropertyOf* ?predicate .\n&quot;;
+<span class="nc bnc" id="L94" title="All 4 branches missed.">		if ( !( null == subtype || Constants.ANYNODE == subtype ) ) {</span>
+<span class="nc" id="L95">			query += &quot;  ?dom a|rdfs:subClassOf+ ?domain .\n&quot;;</span>
+<span class="nc" id="L96">			bindings.put( &quot;dom&quot;, subtype );</span>
+		}
+<span class="nc bnc" id="L98" title="All 4 branches missed.">		if ( !( null == objtype || Constants.ANYNODE == objtype ) ) {</span>
+<span class="nc" id="L99">			query += &quot;  ?ran a|rdfs:subClassOf+ ?range .\n&quot;;</span>
+<span class="nc" id="L100">			bindings.put( &quot;ran&quot;, objtype );</span>
+		}
+<span class="nc" id="L102">		query += &quot;}&quot;;</span>
+
+<span class="nc" id="L104">		OneVarListQueryAdapter&lt;URI&gt; qa = OneVarListQueryAdapter.getUriList( query );</span>
+<span class="nc" id="L105">		qa.setBindings( bindings );</span>
+<span class="nc" id="L106">		return new HashSet&lt;&gt;( engine.queryNoEx( qa ) );</span>
+
+	}
+
+	@Override
+	public Model getLinksBetween( URI subtype, URI objtype ) {
+<span class="nc" id="L112">		String query = &quot;CONSTRUCT{ ?s ?p ?o } WHERE { \n&quot;</span>
+				+ &quot;  ?mm a semtool:StructureData ;\n&quot;
+				+ &quot;    rdf:predicate ?p ;\n&quot;
+				+ &quot;    rdfs:domain ?s ;\n&quot;
+				+ &quot;    rdfs:range ?o .\n&quot;;
+		// + &quot;}&quot;
+
+<span class="nc" id="L119">		Map&lt;String, Value&gt; bindings = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		if ( !Constants.ANYNODE.equals( subtype ) ) {</span>
+<span class="nc" id="L121">			query += &quot;   ?dom a|rdfs:subClassOf* ?s .\n&quot;;</span>
+<span class="nc" id="L122">			bindings.put( &quot;dom&quot;, subtype );</span>
+		}
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		if ( !Constants.ANYNODE.equals( objtype ) ) {</span>
+<span class="nc" id="L125">			query += &quot;   ?ran a|rdfs:subClassOf* ?o .\n&quot;;</span>
+<span class="nc" id="L126">			bindings.put( &quot;ran&quot;, objtype );</span>
+		}
+<span class="nc" id="L128">		query += &quot;}&quot;;</span>
+
+<span class="nc" id="L130">		ModelQueryAdapter modelqa = new ModelQueryAdapter( query );</span>
+<span class="nc" id="L131">		modelqa.setBindings( bindings );</span>
+
+<span class="nc" id="L133">		return engine.constructNoEx( modelqa );</span>
+	}
+
+	@Override
+	public Model getEndpoints( URI reltype ) {
+<span class="nc" id="L138">		String query = &quot;CONSTRUCT{ ?s ?p ?o } WHERE { \n&quot;</span>
+				+ &quot;  ?mm a semtool:StructureData ;\n&quot;
+				+ &quot;    rdf:predicate ?p ;\n&quot;
+				+ &quot;    rdfs:domain ?s ;\n&quot;
+				+ &quot;    rdfs:range ?o .\n&quot;
+				+ &quot;  ?rel a|rdfs:subPropertyOf* ?p .\n&quot;
+				+ &quot;}&quot;;
+
+<span class="nc" id="L146">		ModelQueryAdapter modelqa = new ModelQueryAdapter( query );</span>
+<span class="nc" id="L147">		modelqa.bind( &quot;rel&quot;, reltype );</span>
+
+<span class="nc" id="L149">		return engine.constructNoEx( modelqa );</span>
+	}
+
+	@Override
+	public Set&lt;URI&gt; getTopLevelRelations( Collection&lt;URI&gt; instances ) {
+<span class="nc bnc" id="L154" title="All 2 branches missed.">		if ( null == instances ) {</span>
+<span class="nc" id="L155">			ListQueryAdapter&lt;URI&gt; lqa = OneVarListQueryAdapter.getUriList(</span>
+					&quot;SELECT ?p WHERE { ?mm a semtool:StructureData ; rdf:predicate ?p . }&quot; );
+<span class="nc" id="L157">			return new HashSet&lt;&gt;( engine.queryNoEx( lqa ) );</span>
+		}
+
+<span class="nc bnc" id="L160" title="All 2 branches missed.">		if ( instances.isEmpty() ) {</span>
+<span class="nc" id="L161">			return new HashSet&lt;&gt;();</span>
+		}
+
+<span class="nc" id="L164">		String implosion = Utility.implode( instances );</span>
+<span class="nc" id="L165">		ListQueryAdapter&lt;URI&gt; lqa = OneVarListQueryAdapter.getUriList(</span>
+				&quot;SELECT ?p WHERE { ?mm a semtool:StructureData ; rdf:predicate ?p . &quot;
+				+ &quot;?reltype a|rdfs:subPropertyOf* ?p . &quot;
+				+ &quot;VALUES ?reltype {&quot; + implosion + &quot;} }&quot; );
+<span class="nc" id="L169">		return new HashSet&lt;&gt;( engine.queryNoEx( lqa ) );</span>
+	}
+
+	@Override
+	public Set&lt;URI&gt; getTopLevelConcepts() {
+<span class="nc" id="L174">		ListQueryAdapter&lt;URI&gt; lqa = OneVarListQueryAdapter.getUriList(</span>
+				&quot;SELECT ?s WHERE { ?s rdfs:subClassOf ?concept }&quot; );
+<span class="nc" id="L176">		lqa.bind( &quot;concept&quot;, engine.getSchemaBuilder().getConceptUri().build() );</span>
+<span class="nc" id="L177">		lqa.useInferred( false );</span>
+<span class="nc" id="L178">		return new HashSet&lt;&gt;( engine.queryNoEx( lqa ) );</span>
+	}
+
+	@Override
+	public Model getConnectedConceptTypes( Collection&lt;URI&gt; instances ) {
+<span class="nc" id="L183">		final String query = &quot;CONSTRUCT{ ?s ?p ?o } WHERE { \n&quot;</span>
+				+ &quot;  ?mm a semtool:StructureData ;\n&quot;
+				+ &quot;    rdf:predicate ?p ;\n&quot;
+				+ &quot;    rdfs:domain ?s ;\n&quot;
+				+ &quot;    rdfs:range ?o .\n&quot;;
+<span class="nc" id="L188">		String implosion = Utility.implode( instances );</span>
+
+<span class="nc" id="L190">		LinkedHashModel model = new LinkedHashModel();</span>
+<span class="nc" id="L191">		ModelQueryAdapter subjects = new ModelQueryAdapter( query</span>
+				+ &quot; ?dom a|rdfs:subClassOf* ?s . VALUES ?dom {&quot; + implosion + &quot;} }&quot;, model );
+<span class="nc" id="L193">		ModelQueryAdapter objects = new ModelQueryAdapter( query</span>
+				+ &quot; ?ran a|rdfs:subClassOf* ?o . VALUES ?ran {&quot; + implosion + &quot;} }&quot;, model );
+<span class="nc" id="L195">		engine.constructNoEx( subjects );</span>
+<span class="nc" id="L196">		engine.constructNoEx( objects );</span>
+
+<span class="nc" id="L198">		return model;</span>
+	}
+
+	@Override
+	public Model getModel() {
+<span class="nc" id="L203">		ModelQueryAdapter qa = new ModelQueryAdapter(</span>
+				&quot;CONSTRUCT { ?s ?p ?o } WHERE { ?s a ?struct ; ?p ?o .}&quot; );
+<span class="nc" id="L205">		qa.bind( &quot;struct&quot;, SEMTOOL.Structure );</span>
+<span class="nc" id="L206">		qa.useInferred( false );</span>
+<span class="nc" id="L207">		return engine.constructNoEx( qa );</span>
+	}
+
+	private Model doRebuild( Collection&lt;URI&gt; uris ) {
+		// get all concepts
+<span class="nc" id="L212">		String cquery = &quot;SELECT DISTINCT ?instance WHERE { ?instance rdfs:subClassOf ?concept }&quot;;</span>
+<span class="nc" id="L213">		ListQueryAdapter&lt;URI&gt; cqa = OneVarListQueryAdapter.getUriList( cquery );</span>
+<span class="nc" id="L214">		cqa.bind( &quot;concept&quot;, engine.getSchemaBuilder().getConceptUri().build() );</span>
+<span class="nc" id="L215">		cqa.useInferred( false );</span>
+<span class="nc" id="L216">		List&lt;URI&gt; concepts = engine.queryNoEx( cqa );</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">		if ( null != uris ) {</span>
+<span class="nc" id="L218">			concepts.retainAll( uris );</span>
+		}
+
+		// get all edge types
+<span class="nc" id="L222">		String equery = &quot;SELECT DISTINCT ?instance WHERE { ?instance rdfs:subPropertyOf ?semrel }&quot;;</span>
+<span class="nc" id="L223">		ListQueryAdapter&lt;URI&gt; eqa = OneVarListQueryAdapter.getUriList( equery );</span>
+<span class="nc" id="L224">		eqa.bind( &quot;semrel&quot;, engine.getSchemaBuilder().getRelationUri().build() );</span>
+<span class="nc" id="L225">		eqa.useInferred( false );</span>
+<span class="nc" id="L226">		List&lt;URI&gt; edges = engine.queryNoEx( eqa );</span>
+<span class="nc bnc" id="L227" title="All 2 branches missed.">		if ( null != uris ) {</span>
+<span class="nc" id="L228">			edges.retainAll( uris );</span>
+		}
+
+<span class="nc" id="L231">		Model edgemodel = rebuildEdges( concepts, edges );</span>
+<span class="nc" id="L232">		Model propmodel = rebuildConceptProps( concepts );</span>
+<span class="nc" id="L233">		Set&lt;Resource&gt; needlabels = new HashSet&lt;&gt;();</span>
+
+<span class="nc bnc" id="L235" title="All 2 branches missed.">		for ( Statement s : edgemodel ) {</span>
+<span class="nc" id="L236">			needlabels.add( URI.class.cast( s.getSubject() ) );</span>
+<span class="nc" id="L237">			needlabels.add( s.getPredicate() );</span>
+<span class="nc" id="L238">			needlabels.add( URI.class.cast( s.getObject() ) );</span>
+<span class="nc" id="L239">		}</span>
+<span class="nc bnc" id="L240" title="All 2 branches missed.">		for ( Statement s : propmodel ) {</span>
+<span class="nc" id="L241">			needlabels.add( URI.class.cast( s.getSubject() ) );</span>
+<span class="nc" id="L242">			needlabels.add( s.getPredicate() );</span>
+<span class="nc" id="L243">		}</span>
+
+<span class="nc" id="L245">		Map&lt;Resource, String&gt; labels = Utility.getInstanceLabels( needlabels, engine );</span>
+<span class="nc" id="L246">		Map&lt;String, URI&gt; structurelkp = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L247">		UriBuilder schema = engine.getSchemaBuilder();</span>
+
+<span class="nc" id="L249">		LinkedHashModel model = new LinkedHashModel();</span>
+
+<span class="nc bnc" id="L251" title="All 2 branches missed.">		for ( Statement s : edgemodel ) {</span>
+<span class="nc" id="L252">			String sub = labels.get( s.getSubject() );</span>
+<span class="nc" id="L253">			String rel = labels.get( s.getPredicate() );</span>
+<span class="nc" id="L254">			String obj = labels.get( Resource.class.cast( s.getObject() ) );</span>
+<span class="nc" id="L255">			String name = sub + &quot;_&quot; + rel + &quot;_&quot; + obj;</span>
+
+<span class="nc" id="L257">			model.addAll( getEdgeStructure( s.getPredicate(),</span>
+<span class="nc" id="L258">					URI.class.cast( s.getSubject() ), URI.class.cast( s.getObject() ),</span>
+					schema, structurelkp, name ) );
+<span class="nc" id="L260">		}</span>
+
+<span class="nc" id="L262">		model.addAll( createEdgeProps( concepts, edges, structurelkp, schema, labels ) );</span>
+
+<span class="nc bnc" id="L264" title="All 2 branches missed.">		for ( Statement s : propmodel ) {</span>
+<span class="nc" id="L265">			String sub = labels.get( s.getSubject() );</span>
+<span class="nc" id="L266">			String rel = labels.get( s.getPredicate() );</span>
+<span class="nc" id="L267">			String name = sub + &quot;_&quot; + rel;</span>
+
+<span class="nc" id="L269">			model.addAll( getPropStructure( s.getPredicate(),</span>
+<span class="nc" id="L270">					URI.class.cast( s.getSubject() ), schema, structurelkp, name ) );</span>
+<span class="nc" id="L271">		}</span>
+
+<span class="nc" id="L273">		return model;</span>
+	}
+
+	@Override
+	public Model rebuild( Collection&lt;URI&gt; uris ) {
+<span class="nc" id="L278">		return doRebuild( uris );</span>
+	}
+
+	@Override
+	public Model rebuild( boolean saveToEngine ) {
+<span class="nc" id="L283">		Model model = doRebuild( null );</span>
+
+<span class="nc bnc" id="L285" title="All 2 branches missed.">		if ( saveToEngine ) {</span>
+<span class="nc" id="L286">			save( model );</span>
+		}
+
+<span class="nc" id="L289">		return model;</span>
+	}
+
+	private Model rebuildConceptProps( List&lt;URI&gt; concepts ) {
+<span class="nc" id="L293">		String cimplosion = Utility.implode( concepts );</span>
+
+		// now see what properties are on concepts and edges
+<span class="nc" id="L296">		String query = &quot;SELECT DISTINCT ?type ?prop WHERE {\n&quot;</span>
+				+ &quot;  ?s ?prop ?propval . FILTER ( isLiteral( ?propval ) )\n&quot;
+				+ &quot;  ?s a|rdfs:subClassOf+ ?type .\n&quot;
+				+ &quot;  FILTER ( ?prop != rdfs:label ) .\n&quot;
+				+ &quot;} VALUES ?type { &quot; + cimplosion + &quot; }&quot;;
+
+<span class="nc" id="L302">		ModelQueryAdapter mqa = new ModelQueryAdapter( query ) {</span>
+
+			@Override
+			public void handleTuple( BindingSet set, ValueFactory fac ) {
+<span class="nc" id="L306">				URI type = URI.class.cast( set.getValue( &quot;type&quot; ) );</span>
+<span class="nc" id="L307">				URI prop = URI.class.cast( set.getValue( &quot;prop&quot; ) );</span>
+<span class="nc" id="L308">				result.add( type, prop, Constants.ANYNODE );</span>
+<span class="nc" id="L309">			}</span>
+		};
+
+<span class="nc" id="L312">		return engine.queryNoEx( mqa );</span>
+	}
+
+	private Model rebuildEdges( List&lt;URI&gt; concepts, List&lt;URI&gt; edges ) {
+<span class="nc" id="L316">		String cimplosion = Utility.implode( concepts );</span>
+<span class="nc" id="L317">		String eimplosion = Utility.implode( edges );</span>
+
+		// now see what concepts connect to others via our edge types
+<span class="nc" id="L320">		String query = &quot;CONSTRUCT { ?stype ?rtype ?otype } WHERE {\n&quot;</span>
+				+ &quot;  ?s a|rdfs:subClassOf+ ?stype .\n&quot;
+				+ &quot;  ?o a|rdfs:subClassOf+ ?otype .\n&quot;
+				+ &quot;  ?r a|rdfs:subPropertyOf+ ?rtype .\n&quot;
+				+ &quot;  ?s ?r ?o .\n&quot;
+				+ &quot;  VALUES ?stype {&quot; + cimplosion + &quot;} .\n&quot;
+				+ &quot;  VALUES ?otype {&quot; + cimplosion + &quot;} .\n&quot;
+				+ &quot;  VALUES ?rtype {&quot; + eimplosion + &quot;} .\n&quot;
+				+ &quot;}&quot;;
+
+<span class="nc" id="L330">		final Model model = engine.constructNoEx( new ModelQueryAdapter( query ) );</span>
+<span class="nc" id="L331">		return model;</span>
+	}
+
+	private Model createEdgeProps( List&lt;URI&gt; concepts, List&lt;URI&gt; edges,
+			Map&lt;String, URI&gt; structurelkp, UriBuilder schema,
+			Map&lt;Resource, String&gt; labels ) {
+<span class="nc" id="L337">		String cimplosion = Utility.implode( concepts );</span>
+<span class="nc" id="L338">		String eimplosion = Utility.implode( edges );</span>
+
+<span class="nc" id="L340">		String propq = &quot;SELECT DISTINCT ?stype ?rtype ?otype ?prop WHERE {\n&quot;</span>
+				+ &quot;  ?s a|rdfs:subClassOf+ ?stype .\n&quot;
+				+ &quot;  ?o a|rdfs:subClassOf+ ?otype .\n&quot;
+				+ &quot;  ?r a|rdfs:subPropertyOf+ ?rtype .\n&quot;
+				+ &quot;  ?s ?r ?o .\n&quot;
+				+ &quot;  ?r ?prop ?propval . FILTER( ?prop != rdfs:label &amp;&amp; isLiteral( ?propval ) ) .\n&quot;
+				+ &quot;  VALUES ?stype {&quot; + cimplosion + &quot;} .\n&quot;
+				+ &quot;  VALUES ?otype {&quot; + cimplosion + &quot;} .\n&quot;
+				+ &quot;  VALUES ?rtype {&quot; + eimplosion + &quot;} .\n&quot;
+				+ &quot;}&quot;;
+
+<span class="nc" id="L351">		Model model = new LinkedHashModel();</span>
+
+<span class="nc" id="L353">		VoidQueryAdapter vqa = new VoidQueryAdapter( propq ) {</span>
+			@Override
+			public void handleTuple( BindingSet set, ValueFactory fac ) {
+<span class="nc" id="L356">				URI domain = URI.class.cast( set.getValue( &quot;stype&quot; ) );</span>
+<span class="nc" id="L357">				URI pred = URI.class.cast( set.getValue( &quot;rtype&quot; ) );</span>
+<span class="nc" id="L358">				URI range = URI.class.cast( set.getValue( &quot;otype&quot; ) );</span>
+<span class="nc" id="L359">				URI prop = URI.class.cast( set.getValue( &quot;prop&quot; ) );</span>
+
+<span class="nc" id="L361">				String sub = labels.get( domain );</span>
+<span class="nc" id="L362">				String rel = labels.get( pred );</span>
+<span class="nc" id="L363">				String obj = labels.get( range );</span>
+<span class="nc" id="L364">				String name = sub + &quot;_&quot; + rel + &quot;_&quot; + obj;</span>
+
+<span class="nc" id="L366">				model.addAll( getPropStructure( pred, domain, range, prop, schema,</span>
+						structurelkp, name ) );
+
+<span class="nc" id="L369">			}</span>
+		};
+
+<span class="nc" id="L372">		engine.queryNoEx( vqa );</span>
+
+<span class="nc" id="L374">		return model;</span>
+	}
+
+	private void save( Model model ) {
+		// get old model, which we'll remove
+<span class="nc" id="L379">		Model olds = getModel();</span>
+
+<span class="nc" id="L381">		ModificationExecutor eme = new ModificationExecutorAdapter( true ) {</span>
+
+			@Override
+			public void exec( RepositoryConnection conn ) throws RepositoryException {
+<span class="nc" id="L385">				conn.remove( olds );</span>
+<span class="nc" id="L386">				conn.add( model );</span>
+<span class="nc" id="L387">			}</span>
+		};
+
+		try {
+<span class="nc" id="L391">			engine.execute( eme );</span>
+		}
+<span class="nc" id="L393">		catch ( Exception e ) {</span>
+<span class="nc" id="L394">			log.error( e, e );</span>
+<span class="nc" id="L395">		}</span>
+<span class="nc" id="L396">	}</span>
+
+	public static Collection&lt;Statement&gt; getEdgeStructure( URI predicate, URI domain,
+			URI range, UriBuilder schema, Map&lt;String, URI&gt; structurelkp, String name ) {
+
+<span class="nc" id="L401">		Model stmts = new LinkedHashModel();</span>
+
+<span class="nc" id="L403">		String key = predicate.stringValue() + domain + range;</span>
+<span class="nc bnc" id="L404" title="All 2 branches missed.">		if ( !structurelkp.containsKey( key ) ) {</span>
+<span class="nc" id="L405">			URI structure = schema.build( name );</span>
+<span class="nc" id="L406">			structurelkp.put( key, structure );</span>
+		}
+
+<span class="nc" id="L409">		URI structure = structurelkp.get( key );</span>
+
+<span class="nc" id="L411">		stmts.add( structure, RDF.TYPE, SEMTOOL.Structure );</span>
+<span class="nc" id="L412">		stmts.add( structure, RDF.PREDICATE, predicate );</span>
+<span class="nc" id="L413">		stmts.add( structure, RDFS.DOMAIN, domain );</span>
+<span class="nc" id="L414">		stmts.add( structure, RDFS.RANGE, range );</span>
+
+<span class="nc" id="L416">		return stmts;</span>
+	}
+
+	public static Collection&lt;Statement&gt; getPropStructure( URI prop, URI domain,
+			UriBuilder schema, Map&lt;String, URI&gt; structurelkp, String title ) {
+
+<span class="nc" id="L422">		Model stmts = new LinkedHashModel();</span>
+
+<span class="nc" id="L424">		String key = prop.stringValue() + domain;</span>
+<span class="nc bnc" id="L425" title="All 2 branches missed.">		if ( !structurelkp.containsKey( key ) ) {</span>
+<span class="nc" id="L426">			URI structure = schema.build( title );</span>
+<span class="nc" id="L427">			structurelkp.put( key, structure );</span>
+		}
+
+<span class="nc" id="L430">		URI structure = structurelkp.get( key );</span>
+
+<span class="nc" id="L432">		stmts.add( structure, RDF.TYPE, SEMTOOL.Structure );</span>
+<span class="nc" id="L433">		stmts.add( structure, OWL.DATATYPEPROPERTY, prop );</span>
+<span class="nc" id="L434">		stmts.add( structure, RDFS.DOMAIN, domain );</span>
+
+<span class="nc" id="L436">		return stmts;</span>
+	}
+
+	public static Collection&lt;Statement&gt; getPropStructure( URI predicate, URI domain,
+			URI range, URI prop, UriBuilder schema, Map&lt;String, URI&gt; structurelkp,
+			String title ) {
+
+<span class="nc" id="L443">		Model stmts = new LinkedHashModel();</span>
+
+<span class="nc" id="L445">		String key = prop.stringValue() + domain;</span>
+<span class="nc bnc" id="L446" title="All 2 branches missed.">		if ( !structurelkp.containsKey( key ) ) {</span>
+<span class="nc" id="L447">			URI structure = schema.build( title );</span>
+<span class="nc" id="L448">			structurelkp.put( key, structure );</span>
+		}
+
+<span class="nc" id="L451">		URI structure = structurelkp.get( key );</span>
+
+<span class="nc" id="L453">		stmts.add( structure, RDF.TYPE, SEMTOOL.Structure );</span>
+<span class="nc" id="L454">		stmts.add( structure, RDF.PREDICATE, predicate );</span>
+<span class="nc" id="L455">		stmts.add( structure, RDFS.DOMAIN, domain );</span>
+<span class="nc" id="L456">		stmts.add( structure, RDFS.RANGE, range );</span>
+<span class="nc" id="L457">		stmts.add( structure, OWL.DATATYPEPROPERTY, prop );</span>
+
+<span class="nc" id="L459">		return stmts;</span>
+	}
+
+	@Override
+	public URI getTopLevelType( URI instance ) {
+<span class="nc" id="L464">		String query = &quot;SELECT ?type WHERE { &quot;</span>
+				+ &quot;  ?subject a|rdfs:subClassOf|rdfs:subPropertyOf ?type &quot;
+				+ &quot;}&quot;;
+<span class="nc" id="L467">		OneValueQueryAdapter&lt;URI&gt; qa = OneValueQueryAdapter.getUri( query );</span>
+<span class="nc" id="L468">		qa.bind( &quot;subject&quot;, instance );</span>
+<span class="nc" id="L469">		qa.useInferred( false );</span>
+<span class="nc" id="L470">		String q = qa.bindAndGetSparql();</span>
+<span class="nc" id="L471">		log.debug( &quot;type query: &quot; + q );</span>
+
+<span class="nc" id="L473">		return engine.queryNoEx( qa );</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

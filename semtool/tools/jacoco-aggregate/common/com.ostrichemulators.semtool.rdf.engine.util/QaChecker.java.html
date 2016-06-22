@@ -1,0 +1,704 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>QaChecker.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.util</a> &gt; <span class="el_source">QaChecker.java</span></div><h1>QaChecker.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.util;
+
+import com.ostrichemulators.semtool.poi.main.ImportData;
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData;
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData.DataIterator;
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData.LoadingNodeAndPropertyValues;
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import com.ostrichemulators.semtool.rdf.engine.api.ReificationStyle;
+import static com.ostrichemulators.semtool.rdf.engine.util.EngineLoader.cleanValue;
+import com.ostrichemulators.semtool.rdf.query.util.impl.ListQueryAdapter;
+import com.ostrichemulators.semtool.rdf.query.util.impl.VoidQueryAdapter;
+import com.ostrichemulators.semtool.util.MultiMap;
+import com.ostrichemulators.semtool.util.UriBuilder;
+import com.ostrichemulators.semtool.util.Utility;
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Consumer;
+import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
+import org.mapdb.DB;
+import org.mapdb.DBMaker;
+import org.mapdb.Serializer;
+import org.openrdf.model.Model;
+import org.openrdf.model.Resource;
+import org.openrdf.model.Statement;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.vocabulary.OWL;
+import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.model.vocabulary.RDFS;
+import org.openrdf.query.BindingSet;
+import org.openrdf.query.MalformedQueryException;
+import org.openrdf.query.QueryEvaluationException;
+import org.openrdf.repository.RepositoryException;
+
+/**
+ * A class to check for QA errors given a Loading Sheet and an Engine.
+ * Basically, this class is just a set of caches with accessor methods. It was
+ * lifted from the EngineLoader class to simplify that class.
+ *
+ * @author ryan
+ */
+public class QaChecker {
+
+<span class="nc" id="L60">	private static final Logger log = Logger.getLogger( QaChecker.class );</span>
+	private final Map&lt;ConceptInstanceCacheKey, URI&gt; dataNodes;
+	private final Map&lt;String, URI&gt; instanceClassCache;
+	private final Map&lt;String, URI&gt; relationBaseClassCache;
+	private final Map&lt;RelationCacheKey, URI&gt; relationCache;
+	private final Map&lt;String, URI&gt; propertyClassCache;
+	private final File backingfile;
+	private final DB db;
+
+<span class="nc" id="L69">	public static enum CacheType {</span>
+
+<span class="nc" id="L71">		CONCEPTCLASS, PROPERTYCLASS, RELATIONCLASS</span>
+	};
+
+<span class="nc" id="L74">	public QaChecker() {</span>
+<span class="nc" id="L75">		File f = null;</span>
+		try {
+<span class="nc" id="L77">			f = File.createTempFile( &quot;qachecker-&quot;, &quot;.maps&quot; );</span>
+		}
+<span class="nc" id="L79">		catch ( IOException ioe ) {</span>
+<span class="nc" id="L80">			log.error( &quot;cannot make backing store...will use in-memory caches&quot;, ioe );</span>
+<span class="nc" id="L81">		}</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">		if ( null == f ) {</span>
+<span class="nc" id="L83">			db = null;</span>
+<span class="nc" id="L84">			backingfile = null;</span>
+<span class="nc" id="L85">			dataNodes = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L86">			relationCache = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L87">			instanceClassCache = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L88">			relationBaseClassCache = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L89">			propertyClassCache = new HashMap&lt;&gt;();</span>
+		}
+		else {
+<span class="nc" id="L92">			backingfile = f;</span>
+<span class="nc" id="L93">			log.debug( &quot;QA backing file is: &quot; + backingfile );</span>
+<span class="nc" id="L94">			db = DBMaker.fileDB( f ).</span>
+<span class="nc" id="L95">					deleteFilesAfterClose().</span>
+<span class="nc" id="L96">					fileMmapEnable().</span>
+<span class="nc" id="L97">					transactionDisable().</span>
+<span class="nc" id="L98">					asyncWriteEnable().</span>
+<span class="nc" id="L99">					make();</span>
+<span class="nc" id="L100">			dataNodes = db.treeMapCreate( &quot;datanodes&quot; ).counterEnable().make();</span>
+<span class="nc" id="L101">			relationCache = db.treeMapCreate( &quot;relations&quot; ).counterEnable().make();</span>
+<span class="nc" id="L102">			instanceClassCache = db.treeMapCreate( &quot;instances&quot; ).keySerializer( Serializer.STRING ).counterEnable().make();</span>
+<span class="nc" id="L103">			relationBaseClassCache = db.treeMapCreate( &quot;relationclasses&quot; ).keySerializer( Serializer.STRING ).counterEnable().make();</span>
+<span class="nc" id="L104">			propertyClassCache = db.treeMapCreate( &quot;propclasses&quot; ).keySerializer( Serializer.STRING ).counterEnable().make();</span>
+		}
+<span class="nc" id="L106">	}</span>
+
+	public QaChecker( IEngine eng ) {
+<span class="nc" id="L109">		this();</span>
+<span class="nc" id="L110">		loadCaches( eng );</span>
+<span class="nc" id="L111">	}</span>
+
+	public void release() {
+<span class="nc bnc" id="L114" title="All 2 branches missed.">		if ( null != db ) {</span>
+<span class="nc" id="L115">			db.close();</span>
+<span class="nc" id="L116">			FileUtils.deleteQuietly( backingfile );</span>
+		}
+<span class="nc" id="L118">	}</span>
+
+	public Set&lt;URI&gt; getKnownUris() {
+<span class="nc" id="L121">		Set&lt;URI&gt; set = new HashSet&lt;&gt;( instanceClassCache.size()</span>
+<span class="nc" id="L122">				+ relationBaseClassCache.size() + relationCache.size()</span>
+<span class="nc" id="L123">				+ propertyClassCache.size() + dataNodes.size() );</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		for ( Map&lt;?, URI&gt; map : Arrays.asList( instanceClassCache, relationBaseClassCache,</span>
+				relationCache, propertyClassCache, dataNodes ) ) {
+<span class="nc" id="L126">			set.addAll( map.values() );</span>
+<span class="nc" id="L127">		}</span>
+
+<span class="nc" id="L129">		return set;</span>
+	}
+
+	/**
+	 * Separates any non-conforming data from the loading data. This removes the
+	 * offending data from &lt;code&gt;data&lt;/code&gt; and puts them in &lt;code&gt;errors&lt;/code&gt;
+	 *
+	 * @param data the data to check for errors
+	 * @param errors where to put non-conforming data. If null, this function does
+	 * nothing
+	 * @param engine the engine to check against
+	 */
+	public void separateConformanceErrors( ImportData data, ImportData errors,
+			IEngine engine ) {
+<span class="nc bnc" id="L143" title="All 2 branches missed.">		if ( null != errors ) {</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">			for ( LoadingSheetData d : data.getSheets() ) {</span>
+<span class="nc" id="L145">				List&lt;LoadingSheetData.LoadingNodeAndPropertyValues&gt; errs</span>
+<span class="nc" id="L146">						= checkConformance( d, engine, false );</span>
+
+<span class="nc bnc" id="L148" title="All 2 branches missed.">				if ( !errs.isEmpty() ) {</span>
+<span class="nc" id="L149">					LoadingSheetData errdata = LoadingSheetData.copyHeadersOf( d );</span>
+<span class="nc" id="L150">					errdata.setProperties( d.getPropertiesAndDataTypes() );</span>
+<span class="nc" id="L151">					errors.add( errdata );</span>
+
+<span class="nc" id="L153">					Set&lt;LoadingSheetData.LoadingNodeAndPropertyValues&gt; errvals = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">					for ( LoadingSheetData.LoadingNodeAndPropertyValues nap : errs ) {</span>
+<span class="nc" id="L155">						errvals.add( nap );</span>
+<span class="nc" id="L156">						errdata.add( nap );</span>
+<span class="nc" id="L157">					}</span>
+
+<span class="nc" id="L159">					d.removeAll( errvals );</span>
+				}
+<span class="nc" id="L161">			}</span>
+		}
+<span class="nc" id="L163">	}</span>
+
+	/**
+	 * Checks that the Loading Sheet's {@link LoadingSheetData#subjectType},
+	 * {@link LoadingSheetData#objectType}, and
+	 * {@link LoadingSheetData#getProperties()} exist in the given engine
+	 *
+	 * @param data the data to check
+	 * @return the same loading sheet as the &lt;code&gt;data&lt;/code&gt; arg
+	 */
+	public LoadingSheetData checkModelConformance( LoadingSheetData data ) {
+<span class="nc bnc" id="L174" title="All 2 branches missed.">		data.setSubjectTypeIsError( !instanceClassCache.containsKey( data.getSubjectType() ) );</span>
+
+<span class="nc bnc" id="L176" title="All 2 branches missed.">		if ( data.isRel() ) {</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">			data.setObjectTypeIsError( !instanceClassCache.containsKey( data.getObjectType() ) );</span>
+<span class="nc bnc" id="L178" title="All 2 branches missed.">			data.setRelationIsError( !hasCachedRelationClass( data.getRelname() ) );</span>
+		}
+
+<span class="nc bnc" id="L181" title="All 2 branches missed.">		for ( Map.Entry&lt;String, URI&gt; en : data.getPropertiesAndDataTypes().entrySet() ) {</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">			data.setPropertyIsError( en.getKey(), !propertyClassCache.containsKey( en.getKey() ) );</span>
+<span class="nc" id="L183">		}</span>
+
+<span class="nc" id="L185">		return data;</span>
+	}
+
+	public void loadCaches( IEngine engine ) {
+<span class="nc bnc" id="L189" title="All 4 branches missed.">		if ( null == engine.getSchemaBuilder() || null == engine.getDataBuilder() ) {</span>
+<span class="nc" id="L190">			log.error( &quot;this engine does not have a schema or data URI defined&quot; );</span>
+		}
+
+<span class="nc bnc" id="L193" title="All 2 branches missed.">		if ( ReificationStyle.LEGACY == EngineUtil2.getReificationStyle( engine ) ) {</span>
+<span class="nc" id="L194">			loadLegacy( engine );</span>
+		}
+		else {
+<span class="nc" id="L197">			load( engine );</span>
+		}
+<span class="nc" id="L199">	}</span>
+
+	/**
+	 * Checks conformance of the given data. The &lt;code&gt;data&lt;/code&gt; argument will
+	 * be updated when errors are found. Only relationship data can be
+	 * non-conforming.
+	 *
+	 * @param data the data to check
+	 * @param eng the engine to check against. Can be null if
+	 * &lt;code&gt;loadcaches&lt;/code&gt; is false
+	 * @param loadcaches call
+	 * {@link #loadCaches(gov.va.semoss.rdf.engine.api.IEngine)} first
+	 * @return a list of all {@link LoadingNodeAndPropertyValues} that fail the
+	 * check
+	 */
+	public List&lt;LoadingNodeAndPropertyValues&gt; checkConformance( LoadingSheetData data,
+			IEngine eng, boolean loadcaches ) {
+<span class="nc" id="L216">		List&lt;LoadingNodeAndPropertyValues&gt; failures = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L218" title="All 2 branches missed.">		if ( loadcaches ) {</span>
+<span class="nc" id="L219">			loadCaches( eng );</span>
+		}
+
+<span class="nc" id="L222">		String stype = data.getSubjectType();</span>
+<span class="nc" id="L223">		String otype = data.getObjectType();</span>
+
+<span class="nc" id="L225">		DataIterator di = data.iterator();</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">		while ( di.hasNext() ) {</span>
+<span class="nc" id="L227">			LoadingNodeAndPropertyValues nap = di.next();</span>
+			// check that the subject and object are in our instance cache
+<span class="nc" id="L229">			ConceptInstanceCacheKey skey</span>
+<span class="nc" id="L230">					= new ConceptInstanceCacheKey( stype, nap.getSubject() );</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">			nap.setSubjectIsError( !dataNodes.containsKey( skey ) );</span>
+
+<span class="nc bnc" id="L233" title="All 2 branches missed.">			if ( data.isRel() ) {</span>
+<span class="nc" id="L234">				ConceptInstanceCacheKey okey</span>
+<span class="nc" id="L235">						= new ConceptInstanceCacheKey( otype, nap.getObject() );</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">				nap.setObjectIsError( !dataNodes.containsKey( okey ) );</span>
+			}
+
+<span class="nc bnc" id="L239" title="All 2 branches missed.">			if ( nap.hasError() ) {</span>
+<span class="nc" id="L240">				failures.add( nap );</span>
+			}
+<span class="nc" id="L242">		}</span>
+
+<span class="nc" id="L244">		return failures;</span>
+	}
+
+	/**
+	 * Checks for an instance of the given type and label.
+	 * {@link #loadCaches(gov.va.semoss.rdf.engine.api.IEngine)} MUST be called
+	 * prior to this function to have any hope at a true result
+	 *
+	 * @param type
+	 * @param label
+	 * @return true, if the type/label matches a cached value
+	 */
+	public boolean instanceExists( String type, String label ) {
+<span class="nc" id="L257">		return dataNodes.containsKey( new ConceptInstanceCacheKey( type, label ) );</span>
+	}
+
+	public void cacheUris( CacheType type, Map&lt;String, URI&gt; newtocache ) {
+<span class="nc bnc" id="L261" title="All 2 branches missed.">		if ( null == type ) {</span>
+<span class="nc" id="L262">			throw new IllegalArgumentException( &quot;cache type cannot be null&quot; );</span>
+		}
+<span class="nc bnc" id="L264" title="All 4 branches missed.">		switch ( type ) {</span>
+			case CONCEPTCLASS:
+<span class="nc" id="L266">				instanceClassCache.putAll( newtocache );</span>
+<span class="nc" id="L267">				break;</span>
+			case PROPERTYCLASS:
+<span class="nc" id="L269">				propertyClassCache.putAll( newtocache );</span>
+<span class="nc" id="L270">				break;</span>
+			case RELATIONCLASS:
+<span class="nc" id="L272">				relationBaseClassCache.putAll( newtocache );</span>
+<span class="nc" id="L273">				break;</span>
+			default:
+<span class="nc" id="L275">				throw new IllegalArgumentException( &quot;unhandled cache type: &quot; + type );</span>
+		}
+<span class="nc" id="L277">	}</span>
+
+	public Map&lt;String, URI&gt; getCache( CacheType type ) {
+<span class="nc bnc" id="L280" title="All 4 branches missed.">		switch ( type ) {</span>
+			case CONCEPTCLASS:
+<span class="nc" id="L282">				return new HashMap&lt;&gt;( instanceClassCache );</span>
+			case PROPERTYCLASS:
+<span class="nc" id="L284">				return new HashMap&lt;&gt;( propertyClassCache );</span>
+			case RELATIONCLASS:
+<span class="nc" id="L286">				return new HashMap&lt;&gt;( relationBaseClassCache );</span>
+			default:
+<span class="nc" id="L288">				throw new IllegalArgumentException( &quot;unhandled cache type: &quot; + type );</span>
+		}
+	}
+
+	public void cacheConceptInstances( Map&lt;String, URI&gt; instances, String typelabel ) {
+<span class="nc bnc" id="L293" title="All 2 branches missed.">		for ( Map.Entry&lt;String, URI&gt; en : instances.entrySet() ) {</span>
+<span class="nc" id="L294">			String l = en.getKey();</span>
+<span class="nc" id="L295">			URI uri = en.getValue();</span>
+
+<span class="nc" id="L297">			ConceptInstanceCacheKey key = new ConceptInstanceCacheKey( typelabel, l );</span>
+			//log.debug( &quot;conceptinstances : &quot; + key + &quot; -&gt; &quot; + en.getValue() );
+<span class="nc" id="L299">			dataNodes.put( key, uri );</span>
+<span class="nc" id="L300">		}</span>
+<span class="nc" id="L301">	}</span>
+
+	/**
+	 * Clears the caches
+	 */
+	public void clear() {
+<span class="nc" id="L307">		instanceClassCache.clear();</span>
+<span class="nc" id="L308">		dataNodes.clear();</span>
+<span class="nc" id="L309">		relationBaseClassCache.clear();</span>
+<span class="nc" id="L310">		relationCache.clear();</span>
+<span class="nc" id="L311">		propertyClassCache.clear();</span>
+<span class="nc" id="L312">	}</span>
+
+	/**
+	 * Resets the caches to these calues
+	 *
+	 * @param schemaNodes
+	 * @param dataNodes
+	 * @param relationClassCache
+	 * @param relationCache
+	 * @param propertyClassCache
+	 */
+	public void setCaches( Map&lt;String, URI&gt; schemaNodes,
+			Map&lt;ConceptInstanceCacheKey, URI&gt; dataNodes,
+			Map&lt;String, URI&gt; relationClassCache,
+			Map&lt;RelationCacheKey, URI&gt; relationCache, Map&lt;String, URI&gt; propertyClassCache ) {
+<span class="nc" id="L327">		clear();</span>
+<span class="nc" id="L328">		this.instanceClassCache.putAll( schemaNodes );</span>
+<span class="nc" id="L329">		this.dataNodes.putAll( dataNodes );</span>
+		//this.propertiedRelationClassCache.putAll( relationClassCache );
+
+<span class="nc" id="L332">		this.relationBaseClassCache.putAll( relationClassCache );</span>
+<span class="nc" id="L333">		this.relationCache.putAll( relationCache );</span>
+<span class="nc" id="L334">		this.propertyClassCache.putAll( propertyClassCache );</span>
+<span class="nc" id="L335">	}</span>
+
+	public URI getCachedRelationClass( String key ) {
+<span class="nc" id="L338">		return relationBaseClassCache.get( key );</span>
+		//return propertiedRelationClassCache.get( key );
+	}
+
+	public URI getCachedPropertyClass( String name ) {
+<span class="nc" id="L343">		return propertyClassCache.get( name );</span>
+	}
+
+	public URI getCachedRelation( RelationCacheKey key ) {
+<span class="nc" id="L347">		return relationCache.get( key );</span>
+	}
+
+	public URI getCachedInstance( String typename, String rawlabel ) {
+<span class="nc" id="L351">		return dataNodes.get( new ConceptInstanceCacheKey( typename, rawlabel ) );</span>
+	}
+
+	public URI getCachedInstanceClass( String name ) {
+<span class="nc" id="L355">		return instanceClassCache.get( name );</span>
+	}
+
+	public boolean hasCachedRelationClass( String key ) {
+<span class="nc" id="L359">		return relationBaseClassCache.containsKey( key );</span>
+	}
+
+	public boolean hasCachedPropertyClass( String name ) {
+<span class="nc" id="L363">		return propertyClassCache.containsKey( name );</span>
+	}
+
+	public boolean hasCachedRelation( String stype, String otype, String relname,
+			String slabel, String olabel ) {
+<span class="nc" id="L368">		return hasCachedRelation( new RelationCacheKey( stype, otype, relname,</span>
+				slabel, olabel ) );
+	}
+
+	public boolean hasCachedRelation( RelationCacheKey key ) {
+<span class="nc" id="L373">		return relationCache.containsKey( key );</span>
+	}
+
+	public boolean hasCachedInstance( String typename, String rawlabel ) {
+<span class="nc" id="L377">		return hasCachedInstance( new ConceptInstanceCacheKey( typename, rawlabel ) );</span>
+	}
+
+	public boolean hasCachedInstance( ConceptInstanceCacheKey key ) {
+<span class="nc" id="L381">		return dataNodes.containsKey( key );</span>
+	}
+
+	public boolean hasCachedInstanceClass( String name ) {
+<span class="nc" id="L385">		return instanceClassCache.containsKey( name );</span>
+	}
+
+	public void cachePropertyClass( URI uri, String name ) {
+<span class="nc" id="L389">		propertyClassCache.put( name, uri );</span>
+<span class="nc" id="L390">	}</span>
+
+	public void cacheInstanceClass( URI uri, String label ) {
+<span class="nc" id="L393">		instanceClassCache.put( label, uri );</span>
+<span class="nc" id="L394">	}</span>
+
+	public void cacheRelationNode( URI uri, String stype, String otype,
+			String relname, String slabel, String olabel ) {
+<span class="nc" id="L398">		cacheRelationNode( uri, new RelationCacheKey( stype, otype, relname, slabel,</span>
+				olabel ) );
+<span class="nc" id="L400">	}</span>
+
+	public void cacheRelationNode( URI uri, RelationCacheKey key ) {
+<span class="nc" id="L403">		relationCache.put( key, uri );</span>
+<span class="nc" id="L404">	}</span>
+
+	public void cacheRelationClass( URI uri, String key ) {
+<span class="nc" id="L407">		relationBaseClassCache.put( key, uri );</span>
+<span class="nc" id="L408">	}</span>
+
+	public void cacheInstance( URI uri, String typelabel, String rawlabel ) {
+<span class="nc" id="L411">		dataNodes.put( new ConceptInstanceCacheKey( typelabel, rawlabel ), uri );</span>
+<span class="nc" id="L412">	}</span>
+
+	private void loadLegacy( IEngine engine ) {
+<span class="nc" id="L415">		final Map&lt;String, URI&gt; map = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L416">		String subpropq = &quot;SELECT ?uri ?label WHERE { ?uri rdfs:label ?label . ?uri ?isa ?type }&quot;;</span>
+<span class="nc" id="L417">		VoidQueryAdapter vqa = new VoidQueryAdapter( subpropq ) {</span>
+
+			@Override
+			public void handleTuple( BindingSet set, ValueFactory fac ) {
+<span class="nc" id="L421">				map.put( set.getValue( &quot;label&quot; ).stringValue(),</span>
+<span class="nc" id="L422">						URI.class.cast( cleanValue( set.getValue( &quot;uri&quot; ), fac ) ) );</span>
+<span class="nc" id="L423">			}</span>
+
+			@Override
+			public void start( List&lt;String&gt; bnames ) {
+<span class="nc" id="L427">				super.start( bnames );</span>
+<span class="nc" id="L428">				map.clear();</span>
+<span class="nc" id="L429">			}</span>
+		};
+<span class="nc" id="L431">		vqa.useInferred( true );</span>
+<span class="nc" id="L432">		UriBuilder owlb = engine.getSchemaBuilder();</span>
+
+		try {
+<span class="nc" id="L435">			URI type = owlb.getRelationUri().build();</span>
+<span class="nc" id="L436">			vqa.bind( &quot;type&quot;, type );</span>
+<span class="nc" id="L437">			vqa.bind( &quot;isa&quot;, RDFS.SUBPROPERTYOF );</span>
+<span class="nc" id="L438">			engine.query( vqa );</span>
+
+<span class="nc" id="L440">			Map&lt;String, URI&gt; props = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L441" title="All 2 branches missed.">			for ( Map.Entry&lt;String, URI&gt; en : map.entrySet() ) {</span>
+<span class="nc" id="L442">				props.put( en.getKey(), en.getValue() );</span>
+<span class="nc" id="L443">			}</span>
+
+<span class="nc" id="L445">			cacheUris( CacheType.PROPERTYCLASS, props );</span>
+
+<span class="nc" id="L447">			vqa.bind( &quot;isa&quot;, RDFS.SUBCLASSOF );</span>
+<span class="nc" id="L448">			type = owlb.getConceptUri().build();</span>
+<span class="nc" id="L449">			vqa.bind( &quot;type&quot;, type );</span>
+<span class="nc" id="L450">			engine.query( vqa );</span>
+<span class="nc" id="L451">			cacheUris( CacheType.CONCEPTCLASS, map );</span>
+
+<span class="nc" id="L453">			vqa.bind( &quot;isa&quot;, RDF.TYPE );</span>
+<span class="nc" id="L454">			Map&lt;String, URI&gt; concepts = new HashMap&lt;&gt;( map );</span>
+<span class="nc bnc" id="L455" title="All 2 branches missed.">			for ( Map.Entry&lt;String, URI&gt; en : concepts.entrySet() ) {</span>
+<span class="nc" id="L456">				vqa.bind( &quot;type&quot;, en.getValue() );</span>
+
+<span class="nc" id="L458">				engine.query( vqa );</span>
+<span class="nc" id="L459">				cacheConceptInstances( map, en.getKey() );</span>
+<span class="nc" id="L460">			}</span>
+
+<span class="nc" id="L462">			Set&lt;URI&gt; needlabels = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L463">			String relq = &quot;SELECT DISTINCT * WHERE {&quot;</span>
+					+ &quot; ?left a ?lefttype .&quot;
+					+ &quot; ?lefttype a owl:Class .&quot;
+					+ &quot; ?right a ?righttype .&quot;
+					+ &quot; ?righttype a owl:Class .&quot;
+					+ &quot; ?left ?specrel ?right .&quot;
+					+ &quot; ?specrel rdfs:subPropertyOf ?reltype .&quot;
+					+ &quot;}&quot;;
+
+<span class="nc" id="L472">			ListQueryAdapter&lt;URI[]&gt; vqa2 = new ListQueryAdapter&lt;URI[]&gt;( relq ) {</span>
+
+				@Override
+				public void handleTuple( BindingSet set, ValueFactory fac ) {
+<span class="nc" id="L476">					URI reltype = URI.class.cast( set.getValue( &quot;reltype&quot; ) );</span>
+<span class="nc" id="L477">					URI lefttype = URI.class.cast( set.getValue( &quot;lefttype&quot; ) );</span>
+<span class="nc" id="L478">					URI righttype = URI.class.cast( set.getValue( &quot;righttype&quot; ) );</span>
+<span class="nc" id="L479">					URI left = URI.class.cast( set.getValue( &quot;left&quot; ) );</span>
+<span class="nc" id="L480">					URI right = URI.class.cast( set.getValue( &quot;right&quot; ) );</span>
+<span class="nc" id="L481">					URI specrel = URI.class.cast( set.getValue( &quot;specrel&quot; ) );</span>
+
+<span class="nc" id="L483">					URI[] uris = new URI[]{ lefttype, righttype, reltype, left, right, specrel };</span>
+<span class="nc" id="L484">					needlabels.addAll( Arrays.asList( uris ) );</span>
+<span class="nc" id="L485">					add( uris );</span>
+<span class="nc" id="L486">				}</span>
+
+			};
+
+<span class="nc" id="L490">			vqa2.useInferred( false );</span>
+<span class="nc" id="L491">			List&lt;URI[]&gt; data = engine.query( vqa2 );</span>
+<span class="nc" id="L492">			Map&lt;URI, String&gt; labels = Utility.getInstanceLabels( needlabels, engine );</span>
+<span class="nc bnc" id="L493" title="All 2 branches missed.">			for ( URI[] uris : data ) {</span>
+<span class="nc" id="L494">				cacheRelationNode( uris[5], labels.get( uris[0] ),</span>
+<span class="nc" id="L495">						labels.get( uris[1] ), labels.get( uris[2] ),</span>
+<span class="nc" id="L496">						labels.get( uris[3] ), labels.get( uris[4] ) );</span>
+<span class="nc" id="L497">			}</span>
+
+		}
+<span class="nc" id="L500">		catch ( RepositoryException | MalformedQueryException | QueryEvaluationException e ) {</span>
+<span class="nc" id="L501">			log.warn( e, e );</span>
+<span class="nc" id="L502">		}</span>
+<span class="nc" id="L503">	}</span>
+
+	private void load( IEngine engine ) {
+<span class="nc" id="L506">		StructureManager sm = StructureManagerFactory.getStructureManager( engine );</span>
+<span class="nc" id="L507">		Model model = sm.rebuild( false );</span>
+
+<span class="nc" id="L509">		Set&lt;URI&gt; datatypeProps = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L510" title="All 2 branches missed.">		for ( Statement s : model.filter( null, OWL.DATATYPEPROPERTY, null ) ) {</span>
+<span class="nc" id="L511">			datatypeProps.add( URI.class.cast( s.getObject() ) );</span>
+<span class="nc" id="L512">		}</span>
+<span class="nc" id="L513">		Map&lt;URI, String&gt; dtlabels = Utility.getInstanceLabels( datatypeProps, engine );</span>
+<span class="nc" id="L514">		cacheUris( CacheType.PROPERTYCLASS, MultiMap.lossyflip( dtlabels ) );</span>
+
+<span class="nc" id="L516">		Set&lt;URI&gt; rels = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L517" title="All 2 branches missed.">		for ( Value v : model.filter( null, RDF.PREDICATE, null ).objects() ) {</span>
+<span class="nc" id="L518">			rels.add( URI.class.cast( v ) );</span>
+<span class="nc" id="L519">		}</span>
+<span class="nc" id="L520">		Map&lt;URI, String&gt; rellabels = Utility.getInstanceLabels( rels, engine );</span>
+<span class="nc" id="L521">		cacheUris( CacheType.RELATIONCLASS, MultiMap.lossyflip( rellabels ) );</span>
+
+<span class="nc" id="L523">		Map&lt;URI, String&gt; cpclabels = Utility.getInstanceLabels( sm.getTopLevelConcepts(), engine );</span>
+<span class="nc" id="L524">		cacheUris( CacheType.CONCEPTCLASS, MultiMap.lossyflip( cpclabels ) );</span>
+
+		// cache concept instances
+<span class="nc bnc" id="L527" title="All 2 branches missed.">		for ( Map.Entry&lt;URI, String&gt; en : rellabels.entrySet() ) {</span>
+<span class="nc" id="L528">			List&lt;URI&gt; instances</span>
+<span class="nc" id="L529">					= NodeDerivationTools.createInstanceList( en.getKey(), engine );</span>
+<span class="nc" id="L530">			Map&lt;URI, String&gt; names = Utility.getInstanceLabels( instances, engine );</span>
+<span class="nc bnc" id="L531" title="All 2 branches missed.">			for ( Map.Entry&lt;URI, String&gt; en2 : names.entrySet() ) {</span>
+<span class="nc" id="L532">				cacheInstance( en2.getKey(), en.getValue(), en2.getValue() );</span>
+<span class="nc" id="L533">			}</span>
+<span class="nc" id="L534">		}</span>
+
+		// cache relation instances
+<span class="nc" id="L537">		Model preds = model.filter( null, RDF.PREDICATE, null );</span>
+<span class="nc bnc" id="L538" title="All 2 branches missed.">		for ( Statement s : preds ) {</span>
+<span class="nc" id="L539">			URI pred = URI.class.cast( s.getObject() );</span>
+<span class="nc" id="L540">			String relname = rellabels.get( pred );</span>
+
+			// get the subject from the RDFS.DOMAIN statements
+			// and the object from the RDFS.RANGE statements
+<span class="nc bnc" id="L544" title="All 2 branches missed.">			for ( Statement t : model.filter( s.getSubject(), RDFS.DOMAIN, null ) ) {</span>
+<span class="nc" id="L545">				URI stype = URI.class.cast( t.getObject() );</span>
+<span class="nc" id="L546">				String stypelabel = cpclabels.get( stype );</span>
+
+<span class="nc bnc" id="L548" title="All 2 branches missed.">				for ( Statement u : model.filter( s.getSubject(), RDFS.RANGE, null ) ) {</span>
+<span class="nc" id="L549">					URI otype = URI.class.cast( u.getObject() );</span>
+<span class="nc" id="L550">					String otypelabel = cpclabels.get( otype );</span>
+
+<span class="nc" id="L552">					Model instancemodel = NodeDerivationTools.getInstances( stype, pred,</span>
+							otype, null, engine );
+<span class="nc" id="L554">					List&lt;Resource&gt; objs = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L555">					instancemodel.objects().forEach( new Consumer&lt;Value&gt;() {</span>
+
+						@Override
+						public void accept( Value t ) {
+<span class="nc" id="L559">							objs.add( Resource.class.cast( t ) );</span>
+<span class="nc" id="L560">						}</span>
+					} );
+<span class="nc" id="L562">					Map&lt;Resource, String&gt; lkp</span>
+<span class="nc" id="L563">							= Utility.getInstanceLabels( instancemodel.subjects(), engine );</span>
+<span class="nc" id="L564">					lkp.putAll( Utility.getInstanceLabels( objs, engine ) );</span>
+
+<span class="nc bnc" id="L566" title="All 2 branches missed.">					for ( Statement instance : instancemodel ) {</span>
+<span class="nc" id="L567">						RelationCacheKey rck = new RelationCacheKey(</span>
+								stypelabel,
+								otypelabel,
+								relname,
+<span class="nc" id="L571">								lkp.get( instance.getSubject() ),</span>
+<span class="nc" id="L572">								lkp.get( Resource.class.cast( instance.getObject() ) ) );</span>
+<span class="nc" id="L573">						cacheRelationNode( instance.getPredicate(), rck );</span>
+<span class="nc" id="L574">					}</span>
+<span class="nc" id="L575">				}</span>
+<span class="nc" id="L576">			}</span>
+<span class="nc" id="L577">		}</span>
+<span class="nc" id="L578">	}</span>
+
+	public static class ConceptInstanceCacheKey implements Serializable,
+			Comparable&lt;ConceptInstanceCacheKey&gt; {
+
+		private final String typelabel;
+		private final String rawlabel;
+
+<span class="nc" id="L586">		public ConceptInstanceCacheKey( String typelabel, String conceptlabel ) {</span>
+<span class="nc" id="L587">			this.typelabel = typelabel;</span>
+<span class="nc" id="L588">			this.rawlabel = conceptlabel;</span>
+<span class="nc" id="L589">		}</span>
+
+		public String getTypeLabel() {
+<span class="nc" id="L592">			return typelabel;</span>
+		}
+
+		public String getConceptLabel() {
+<span class="nc" id="L596">			return rawlabel;</span>
+		}
+
+		@Override
+		public String toString() {
+<span class="nc" id="L601">			return &quot;instance &quot; + typelabel + &quot;&lt;-&gt;&quot; + rawlabel;</span>
+		}
+
+		@Override
+		public int hashCode() {
+<span class="nc" id="L606">			int hash = 7;</span>
+<span class="nc" id="L607">			hash = 89 * hash + Objects.hashCode( this.typelabel );</span>
+<span class="nc" id="L608">			hash = 89 * hash + Objects.hashCode( this.rawlabel );</span>
+<span class="nc" id="L609">			return hash;</span>
+		}
+
+		@Override
+		public boolean equals( Object obj ) {
+<span class="nc bnc" id="L614" title="All 2 branches missed.">			if ( obj == null ) {</span>
+<span class="nc" id="L615">				return false;</span>
+			}
+<span class="nc bnc" id="L617" title="All 2 branches missed.">			if ( getClass() != obj.getClass() ) {</span>
+<span class="nc" id="L618">				return false;</span>
+			}
+<span class="nc" id="L620">			final ConceptInstanceCacheKey other = (ConceptInstanceCacheKey) obj;</span>
+<span class="nc bnc" id="L621" title="All 2 branches missed.">			if ( !Objects.equals( this.typelabel, other.typelabel ) ) {</span>
+<span class="nc" id="L622">				return false;</span>
+			}
+<span class="nc" id="L624">			return ( Objects.equals( this.rawlabel, other.rawlabel ) );</span>
+		}
+
+		@Override
+		public int compareTo( ConceptInstanceCacheKey o ) {
+<span class="nc" id="L629">			int diff = typelabel.compareTo( o.typelabel );</span>
+<span class="nc bnc" id="L630" title="All 2 branches missed.">			if ( 0 == diff ) {</span>
+<span class="nc" id="L631">				return rawlabel.compareTo( o.rawlabel );</span>
+			}
+<span class="nc" id="L633">			return diff;</span>
+		}
+	}
+
+	public static class RelationCacheKey implements Serializable,
+			Comparable&lt;RelationCacheKey&gt; {
+
+		private final String s;
+		private final String o;
+		private final String relname;
+		private final String stype;
+		private final String otype;
+
+		public RelationCacheKey( String stype, String otype, String relname,
+<span class="nc" id="L647">				String s, String o ) {</span>
+<span class="nc" id="L648">			this.s = s;</span>
+<span class="nc" id="L649">			this.o = o;</span>
+<span class="nc" id="L650">			this.relname = relname;</span>
+<span class="nc" id="L651">			this.stype = stype;</span>
+<span class="nc" id="L652">			this.otype = otype;</span>
+<span class="nc" id="L653">		}</span>
+
+		@Override
+		public int hashCode() {
+<span class="nc" id="L657">			int hash = 3;</span>
+<span class="nc" id="L658">			hash = 97 * hash + Objects.hashCode( this.s );</span>
+<span class="nc" id="L659">			hash = 97 * hash + Objects.hashCode( this.o );</span>
+<span class="nc" id="L660">			hash = 97 * hash + Objects.hashCode( this.relname );</span>
+<span class="nc" id="L661">			hash = 97 * hash + Objects.hashCode( this.stype );</span>
+<span class="nc" id="L662">			hash = 97 * hash + Objects.hashCode( this.otype );</span>
+<span class="nc" id="L663">			return hash;</span>
+		}
+
+		@Override
+		public boolean equals( Object obj ) {
+<span class="nc bnc" id="L668" title="All 2 branches missed.">			if ( obj == null ) {</span>
+<span class="nc" id="L669">				return false;</span>
+			}
+<span class="nc bnc" id="L671" title="All 2 branches missed.">			if ( getClass() != obj.getClass() ) {</span>
+<span class="nc" id="L672">				return false;</span>
+			}
+<span class="nc" id="L674">			final RelationCacheKey other = (RelationCacheKey) obj;</span>
+<span class="nc bnc" id="L675" title="All 2 branches missed.">			if ( !Objects.equals( this.s, other.s ) ) {</span>
+<span class="nc" id="L676">				return false;</span>
+			}
+<span class="nc bnc" id="L678" title="All 2 branches missed.">			if ( !Objects.equals( this.o, other.o ) ) {</span>
+<span class="nc" id="L679">				return false;</span>
+			}
+<span class="nc bnc" id="L681" title="All 2 branches missed.">			if ( !Objects.equals( this.relname, other.relname ) ) {</span>
+<span class="nc" id="L682">				return false;</span>
+			}
+<span class="nc bnc" id="L684" title="All 2 branches missed.">			if ( !Objects.equals( this.stype, other.stype ) ) {</span>
+<span class="nc" id="L685">				return false;</span>
+			}
+<span class="nc bnc" id="L687" title="All 2 branches missed.">			if ( !Objects.equals( this.otype, other.otype ) ) {</span>
+<span class="nc" id="L688">				return false;</span>
+			}
+<span class="nc" id="L690">			return true;</span>
+		}
+
+		@Override
+		public String toString() {
+<span class="nc" id="L695">			return String.format( &quot;%s%s%s%s%s&quot;, stype, otype, s, o, relname );</span>
+		}
+
+		@Override
+		public int compareTo( RelationCacheKey other ) {
+<span class="nc" id="L700">			return toString().compareTo( other.toString() );</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

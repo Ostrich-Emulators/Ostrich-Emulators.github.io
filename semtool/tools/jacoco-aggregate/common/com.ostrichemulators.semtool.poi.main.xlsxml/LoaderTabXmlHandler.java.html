@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>LoaderTabXmlHandler.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.poi.main.xlsxml</a> &gt; <span class="el_source">LoaderTabXmlHandler.java</span></div><h1>LoaderTabXmlHandler.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.poi.main.xlsxml;
+
+import com.ostrichemulators.semtool.poi.main.ImportValidationException;
+import com.ostrichemulators.semtool.poi.main.ImportValidationException.ErrorType;
+import com.ostrichemulators.semtool.poi.main.SheetType;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.log4j.Logger;
+import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
+
+/**
+ * An XML parser that handles the Loading Sheet's &quot;Loader&quot; tab
+ *
+ * @author ryan
+ */
+public class LoaderTabXmlHandler extends XlsXmlBase {
+
+<span class="nc" id="L26">	private static final Logger log = Logger.getLogger( LoaderTabXmlHandler.class );</span>
+<span class="nc" id="L27">	private final Map&lt;String, SheetType&gt; sheettypes = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L28">	private final Map&lt;String, String&gt; rawdata = new LinkedHashMap&lt;&gt;();</span>
+	private int rownum;
+	private int colnum;
+	private String colA;
+<span class="nc" id="L32">	private boolean isstring = false;</span>
+
+	public LoaderTabXmlHandler( List&lt;String&gt; sst ) {
+<span class="nc" id="L35">		super( sst );</span>
+<span class="nc" id="L36">	}</span>
+
+	public Map&lt;String, SheetType&gt; getSheetTypes() {
+<span class="nc" id="L39">		return new HashMap&lt;&gt;( sheettypes );</span>
+	}
+
+	@Override
+	public void startDocument() throws SAXException {
+<span class="nc" id="L44">		super.startDocument();</span>
+<span class="nc" id="L45">		rawdata.clear();</span>
+<span class="nc" id="L46">	}</span>
+
+	@Override
+	public void endDocument() throws SAXException {
+<span class="nc" id="L50">		super.endDocument();</span>
+
+<span class="nc" id="L52">		rownum = 0;</span>
+<span class="nc" id="L53">		boolean mustHaveType = true;</span>
+
+<span class="nc bnc" id="L55" title="All 2 branches missed.">		for ( Map.Entry&lt;String, String&gt; en : rawdata.entrySet() ) {</span>
+<span class="nc" id="L56">			String rawA = en.getKey();</span>
+<span class="nc" id="L57">			String rawB = en.getValue();</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">			if ( 0 == rownum ) {</span>
+<span class="nc" id="L59">				mustHaveType = verifyHeaders( rawA, rawB );</span>
+			}
+			else {
+<span class="nc bnc" id="L62" title="All 2 branches missed.">				boolean stopnow = !fillInRow( rawA, rawB, mustHaveType );</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">				if ( stopnow ) {</span>
+<span class="nc" id="L64">					break;</span>
+				}
+			}
+
+<span class="nc" id="L68">			rownum++;</span>
+<span class="nc" id="L69">		}</span>
+<span class="nc" id="L70">	}</span>
+
+	@Override
+	public void startElement( String uri, String localName, String name,
+			Attributes attributes ) throws SAXException {
+<span class="nc bnc" id="L75" title="All 14 branches missed.">		switch ( name ) {</span>
+			case &quot;row&quot;:
+<span class="nc" id="L77">				rownum = Integer.parseInt( attributes.getValue( &quot;r&quot; ) ) - 1;</span>
+<span class="nc" id="L78">				colA = &quot;&quot;;</span>
+<span class="nc" id="L79">				break;</span>
+
+			case &quot;c&quot;: // c is a new cell
+<span class="nc" id="L82">				String celltypestr = attributes.getValue( &quot;t&quot; );</span>
+<span class="nc" id="L83">				isstring = ( &quot;s&quot;.equals( celltypestr ) );</span>
+
+<span class="nc" id="L85">				String colname = attributes.getValue( &quot;r&quot; );</span>
+<span class="nc" id="L86">				colnum = LoadingSheetXmlHandler.getColNum( colname.substring( 0,</span>
+<span class="nc" id="L87">						colname.lastIndexOf( Integer.toString( rownum + 1 ) ) ) );</span>
+<span class="nc" id="L88">				break;</span>
+
+			case &quot;v&quot;: // new value for a cell
+<span class="nc" id="L91">				setReading( isstring );</span>
+<span class="nc" id="L92">				resetContents();</span>
+				break;
+		}
+
+<span class="nc" id="L96">	}</span>
+
+	@Override
+	public void endElement( String uri, String localName, String name )
+			throws SAXException {
+<span class="nc bnc" id="L101" title="All 2 branches missed.">		if ( isReading() ) {</span>
+<span class="nc" id="L102">			String val = getStringFromContentsInt();</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">			if ( 0 == colnum ) {</span>
+<span class="nc" id="L104">				colA = val;</span>
+<span class="nc" id="L105">				rawdata.put( val, null );</span>
+			}
+<span class="nc bnc" id="L107" title="All 2 branches missed.">			else if ( 1 == colnum ) {</span>
+<span class="nc" id="L108">				rawdata.put( colA, val );</span>
+			}
+<span class="nc bnc" id="L110" title="All 2 branches missed.">			else if ( !decomment( val ).isEmpty() ) {</span>
+<span class="nc" id="L111">				throw new ImportValidationException( ErrorType.TOO_MUCH_DATA,</span>
+						&quot;Too much data in row &quot; + rownum );
+			}
+
+<span class="nc" id="L115">			setReading( false );</span>
+		}
+<span class="nc" id="L117">	}</span>
+
+	private static String decomment( String str ) {
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		if( null == str ){</span>
+<span class="nc" id="L121">			return &quot;&quot;;</span>
+		}
+		
+<span class="nc" id="L124">		return str.replaceAll( &quot;#.*&quot;, &quot;&quot; );</span>
+	}
+
+	private boolean verifyHeaders( String rawA, String rawB ) {
+<span class="nc" id="L128">		boolean mustHaveType = false;</span>
+
+<span class="nc bnc" id="L130" title="All 2 branches missed.">		if ( !&quot;Sheet Name&quot;.equalsIgnoreCase( rawA ) ) {</span>
+<span class="nc" id="L131">			throw new ImportValidationException( ErrorType.MISSING_DATA,</span>
+					&quot;Cell A1 must be \&quot;Sheet Name\&quot;&quot; );
+		}
+
+<span class="nc" id="L135">		String bcol = decomment( rawB );</span>
+
+<span class="nc bnc" id="L137" title="All 4 branches missed.">		if ( !( bcol.isEmpty() || &quot;Type&quot;.equalsIgnoreCase( bcol ) ) ) {</span>
+<span class="nc" id="L138">			throw new ImportValidationException( ErrorType.MISSING_DATA,</span>
+					&quot;Cell B1 must be \&quot;Type\&quot; if not omitted&quot; );
+		}
+		else {
+<span class="nc bnc" id="L142" title="All 2 branches missed.">			mustHaveType = !bcol.isEmpty();</span>
+		}
+
+<span class="nc" id="L145">		return mustHaveType;</span>
+	}
+
+	/**
+	 * Fills in a new sheet type
+	 *
+	 * @param rawA
+	 * @param rawB
+	 * @param mustHaveB
+	 * @return true if processing should continue to the next row. false ends the
+	 * data processing loop
+	 */
+	private boolean fillInRow( String rawA, String rawB, boolean mustHaveType ) {
+<span class="nc bnc" id="L158" title="All 2 branches missed.">		if ( rawA.startsWith( &quot;#&quot; ) ) {</span>
+<span class="nc" id="L159">			return true;</span>
+		}
+
+<span class="nc bnc" id="L162" title="All 4 branches missed.">		if ( rawA.isEmpty() &amp;&amp; rawB.isEmpty() ) {</span>
+<span class="nc" id="L163">			log.debug( &quot;empty row at &quot; + ( rownum + 1 ) + &quot;...skipping rest of tab&quot; );</span>
+<span class="nc" id="L164">			return false;</span>
+		}
+
+<span class="nc" id="L167">		String acol = decomment( rawA );</span>
+<span class="nc" id="L168">		String bcol = decomment( rawB );</span>
+
+<span class="nc bnc" id="L170" title="All 2 branches missed.">		if ( bcol.isEmpty() ) {</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">			if ( mustHaveType ) {</span>
+<span class="nc" id="L172">				throw new ImportValidationException( ErrorType.MISSING_DATA,</span>
+						&quot;No type specified for sheet &quot; + colA );
+			}
+			else {
+<span class="nc" id="L176">				sheettypes.put( acol, SheetType.UNSPECIFIED );</span>
+			}
+		}
+		else {
+<span class="nc bnc" id="L180" title="All 2 branches missed.">			if ( &quot;usual&quot;.equalsIgnoreCase( bcol ) ) {</span>
+<span class="nc" id="L181">				sheettypes.put( acol, SheetType.USUAL );</span>
+			}
+<span class="nc bnc" id="L183" title="All 2 branches missed.">			else if ( &quot;metadata&quot;.equalsIgnoreCase( bcol ) ) {</span>
+<span class="nc" id="L184">				sheettypes.put( acol, SheetType.METADATA );</span>
+			}
+			else {
+<span class="nc" id="L187">				throw new ImportValidationException( ErrorType.INVALID_TYPE,</span>
+						&quot;Column B&quot; + ( rownum + 1 )
+						+ &quot; must be either \&quot;Usual\&quot;, or \&quot;Metadata\&quot;&quot; );
+			}
+		}
+
+<span class="nc" id="L193">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

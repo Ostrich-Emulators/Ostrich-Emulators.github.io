@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ClusterEngine.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.impl</a> &gt; <span class="el_source">ClusterEngine.java</span></div><h1>ClusterEngine.java</h1><pre class="source lang-java linenums">package com.ostrichemulators.semtool.rdf.engine.impl;
+
+import com.ostrichemulators.semtool.om.Perspective;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.log4j.Logger;
+
+import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.repository.sail.SailRepository;
+import org.openrdf.sail.inferencer.fc.ForwardChainingRDFSInferencer;
+import org.openrdf.sail.memory.MemoryStore;
+
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import com.ostrichemulators.semtool.rdf.engine.api.InsightManager;
+import java.util.Properties;
+
+public class ClusterEngine extends AbstractSesameEngine {
+
+<span class="nc" id="L20">	private static final Logger log = Logger.getLogger( ClusterEngine.class );</span>
+	// for every class type and relation it tells you which
+	// database does this type belong in
+	// database-URL has-entity classtype
+	// database-URL has-entity relation
+	// database-URL search-index URL for search index
+	// entity has insight - How do we do entity combinations
+	// insight has:label question description
+	// insight has:sparql sparql
+	// insight uses-database InMemory-DB / URL
+
+	// keeps an in memory store which would be utilized for traverse freely
+<span class="nc" id="L32">	RepositoryConnection rc = null;</span>
+	private InsightManagerImpl insights;
+
+	// database names
+<span class="nc" id="L36">	Map&lt;String, IEngine&gt; engineHash = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L38">	public ClusterEngine() {</span>
+<span class="nc" id="L39">	}</span>
+
+	@Override
+	protected void createRc( Properties props ) {
+<span class="nc" id="L43">		ForwardChainingRDFSInferencer inferencer</span>
+				= new ForwardChainingRDFSInferencer( new MemoryStore() );
+<span class="nc" id="L45">		SailRepository repo = new SailRepository( inferencer );</span>
+		try {
+<span class="nc" id="L47">			repo.initialize();</span>
+<span class="nc" id="L48">			rc = repo.getConnection();</span>
+		}
+<span class="nc" id="L50">		catch ( Exception e ) {</span>
+<span class="nc" id="L51">			log.error( e, e );</span>
+<span class="nc" id="L52">		}</span>
+<span class="nc" id="L53">	}</span>
+
+	@Override
+	protected RepositoryConnection getRawConnection() {
+<span class="nc" id="L57">		return rc;</span>
+	}
+
+	// You register a database with the name server
+	// in this case you register an engine
+	// when registered all the questions are parsed out
+	// and saved in the above format
+	// to be queried
+	// there is a separate pane which starts giving you the interested questions
+	// very similar to the amazon piece where it says
+	// you might be interested in these questions too
+	// the question needs to be replaced with actual pieces
+	public void addEngine( IEngine engine ) {
+		// put it in the hash
+<span class="nc" id="L71">		engineHash.put( engine.getEngineName(), engine );</span>
+
+		// do the same with insights
+<span class="nc" id="L74">		initializeInsightBase();</span>
+<span class="nc" id="L75">		InsightManager ie = engine.getInsightManager();</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">		if ( ie != null ) {</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">			for ( Perspective p : ie.getPerspectives() ) {</span>
+<span class="nc" id="L78">				insights.add( p );</span>
+<span class="nc" id="L79">			}</span>
+		}
+<span class="nc" id="L81">	}</span>
+
+	public void initializeInsightBase() {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		if ( null == insights ) {</span>
+<span class="nc" id="L85">			insights = new InsightManagerImpl();</span>
+<span class="nc" id="L86">			setInsightManager( insights );</span>
+		}
+<span class="nc" id="L88">	}</span>
+
+	// the only other thing I really need to be able to do is
+	// say pull data from multiple of these engines
+	// I will leave the question for now
+	// gets all the questions tagged for this question type
+	public Collection&lt;String&gt; getQuestions( String... entityType ) {
+<span class="nc" id="L95">		throw new UnsupportedOperationException( &quot;this function was refactored away&quot; );</span>
+
+// get the insights and convert
+//    List&lt;String&gt; finalVector = new ArrayList&lt;&gt;();
+//    for ( String entityType1 : entityType ) {
+//      for ( IEngine eng : engineHash.values() ) {
+//        Collection&lt;String&gt; engineInsights = eng.getInsight4Type( entityType1 );
+//        // need to capture this so that I can relate this back to the engine when selected
+//        if ( engineInsights == null ) {
+//          finalVector.addAll( engineInsights );
+//        }
+//      }
+//    }
+//    return finalVector;
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

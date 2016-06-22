@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Insight.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.om</a> &gt; <span class="el_source">Insight.java</span></div><h1>Insight.java</h1><pre class="source lang-java linenums">package com.ostrichemulators.semtool.om;
+
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+
+import org.apache.log4j.Logger;
+import org.openrdf.model.URI;
+
+public class Insight implements Serializable {
+
+	private static final long serialVersionUID = 5192674160082789840L;
+<span class="nc" id="L17">	private static final Logger log = Logger.getLogger( Insight.class );</span>
+	//ID of the question:
+<span class="nc" id="L19">	private URI id = null;</span>
+	//Name of the question:
+<span class="nc" id="L21">	private String label = &quot;&quot;;</span>
+	//Sparql for the question:
+<span class="nc" id="L23">	private String sparql = &quot;&quot;;</span>
+	//The layout used to render this insight:
+	private InsightOutputType output;
+	//Description of Insight:
+<span class="nc" id="L27">	private String description = &quot;&quot;;</span>
+	//Author of Insight:
+<span class="nc" id="L29">	private String creator = &quot;&quot;;</span>
+	//Date Created:
+	private Date created;
+	//Date Modified:
+	private Date modified;
+
+	//The default value of this Insight is a Sparql query in most cases.
+	//Some Insights depend upon Java renderer classes, instead of queries.
+	//For these cases, this value may be altered from within the InsightManager:
+<span class="nc" id="L38">	private boolean defautlValueIsQuery = true;</span>
+
+	//InsightParameters:
+<span class="nc" id="L41">	private final List&lt;Parameter&gt; parameters = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L43">	public Insight() {</span>
+<span class="nc" id="L44">	}</span>
+
+<span class="nc" id="L46">	public Insight( String label, String sparql, InsightOutputType output ) {</span>
+<span class="nc" id="L47">		this.label = label;</span>
+<span class="nc" id="L48">		this.output = output;</span>
+<span class="nc" id="L49">		this.sparql = sparql;</span>
+<span class="nc" id="L50">		this.description = &quot;&quot;;</span>
+<span class="nc" id="L51">	}</span>
+
+<span class="nc" id="L53">	public Insight( String label ) {</span>
+<span class="nc" id="L54">		this.label = label;</span>
+<span class="nc" id="L55">	}</span>
+
+<span class="nc" id="L57">	public Insight( URI id, String label ) {</span>
+<span class="nc" id="L58">		this.id = id;</span>
+<span class="nc" id="L59">		this.label = label;</span>
+<span class="nc" id="L60">	}</span>
+
+<span class="nc" id="L62">	public Insight( Insight i ) {</span>
+<span class="nc" id="L63">		id = i.getId();</span>
+<span class="nc" id="L64">		label = i.getLabel();</span>
+<span class="nc" id="L65">		sparql = i.getSparql();</span>
+
+<span class="nc" id="L67">		output = i.getOutput();</span>
+<span class="nc" id="L68">		created = i.getCreated();</span>
+<span class="nc" id="L69">		modified = i.modified;</span>
+<span class="nc" id="L70">		creator = i.getCreator();</span>
+<span class="nc" id="L71">		description = i.getDescription();</span>
+
+<span class="nc" id="L73">		defautlValueIsQuery = i.defautlValueIsQuery;</span>
+
+<span class="nc bnc" id="L75" title="All 2 branches missed.">		for ( Parameter p : i.parameters ) {</span>
+<span class="nc" id="L76">			parameters.add( new Parameter( p ) );</span>
+<span class="nc" id="L77">		}</span>
+<span class="nc" id="L78">	}</span>
+
+	public URI getId() {
+<span class="nc" id="L81">		return id;</span>
+	}
+
+	public String getIdStr() {
+<span class="nc" id="L85">		return id.toString();</span>
+	}
+
+	public void setId( URI id ) {
+<span class="nc" id="L89">		this.id = id;</span>
+<span class="nc" id="L90">	}</span>
+
+	public InsightOutputType getOutput() {
+<span class="nc" id="L93">		return output;</span>
+	}
+
+	public void setOutput( InsightOutputType output ) {
+<span class="nc" id="L97">		this.output = output;</span>
+<span class="nc" id="L98">	}</span>
+
+	public String getLabel() {
+<span class="nc" id="L101">		return label;</span>
+	}
+
+	public void setLabel( String label ) {
+<span class="nc" id="L105">		this.label = label;</span>
+<span class="nc" id="L106">	}</span>
+
+	public String getSparql() {
+<span class="nc" id="L109">		return sparql;</span>
+	}
+
+	public void setSparql( String sparql ) {
+<span class="nc" id="L113">		this.sparql = sparql;</span>
+<span class="nc" id="L114">	}</span>
+
+	public Collection&lt;Parameter&gt; getInsightParameters() {
+<span class="nc" id="L117">		return this.parameters;</span>
+	}
+
+	public void setParameters( Collection&lt;Parameter&gt; params ) {
+<span class="nc" id="L121">		parameters.clear();</span>
+<span class="nc" id="L122">		parameters.addAll( params );</span>
+<span class="nc" id="L123">	}</span>
+
+	public boolean hasParameters(){
+<span class="nc bnc" id="L126" title="All 2 branches missed.">		return !parameters.isEmpty();</span>
+	}
+	
+	public void setDefaultValueIsQuery( boolean defaultValueIsQuery ) {
+<span class="nc" id="L130">		this.defautlValueIsQuery = defaultValueIsQuery;</span>
+<span class="nc" id="L131">	}</span>
+
+	public boolean getDefaultValueIsQuery() {
+<span class="nc" id="L134">		return this.defautlValueIsQuery;</span>
+	}
+
+	//Description of Insight:
+	public String getDescription() {
+<span class="nc" id="L139">		return description;</span>
+	}
+
+	public void setDescription( String description ) {
+<span class="nc" id="L143">		this.description = description;</span>
+<span class="nc" id="L144">	}</span>
+
+	//Author of Insight:
+	public String getCreator() {
+<span class="nc" id="L148">		return creator;</span>
+	}
+
+	public void setCreator( String creator ) {
+<span class="nc" id="L152">		this.creator = creator;</span>
+<span class="nc" id="L153">	}</span>
+
+	//Date Created:
+	public Date getCreated() {
+<span class="nc" id="L157">		return created;</span>
+	}
+
+	public void setCreated( Date created ) {
+<span class="nc" id="L161">		this.created = created;</span>
+<span class="nc" id="L162">	}</span>
+
+	//Date Modified:
+	public Date getModified() {
+<span class="nc" id="L166">		return modified;</span>
+	}
+
+	public void setModified( Date modified ) {
+<span class="nc" id="L170">		this.modified = modified;</span>
+<span class="nc" id="L171">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L175">		return label;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L180">		int hash = 7;</span>
+<span class="nc" id="L181">		hash = 37 * hash + Objects.hashCode( this.id );</span>
+<span class="nc" id="L182">		return hash;</span>
+	}
+
+	@Override
+	public boolean equals( Object obj ) {
+<span class="nc bnc" id="L187" title="All 2 branches missed.">		if ( obj == null ) {</span>
+<span class="nc" id="L188">			return false;</span>
+		}
+<span class="nc bnc" id="L190" title="All 2 branches missed.">		if ( getClass() != obj.getClass() ) {</span>
+<span class="nc" id="L191">			return false;</span>
+		}
+<span class="nc" id="L193">		final Insight other = (Insight) obj;</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">		if ( !Objects.equals( this.id, other.id ) ) {</span>
+<span class="nc" id="L195">			return false;</span>
+		}
+<span class="nc bnc" id="L197" title="All 2 branches missed.">		if ( !Objects.equals( this.label, other.label ) ) {</span>
+<span class="nc" id="L198">			return false;</span>
+		}
+<span class="nc" id="L200">		return true;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

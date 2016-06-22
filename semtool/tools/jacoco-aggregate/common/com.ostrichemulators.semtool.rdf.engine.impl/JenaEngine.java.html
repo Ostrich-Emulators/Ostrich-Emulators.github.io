@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>JenaEngine.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.impl</a> &gt; <span class="el_source">JenaEngine.java</span></div><h1>JenaEngine.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.impl;
+
+import com.hp.hpl.jena.graph.Node;
+import com.hp.hpl.jena.query.Dataset;
+import com.hp.hpl.jena.query.ReadWrite;
+import com.hp.hpl.jena.rdf.model.AnonId;
+import com.hp.hpl.jena.rdf.model.Literal;
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.Property;
+import com.hp.hpl.jena.rdf.model.RDFNode;
+import com.hp.hpl.jena.rdf.model.Statement;
+import com.hp.hpl.jena.rdf.model.StmtIterator;
+import com.hp.hpl.jena.tdb.TDBFactory;
+import com.ostrichemulators.semtool.rdf.engine.api.ModificationExecutor;
+import com.ostrichemulators.semtool.util.Constants;
+import java.io.File;
+import java.io.IOException;
+import java.util.Properties;
+import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
+import org.openrdf.model.BNode;
+import org.openrdf.model.Resource;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.repository.Repository;
+import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.repository.RepositoryException;
+import org.openrdf.repository.sail.SailRepository;
+import org.openrdf.rio.RDFHandler;
+import org.openrdf.rio.RDFHandlerException;
+import org.openrdf.sail.memory.MemoryStore;
+import org.openrdf.sail.nativerdf.NativeStore;
+
+/**
+ * A class to handle reading TDB files. Instead of maintaining an internal jena
+ * dataset, this class loads everything from the TDB into a separate OpenRDF
+ * repository (in-mem or on disk) on startup, and copies it back (if necessary)
+ * on close. Unfortunately, this means startup and shutdown can take a long
+ * time, but at least all the query interfaces are consistent across all
+ * engines.
+ *
+ * @author ryan
+ */
+public class JenaEngine extends AbstractSesameEngine {
+
+<span class="nc" id="L52">	private static final Logger log = Logger.getLogger( JenaEngine.class );</span>
+	public static final String FILE_PROP = &quot;file&quot;;
+	public static final String INMEM_PROP = &quot;inmem&quot;;
+	private RepositoryConnection rc;
+	private File datadir;
+	private File tdbdir;
+<span class="nc" id="L58">	private boolean needsSave = false;</span>
+
+<span class="nc" id="L60">	public JenaEngine() {</span>
+<span class="nc" id="L61">	}</span>
+
+<span class="nc" id="L63">	public JenaEngine( Dataset dataset ) throws RepositoryException {</span>
+<span class="nc" id="L64">		openDB( new Properties() );</span>
+<span class="nc" id="L65">		tdbdir = null;</span>
+		try {
+<span class="nc" id="L67">			copyFromTdb( dataset );</span>
+		}
+<span class="nc" id="L69">		catch ( Exception e ) {</span>
+<span class="nc" id="L70">			log.fatal( e, e );</span>
+<span class="nc" id="L71">		}</span>
+<span class="nc" id="L72">	}</span>
+
+	@Override
+	protected void createRc( Properties props ) throws RepositoryException {
+<span class="nc" id="L76">		boolean inmem = Boolean.parseBoolean( props.getProperty( INMEM_PROP,</span>
+<span class="nc" id="L77">				Boolean.toString( true ) ) );</span>
+<span class="nc" id="L78">		needsSave = false;</span>
+		SailRepository repo;
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		if ( inmem ) {</span>
+<span class="nc" id="L81">			repo = new SailRepository( new MemoryStore() );</span>
+		}
+		else {
+			try {
+<span class="nc" id="L85">				datadir = File.createTempFile( &quot;jena-temp-&quot;, &quot;.rdf&quot; );</span>
+<span class="nc" id="L86">				datadir.delete();</span>
+<span class="nc" id="L87">				datadir.mkdirs();</span>
+<span class="nc" id="L88">				datadir.deleteOnExit();</span>
+<span class="nc" id="L89">				repo = new SailRepository( new NativeStore( datadir ) );</span>
+			}
+<span class="nc" id="L91">			catch ( IOException ioe ) {</span>
+<span class="nc" id="L92">				log.error( &quot;could not create on-disk data store...using memory&quot;, ioe );</span>
+<span class="nc" id="L93">				repo = new SailRepository( new MemoryStore() );</span>
+<span class="nc" id="L94">			}</span>
+		}
+
+		try {
+<span class="nc" id="L98">			repo.initialize();</span>
+<span class="nc" id="L99">			rc = repo.getConnection();</span>
+		}
+<span class="nc" id="L101">		catch ( Exception e ) {</span>
+			try {
+<span class="nc" id="L103">				repo.shutDown();</span>
+			}
+<span class="nc" id="L105">			catch ( Exception ex ) {</span>
+<span class="nc" id="L106">				log.error( ex, ex );</span>
+<span class="nc" id="L107">			}</span>
+<span class="nc" id="L108">		}</span>
+
+<span class="nc bnc" id="L110" title="All 2 branches missed.">		if ( props.containsKey( FILE_PROP ) ) {</span>
+<span class="nc" id="L111">			copyFromTdb( props.getProperty( FILE_PROP ) );</span>
+		}
+<span class="nc" id="L113">	}</span>
+
+	private void copyFromTdb( Dataset dataset ) throws RepositoryException {
+<span class="nc" id="L116">		ValueFactory vf = rc.getValueFactory();</span>
+
+<span class="nc bnc" id="L118" title="All 2 branches missed.">		if ( dataset.supportsTransactions() ) {</span>
+<span class="nc" id="L119">			dataset.begin( ReadWrite.READ );</span>
+		}
+
+		// Get model inside the transaction
+<span class="nc" id="L123">		Model model = dataset.getDefaultModel();</span>
+<span class="nc" id="L124">		StmtIterator si = model.listStatements();</span>
+
+		try {
+<span class="nc" id="L127">			rc.begin();</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">			while ( si.hasNext() ) {</span>
+<span class="nc" id="L129">				Statement stmt = si.next();</span>
+<span class="nc" id="L130">				com.hp.hpl.jena.rdf.model.Resource rsr = stmt.getSubject();</span>
+<span class="nc" id="L131">				Property pred = stmt.getPredicate();</span>
+<span class="nc" id="L132">				RDFNode val = stmt.getObject();</span>
+<span class="nc" id="L133">				Node valnode = val.asNode();</span>
+				
+				Resource sub;
+				try {
+<span class="nc bnc" id="L137" title="All 2 branches missed.">					sub = ( rsr.isAnon()</span>
+<span class="nc" id="L138">							? vf.createBNode( valnode.getBlankNodeLabel() )</span>
+<span class="nc" id="L139">							: vf.createURI( rsr.toString() ) );</span>
+				}
+<span class="nc" id="L141">				catch ( UnsupportedOperationException uoo ) {</span>
+<span class="nc" id="L142">					log.warn( uoo, uoo );</span>
+<span class="nc" id="L143">					continue;</span>
+<span class="nc" id="L144">				}</span>
+				
+<span class="nc" id="L146">				URI pred2 = vf.createURI( pred.toString() );</span>
+				Value val2;
+
+<span class="nc bnc" id="L149" title="All 2 branches missed.">				if ( val.isLiteral() ) {</span>
+<span class="nc" id="L150">					Literal lit = val.asLiteral();</span>
+<span class="nc" id="L151">					String dtstr = lit.getDatatypeURI();</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">					URI dt = ( null == dtstr ? null : vf.createURI( dtstr ) );</span>
+<span class="nc" id="L153">					String langstr = lit.getLanguage();</span>
+
+<span class="nc bnc" id="L155" title="All 2 branches missed.">					if ( null == dt ) {</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">						if ( langstr.isEmpty() ) {</span>
+<span class="nc" id="L157">							val2 = vf.createLiteral( lit.toString() );</span>
+						}
+						else {
+<span class="nc" id="L160">							val2 = vf.createLiteral( lit.toString(), langstr );</span>
+						}
+					}
+					else {
+<span class="nc" id="L164">						val2 = vf.createLiteral( lit.toString(), dt );</span>
+					}
+<span class="nc" id="L166">				}</span>
+				else {
+<span class="nc bnc" id="L168" title="All 2 branches missed.">					if ( val.isAnon() ) {</span>
+<span class="nc" id="L169">						val2 = vf.createBNode( valnode.getBlankNodeLabel() );</span>
+					}
+					else {
+<span class="nc" id="L172">						val2 = vf.createURI( val.toString() );</span>
+					}
+				}
+<span class="nc" id="L175">				rc.add( sub, pred2, val2 );</span>
+<span class="nc" id="L176">			}</span>
+<span class="nc" id="L177">			rc.commit();</span>
+		}
+<span class="nc" id="L179">		catch ( RepositoryException re ) {</span>
+<span class="nc" id="L180">			rc.rollback();</span>
+<span class="nc" id="L181">			throw re;</span>
+		}
+		finally {
+<span class="nc bnc" id="L184" title="All 4 branches missed.">			if ( dataset.supportsTransactions() ) {</span>
+<span class="nc" id="L185">				dataset.end();</span>
+			}
+		}
+<span class="nc" id="L188">	}</span>
+
+	private void copyFromTdb( String file ) throws RepositoryException {
+<span class="nc" id="L191">		tdbdir = new File( file );</span>
+
+<span class="nc" id="L193">		Dataset dataset = TDBFactory.createDataset( file );</span>
+		try {
+<span class="nc" id="L195">			copyFromTdb( dataset );</span>
+		}
+		finally {
+<span class="nc" id="L198">			dataset.close();</span>
+<span class="nc" id="L199">		}</span>
+<span class="nc" id="L200">	}</span>
+
+	private void copyToTdb() throws RepositoryException {
+<span class="nc bnc" id="L203" title="All 4 branches missed.">		if ( !needsSave || null == tdbdir ) {</span>
+<span class="nc" id="L204">			return;</span>
+		}
+
+<span class="nc" id="L207">		final Dataset dataset = TDBFactory.createDataset( tdbdir.getAbsolutePath() );</span>
+
+		try {
+<span class="nc" id="L210">			rc.export( new TdbExporter( dataset ) );</span>
+		}
+<span class="nc" id="L212">		catch ( RepositoryException | RDFHandlerException e ) {</span>
+<span class="nc" id="L213">			log.error( &quot;Problem exporting data to TDB&quot;, e );</span>
+<span class="nc" id="L214">			dataset.abort();</span>
+		}
+		finally {
+<span class="nc" id="L217">			dataset.close();</span>
+<span class="nc" id="L218">		}</span>
+<span class="nc" id="L219">	}</span>
+
+	@Override
+	protected RepositoryConnection getRawConnection() {
+<span class="nc" id="L223">		return rc;</span>
+	}
+
+	public File getShadowFile() {
+<span class="nc" id="L227">		return datadir;</span>
+	}
+
+	/**
+	 * Closes the data base associated with the engine. This will prevent further
+	 * changes from being made in the data store and safely ends the active
+	 * transactions and closes the engine.
+	 */
+	@Override
+	public void closeDB() {
+		try {
+<span class="nc" id="L238">			copyToTdb();</span>
+		}
+<span class="nc" id="L240">		catch ( Exception e ) {</span>
+<span class="nc" id="L241">			log.error( &quot;Could not copy data back to TDB file&quot;, e );</span>
+<span class="nc" id="L242">		}</span>
+
+		try {
+<span class="nc" id="L245">			rc.close();</span>
+		}
+<span class="nc" id="L247">		catch ( Exception e ) {</span>
+<span class="nc" id="L248">			log.error( e, e );</span>
+<span class="nc" id="L249">		}</span>
+
+<span class="nc" id="L251">		Repository repo = rc.getRepository();</span>
+		try {
+<span class="nc" id="L253">			repo.shutDown();</span>
+		}
+<span class="nc" id="L255">		catch ( Exception e ) {</span>
+<span class="nc" id="L256">			log.error( e, e );</span>
+<span class="nc" id="L257">		}</span>
+
+<span class="nc" id="L259">		FileUtils.deleteQuietly( datadir );</span>
+<span class="nc" id="L260">	}</span>
+
+	@Override
+	protected void updateLastModifiedDate() {
+<span class="nc" id="L264">		super.updateLastModifiedDate();</span>
+<span class="nc" id="L265">		needsSave = true;</span>
+<span class="nc" id="L266">	}</span>
+
+	@Override
+	public void execute( ModificationExecutor exe ) throws RepositoryException {
+<span class="nc" id="L270">		super.execute( exe );</span>
+<span class="nc" id="L271">		needsSave = true;</span>
+<span class="nc" id="L272">	}</span>
+
+	public static Properties generateProperties( File tdb ) {
+<span class="nc" id="L275">		Properties props = new Properties();</span>
+<span class="nc" id="L276">		props.setProperty( FILE_PROP, tdb.toString() );</span>
+<span class="nc" id="L277">		props.setProperty( INMEM_PROP, Boolean.toString( true ) );</span>
+<span class="nc" id="L278">		props.setProperty( Constants.SMSS_LOCATION, tdb.getAbsolutePath() );</span>
+<span class="nc" id="L279">		props.setProperty( Constants.ENGINE_IMPL, JenaEngine.class.getCanonicalName() );</span>
+<span class="nc" id="L280">		props.setProperty( Constants.SMSS_VERSION_KEY, &quot;1.0&quot; );</span>
+
+<span class="nc" id="L282">		return props;</span>
+	}
+
+	private class TdbExporter implements RDFHandler {
+
+		private final Dataset dataset;
+		private Model model;
+
+<span class="nc" id="L290">		public TdbExporter( Dataset ds ) {</span>
+<span class="nc" id="L291">			dataset = ds;</span>
+<span class="nc" id="L292">		}</span>
+
+		@Override
+		public void startRDF() throws RDFHandlerException {
+<span class="nc" id="L296">			dataset.begin( ReadWrite.WRITE );</span>
+<span class="nc" id="L297">			model = dataset.getDefaultModel();</span>
+<span class="nc" id="L298">			model.removeAll();</span>
+<span class="nc" id="L299">		}</span>
+
+		@Override
+		public void endRDF() throws RDFHandlerException {
+<span class="nc" id="L303">			model.commit();</span>
+<span class="nc" id="L304">			dataset.commit();</span>
+<span class="nc" id="L305">			model.close();</span>
+<span class="nc" id="L306">		}</span>
+
+		@Override
+		public void handleNamespace( String string, String string1 ) throws RDFHandlerException {
+<span class="nc" id="L310">			model.setNsPrefix( string, string1 );</span>
+<span class="nc" id="L311">		}</span>
+
+		@Override
+		public void handleStatement( org.openrdf.model.Statement stmt ) throws RDFHandlerException {
+<span class="nc" id="L315">			Resource rsr = stmt.getSubject();</span>
+			com.hp.hpl.jena.rdf.model.Resource sub;
+<span class="nc bnc" id="L317" title="All 2 branches missed.">			if ( rsr instanceof URI ) {</span>
+<span class="nc" id="L318">				sub = model.createResource( rsr.stringValue() );</span>
+			}
+			else {
+<span class="nc" id="L321">				BNode node = BNode.class.cast( rsr );</span>
+<span class="nc" id="L322">				sub = model.createResource( new AnonId( node.getID() ) );</span>
+			}
+
+<span class="nc" id="L325">			Property pred = model.createProperty( stmt.getPredicate().toString() );</span>
+
+<span class="nc" id="L327">			Value val = stmt.getObject();</span>
+			RDFNode obj;
+<span class="nc bnc" id="L329" title="All 2 branches missed.">			if ( val instanceof URI ) {</span>
+<span class="nc" id="L330">				obj = model.createResource( val.stringValue() );</span>
+			}
+<span class="nc bnc" id="L332" title="All 2 branches missed.">			else if ( val instanceof BNode ) {</span>
+<span class="nc" id="L333">				BNode node = BNode.class.cast( val );</span>
+<span class="nc" id="L334">				obj = model.createResource( new AnonId( node.getID() ) );</span>
+<span class="nc" id="L335">			}</span>
+<span class="nc bnc" id="L336" title="All 2 branches missed.">			else if ( val instanceof org.openrdf.model.Literal ) {</span>
+<span class="nc" id="L337">				org.openrdf.model.Literal lit = org.openrdf.model.Literal.class.cast( val );</span>
+<span class="nc bnc" id="L338" title="All 2 branches missed.">				if ( null == lit.getDatatype() ) {</span>
+<span class="nc bnc" id="L339" title="All 2 branches missed.">					if ( null == lit.getLanguage() ) {</span>
+<span class="nc" id="L340">						obj = model.createLiteral( val.stringValue() );</span>
+					}
+					else {
+<span class="nc" id="L343">						obj = model.createLiteral( val.stringValue(), lit.getLanguage() );</span>
+					}
+				}
+				else {
+<span class="nc" id="L347">					obj = model.createTypedLiteral( lit.toString(),</span>
+<span class="nc" id="L348">							lit.getDatatype().stringValue() );</span>
+				}
+<span class="nc" id="L350">			}</span>
+			else {
+<span class="nc" id="L352">				throw new RDFHandlerException( &quot;unhandled value type:&quot; + val );</span>
+			}
+
+<span class="nc" id="L355">			model.add( sub, pred, obj );</span>
+<span class="nc" id="L356">		}</span>
+
+		@Override
+		public void handleComment( String string ) throws RDFHandlerException {
+<span class="nc" id="L360">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

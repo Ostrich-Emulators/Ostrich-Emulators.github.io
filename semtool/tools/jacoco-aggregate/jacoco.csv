@@ -1,0 +1,144 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.model.vocabulary,UI,27,0,0,0,7,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.model.vocabulary,OLO,27,0,0,0,7,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.model.vocabulary,SEMPERS,44,0,0,0,10,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.model.vocabulary,SP,37,0,0,0,9,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.model.vocabulary,SPIN,32,0,0,0,8,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.model.vocabulary,ARG,10,0,0,0,2,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.model.vocabulary,SEMCORE,15,0,0,0,3,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.model.vocabulary,SEMTOOL,77,0,0,0,17,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.model.vocabulary,SPL,32,0,0,0,8,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.model.vocabulary,SEMONTO,27,0,0,0,7,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.edgemodelers,AbstractEdgeModeler,916,0,90,0,186,0,73,0,28,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.edgemodelers,LegacyEdgeModeler,831,0,92,0,158,0,54,0,7,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.edgemodelers,W3CEdgeModeler,229,0,12,0,41,0,9,0,3,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.edgemodelers,SemtoolEdgeModeler,209,0,16,0,44,0,11,0,3,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,ImportMetadata,288,0,24,0,64,0,37,0,25,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,GsonWriter,323,0,24,0,55,0,19,0,7,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,GraphMLWriter,328,0,24,0,56,0,19,0,7,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,DiskBackedLoadingSheetData,346,0,24,0,81,0,32,0,20,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,XlsWriter,1181,0,126,0,216,0,85,0,22,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,DiskBackedLoadingSheetData.CacheIterator,164,0,20,0,43,0,16,0,6,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,LoadingSheetData.DataIteratorImpl,32,0,2,0,10,0,6,0,5,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,ImportData,210,0,20,0,54,0,26,0,16,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,XlsWriter.CellFormatting,42,0,4,0,13,0,6,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,GraphWriter,4,0,0,0,1,0,1,0,1,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,POIReader,292,0,34,0,64,0,26,0,8,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,LowMemXlsReader.new XlsXmlBase() {...},58,0,2,0,16,0,6,0,5,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,LoadingSheetData,738,0,54,0,186,0,93,0,66,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,ImportValidationException.ErrorType,108,0,0,0,3,0,4,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,DiskBackedLoadingSheetData.NapDeserializer,126,0,12,0,25,0,8,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,LoadingSheetData.LoadingNodeAndPropertyValues,329,0,32,0,78,0,38,0,22,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,XlsWriter.SheetRowCol,96,0,10,0,21,0,9,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,SheetType,98,0,0,0,2,0,4,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,ImportValidationException,75,0,0,0,24,0,10,0,10,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,LowMemXlsReader,912,0,96,0,158,0,60,0,12,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,XlsWriter.NodeAndPropertyValues,28,0,2,0,9,0,6,0,5,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,CSVReader,966,0,86,0,178,0,59,0,16,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main,DiskBackedLoadingSheetData.NapSerializer,93,0,8,0,25,0,6,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.web.io,DbInfo,46,0,0,0,20,0,10,0,10,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,TreeNode,124,0,14,0,33,0,16,0,9,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,MultiSetMap,139,0,12,0,25,0,13,0,7,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,Utility.ResourceLabelPair,15,0,0,0,5,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,RDFDatatypeTools,880,0,150,0,205,0,89,0,14,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,Utility.new VoidQueryAdapter() {...},25,0,0,0,5,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,LegacySanitizer,68,0,2,0,16,0,3,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,RetrievingLabelCache,125,0,12,0,41,0,17,0,11,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,MultiMap,117,0,10,0,20,0,12,0,7,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,UriBuilder,459,0,34,0,112,0,49,0,32,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,Constants,37,0,0,0,11,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,UriBuilder.DefaultSanitizer,48,0,8,0,12,0,7,0,3,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,Utility,947,0,106,0,179,0,78,0,24,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.util,DeterministicSanitizer,83,0,8,0,21,0,6,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.impl,InsightManagerImpl,1913,0,152,0,376,0,110,0,34,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.impl,InsightManagerImpl.new Comparator() {...},31,0,0,0,4,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.impl,AbstractSesameEngine.new VoidQueryAdapter() {...},50,0,6,0,9,0,5,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.impl,SesameEngine,397,0,38,0,84,0,27,0,8,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.impl,EngineFactory,278,0,36,0,69,0,24,0,6,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.impl,JenaEngine,425,0,28,0,126,0,27,0,13,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.impl,AbstractEngine,483,0,42,0,108,0,49,0,28,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.impl,InMemorySesameEngine,274,0,18,0,81,0,21,0,12,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.impl,BigDataEngine,572,0,24,0,136,0,25,0,13,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.impl,AbstractSesameEngine,766,0,64,0,211,0,59,0,27,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.impl,JenaEngine.TdbExporter,169,0,12,0,39,0,12,0,6,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.impl,ClusterEngine,94,0,6,0,27,0,10,0,7,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util,ModificationExecutorAdapter,13,0,0,0,6,0,3,0,3,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util,QueryExecutorAdapter,121,0,0,0,31,0,19,0,19,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util,MetadataQuery,143,0,16,0,28,0,14,0,6,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util,UpdateExecutorAdapter,7,0,0,0,4,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util,AbstractBindable,431,0,10,0,101,0,41,0,36,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.om,Insight,345,0,12,0,84,0,37,0,31,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.om,AbstractGraphElement,296,0,22,0,67,0,38,0,27,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.om,NamedShape,438,0,16,0,63,0,19,0,11,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.om,InsightOutputType,169,0,0,0,9,0,5,0,5,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.om,Perspective,166,0,8,0,43,0,21,0,17,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.om,Parameter,211,0,6,0,52,0,23,0,20,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.om,GraphColorShapeRepository,97,0,0,0,2,0,1,0,1,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.user,LocalUserImpl,217,0,18,0,44,0,21,0,12,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.user,AbstractUser,133,0,24,0,33,0,19,0,7,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.user,User.UserProperty,48,0,0,0,2,0,4,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.user,Security,39,0,4,0,8,0,6,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.user,RemoteUserImpl,111,0,2,0,26,0,12,0,11,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.security.permissions,SemossPermission,45,0,0,0,11,0,4,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,NodeDerivationTools,499,0,22,0,111,0,22,0,11,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,StatementSorter,35,0,4,0,7,0,4,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,StructureManagerFactory,36,0,2,0,9,0,4,0,3,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,QaChecker.new Consumer() {...},17,0,0,0,3,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,QaChecker.new Object() {...},26,0,0,0,1,0,1,0,1,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,QaChecker.new VoidQueryAdapter() {...},33,0,0,0,7,0,3,0,3,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,QaChecker.new ListQueryAdapter() {...},89,0,0,0,11,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineCreateBuilder,148,0,4,0,44,0,25,0,23,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,QaChecker.ConceptInstanceCacheKey,95,0,8,0,23,0,11,0,7,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,SemtoolStructureManagerImpl,994,0,38,0,178,0,40,0,21,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,VocabularyRegistry,90,0,8,0,17,0,12,0,8,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,ImportDataProcessor,356,0,26,0,63,0,16,0,3,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineConsistencyChecker.Hit,57,0,0,0,11,0,6,0,6,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,SemtoolStructureManagerImpl.new ModificationExecutorAdapter() {...},26,0,0,0,4,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineUtil2.new ModificationExecutorAdapter() {...},55,0,2,0,9,0,3,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineUtil2.new VoidQueryAdapter() {...},27,0,0,0,4,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,SemtoolStructureManagerImpl.new ModelQueryAdapter() {...},32,0,0,0,5,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,SemtoolStructureManagerImpl.new VoidQueryAdapter() {...},95,0,0,0,11,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,RepositoryCopier,148,0,2,0,45,0,9,0,8,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineLoader.new Object() {...},19,0,0,0,1,0,1,0,1,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineLoader.new ModificationExecutorAdapter() {...},35,0,2,0,8,0,3,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,QaChecker.RelationCacheKey,154,0,14,0,32,0,12,0,5,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,QaChecker,1207,0,78,0,244,0,76,0,35,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,NodeDerivationTools.new MapQueryAdapter() {...},17,0,0,0,4,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineLoader,1049,0,81,0,243,0,69,0,25,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineConsistencyChecker.new VoidQueryAdapter() {...},77,0,4,0,15,0,4,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineConsistencyChecker.new VoidQueryAdapter() {...},74,0,4,0,14,0,4,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineManagementException.ErrorCode,98,0,0,0,3,0,4,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineUtil2,730,0,58,0,167,0,40,0,11,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineConsistencyChecker.Type,38,0,0,0,2,0,4,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,QaChecker.CacheType,48,0,0,0,2,0,4,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineConsistencyChecker,545,0,40,0,95,0,30,0,10,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineManagementException,82,0,0,0,27,0,12,0,12,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.util,EngineOperationAdapter,7,0,0,0,5,0,5,0,5,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,OneVarListQueryAdapter,107,0,4,0,30,0,16,0,14,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,MapQueryAdapter,30,0,0,0,10,0,4,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,ModelQueryAdapter,137,0,18,0,33,0,15,0,6,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,SesameJenaImposter,67,0,8,0,20,0,9,0,5,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,OneValueQueryAdapter,95,0,6,0,24,0,17,0,14,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,ListOfValueArraysQueryAdapter,36,0,2,0,12,0,4,0,3,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,OneValueQueryAdapter.new OneValueQueryAdapter() {...},8,0,0,0,2,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,VoidQueryAdapter,9,0,0,0,5,0,3,0,3,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,OneValueQueryAdapter.new OneValueQueryAdapter() {...},10,0,0,0,2,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,OneValueQueryAdapter.new OneValueQueryAdapter() {...},17,0,2,0,2,0,3,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,OneValueQueryAdapter.new OneValueQueryAdapter() {...},12,0,0,0,2,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,StatementAddingExecutor,77,0,0,0,28,0,12,0,12,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,ListOfMapsQueryAdapter,45,0,2,0,12,0,5,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,ListQueryAdapter,55,0,2,0,20,0,8,0,7,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,OneVarListQueryAdapter.new OneVarListQueryAdapter() {...},10,0,0,0,2,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,OneVarListQueryAdapter.new OneVarListQueryAdapter() {...},8,0,0,0,2,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.query.util.impl,ListOfMapsQueryAdapter.new ListOfMapsQueryAdapter() {...},7,0,0,0,2,0,2,0,2,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.graph.functions,GraphToTreeConverter,363,0,26,0,89,0,27,0,14,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.graph.functions,IslandProcessor,155,0,16,0,35,0,13,0,5,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.graph.functions,GraphToTreeConverter.TreeConversionException,4,0,0,0,2,0,1,0,1,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.graph.functions,GraphToTreeConverter.Search,38,0,0,0,2,0,4,0,4,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main.xlsxml,MetadataTabXmlHandler,696,0,88,0,131,0,55,0,9,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main.xlsxml,XlsXmlBase,55,0,2,0,16,0,10,0,9,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main.xlsxml,LoadingSheetXmlHandler,612,0,73,0,125,0,51,0,10,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main.xlsxml,LoaderTabXmlHandler,370,0,54,0,76,0,39,0,10,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.poi.main.xlsxml,SheetTypeXmlHandler,182,0,32,0,42,0,25,0,7,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.api,ReificationStyle,105,0,6,0,14,0,8,0,5,0
+OS-EM Semantic Tool Utilities/common,com.ostrichemulators.semtool.rdf.engine.api,MetadataConstants,28,0,0,0,10,0,2,0,2,0

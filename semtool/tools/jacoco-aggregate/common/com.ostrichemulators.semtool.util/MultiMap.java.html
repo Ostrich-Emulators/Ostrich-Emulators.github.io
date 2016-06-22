@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MultiMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.util</a> &gt; <span class="el_source">MultiMap.java</span></div><h1>MultiMap.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.util;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ *
+ * @author ryan
+ * @param &lt;T&gt;
+ * @param &lt;V&gt;
+ */
+<span class="nc" id="L20">public class MultiMap&lt;T, V&gt; extends HashMap&lt;T, List&lt;V&gt;&gt; {</span>
+
+	@Override
+	public List&lt;V&gt; put( T key, List&lt;V&gt; value ) {
+<span class="nc" id="L24">		return super.put( key, value );</span>
+	}
+
+	public List&lt;V&gt; add( T key, V value ) {
+		List&lt;V&gt; list;
+<span class="nc bnc" id="L29" title="All 2 branches missed.">		list = ( containsKey( key ) ? get( key ) : new ArrayList&lt;&gt;() );</span>
+<span class="nc" id="L30">		list.add( value );</span>
+<span class="nc" id="L31">		return put( key, list );</span>
+	}
+
+	public List&lt;V&gt; addAll( T key, Collection&lt;V&gt; values ) {
+<span class="nc bnc" id="L35" title="All 2 branches missed.">		List&lt;V&gt; list = ( containsKey( key ) ? get( key ) : new ArrayList&lt;&gt;() );</span>
+<span class="nc" id="L36">		list.addAll( values );</span>
+<span class="nc" id="L37">		return put( key, list );</span>
+	}
+
+	/**
+	 * Gets a guaranteed not-null list of Vs. This is different from 
+	 * {@link #get(java.lang.Object) } in that it will never return
+	 * &lt;code&gt;null&lt;/code&gt;. If the key *is* present, the list is a reference to the
+	 * list of values, so changes to it will be reflected in this map. If the key
+	 * is *not* present, the changes to the returned list will not be reflected in
+	 * the map.
+	 *
+	 * @param key the key to get
+	 * @return a list
+	 */
+	public List&lt;V&gt; getNN( T key ) {
+<span class="nc" id="L52">		List&lt;V&gt; v = get( key );</span>
+<span class="nc bnc" id="L53" title="All 2 branches missed.">		return ( null == v ? new ArrayList&lt;&gt;() : v );</span>
+	}
+
+	/**
+	 * Flips the map such that keys become values, and values, keys. If there are
+	 * multiple keys with the same value, the values are added to the MultiMap's
+	 * list
+	 *
+	 * @param &lt;T&gt;
+	 * @param &lt;V&gt;
+	 * @param map
+	 * @return
+	 */
+	public static &lt;T, V&gt; MultiMap&lt;T, V&gt; flip( Map&lt;V, T&gt; map ) {
+<span class="nc" id="L67">		MultiMap&lt;T, V&gt; multi = new MultiMap&lt;&gt;();</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		for ( Map.Entry&lt;V, T&gt; en : map.entrySet() ) {</span>
+<span class="nc" id="L69">			multi.add( en.getValue(), en.getKey() );</span>
+<span class="nc" id="L70">		}</span>
+
+<span class="nc" id="L72">		return multi;</span>
+	}
+
+	/**
+	 * Flips the given mapping. This will result in loss of information if the
+	 * original map's values are not unique.
+	 *
+	 * @param &lt;T&gt;
+	 * @param &lt;V&gt;
+	 * @param map
+	 * @return
+	 */
+	public static &lt;T, V&gt; Map&lt;T, V&gt; lossyflip( Map&lt;V, T&gt; map ) {
+<span class="nc" id="L85">		Map&lt;T, V&gt; multi = new HashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L87" title="All 2 branches missed.">		for ( Map.Entry&lt;V, T&gt; en : map.entrySet() ) {</span>
+<span class="nc" id="L88">			multi.put( en.getValue(), en.getKey() );</span>
+<span class="nc" id="L89">		}</span>
+
+<span class="nc" id="L91">		return multi;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

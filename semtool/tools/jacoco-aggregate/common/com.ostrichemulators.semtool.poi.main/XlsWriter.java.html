@@ -1,0 +1,613 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>XlsWriter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.poi.main</a> &gt; <span class="el_source">XlsWriter.java</span></div><h1>XlsWriter.java</h1><pre class="source lang-java linenums">/**
+ * *****************************************************************************
+ * Copyright 2013 SEMOSS.ORG
+ *
+ * This file is part of SEMOSS.
+ *
+ * SEMOSS is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * SEMOSS is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * SEMOSS. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ * ****************************************************************************
+ */
+package com.ostrichemulators.semtool.poi.main;
+
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData.DataIterator;
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData.LoadingNodeAndPropertyValues;
+import java.io.BufferedOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.log4j.Logger;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.openrdf.model.URI;
+import java.awt.Color;
+import java.io.File;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.openrdf.model.Value;
+
+/**
+ * Create a workbook containing data formated in the Microsoft Excel Sheet
+ * Format. This class has two modes of operation: the ImportData mode, and the
+ * raw mode. In raw mode, callers should use {@link #createWorkbook() },
+ * {@link #createTab(java.lang.String) }, {@link #addRow(java.lang.String[]) }
+ * and {@link #write(java.io.File) } to generate the XLS file. In ImportData
+ * mode, just use the all-in-one function
+ * {@link #write(gov.va.semoss.poi.main.ImportData, java.io.File) } instead.
+ */
+<span class="nc" id="L59">public class XlsWriter implements GraphWriter {</span>
+
+<span class="nc" id="L61">	private static final Logger log = Logger.getLogger( XlsWriter.class );</span>
+	private static final int TAB_ROWLIMIT = 999999;
+
+	private XSSFWorkbook currentwb;
+	private XSSFSheet currentsheet;
+	private XSSFRow currentrow;
+	private String desiredtabname;
+<span class="nc" id="L68">	private final List&lt;String&gt; currentheader = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L69">	private int rowcount = 0;</span>
+<span class="nc" id="L70">	private final Set&lt;String&gt; currentnames = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L71">	private int maxtabrows = TAB_ROWLIMIT;</span>
+
+	/**
+	 * Sets the max rows that can be added to a tab before continuing the data on
+	 * another tab. This must be less than {@link #TAB_ROWLIMIT}
+	 *
+	 * @param rowspertab
+	 */
+	public void setTabRowLimit( int rowspertab ) {
+<span class="nc bnc" id="L80" title="All 4 branches missed.">		if ( rowspertab &lt; 1 || rowspertab &gt; TAB_ROWLIMIT ) {</span>
+<span class="nc" id="L81">			log.warn( &quot;cannot set rows/tab to &quot; + rowspertab + &quot;; using &quot;</span>
+					+ TAB_ROWLIMIT + &quot; instead&quot; );
+<span class="nc" id="L83">			rowspertab = TAB_ROWLIMIT;</span>
+		}
+<span class="nc" id="L85">		maxtabrows = rowspertab;</span>
+<span class="nc" id="L86">	}</span>
+
+	public XSSFWorkbook getCurrentWb() {
+<span class="nc" id="L89">		return currentwb;</span>
+	}
+
+	public XSSFSheet getCurrentSheet() {
+<span class="nc" id="L93">		return currentsheet;</span>
+	}
+
+	public XSSFRow getCurrentRow() {
+<span class="nc" id="L97">		return currentrow;</span>
+	}
+
+	@Override
+	public void write( ImportData data, File output ) throws IOException {
+<span class="nc" id="L102">		write( data, new FileOutputStream( output ) );</span>
+<span class="nc" id="L103">	}</span>
+
+	@Override
+	public void write( ImportData data, OutputStream output ) throws IOException {
+<span class="nc" id="L107">		createWorkbook( data );</span>
+
+<span class="nc" id="L109">		CellStyle errorstyle = currentwb.createCellStyle();</span>
+<span class="nc" id="L110">		errorstyle.setFillPattern( CellStyle.SOLID_FOREGROUND );</span>
+<span class="nc" id="L111">		errorstyle.setFillForegroundColor( IndexedColors.PINK.getIndex() );</span>
+
+<span class="nc bnc" id="L113" title="All 2 branches missed.">		for ( LoadingSheetData nodes : data.getNodes() ) {</span>
+<span class="nc" id="L114">			List&lt;String&gt; props = new ArrayList&lt;&gt;( nodes.getProperties() );</span>
+<span class="nc" id="L115">			createTab( nodes.getName(), makeHeaderRow( nodes, props ) );</span>
+
+			// +2 -&gt; 1 for the blank first col and 1 for the subject type
+<span class="nc" id="L118">			String[] row = new String[2 + props.size()];</span>
+<span class="nc" id="L119">			CellStyle[] fmts = new CellStyle[2 + props.size()];</span>
+
+<span class="nc" id="L121">			Map&lt;String, URI&gt; proplkp = nodes.getPropertiesAndDataTypes();</span>
+<span class="nc" id="L122">			URI[] datatypes = new URI[2 + props.size()];</span>
+<span class="nc" id="L123">			int dtcol = 2;</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">			for ( String propname : props ) {</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">				if ( null != proplkp.get( propname ) ) {</span>
+<span class="nc" id="L126">					datatypes[dtcol] = proplkp.get( propname );</span>
+				}
+<span class="nc" id="L128">				dtcol++;</span>
+<span class="nc" id="L129">			}</span>
+
+<span class="nc" id="L131">			DataIterator di = nodes.iterator();</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">			while ( di.hasNext() ) {</span>
+<span class="nc" id="L133">				LoadingNodeAndPropertyValues nap = di.next();</span>
+<span class="nc" id="L134">				row[1] = nap.getSubject();</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">				fmts[1] = ( nap.isSubjectError() ? errorstyle : null );</span>
+
+<span class="nc" id="L137">				int col = 2;</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">				for ( String prop : props ) {</span>
+<span class="nc" id="L139">					Value val = nap.get( prop );</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">					row[col++] = ( null == val ? null : val.stringValue() );</span>
+<span class="nc" id="L141">				}</span>
+
+<span class="nc" id="L143">				addRow( row, fmts, datatypes );</span>
+<span class="nc" id="L144">			}</span>
+<span class="nc" id="L145">		}</span>
+
+<span class="nc bnc" id="L147" title="All 2 branches missed.">		for ( LoadingSheetData rels : data.getRels() ) {</span>
+<span class="nc" id="L148">			List&lt;String&gt; props = new ArrayList&lt;&gt;( rels.getProperties() );</span>
+<span class="nc" id="L149">			createTab( rels.getName(), makeHeaderRow( rels, props ) );</span>
+
+			// +3 -&gt; 1 for the blank first col and 1 for the subject type, 1 for object type
+<span class="nc" id="L152">			String[] row = new String[3 + props.size()];</span>
+<span class="nc" id="L153">			CellStyle[] fmts = new CellStyle[3 + props.size()];</span>
+
+<span class="nc bnc" id="L155" title="All 2 branches missed.">			if ( rels.isEmpty() ) {</span>
+				// no rows to add, but still add the relationship name field
+<span class="nc" id="L157">				row[0] = rels.getRelname();</span>
+			}
+
+<span class="nc" id="L160">			Map&lt;String, URI&gt; proplkp = rels.getPropertiesAndDataTypes();</span>
+<span class="nc" id="L161">			URI[] datatypes = new URI[3 + props.size()];</span>
+<span class="nc" id="L162">			int dtcol = 3;</span>
+<span class="nc bnc" id="L163" title="All 2 branches missed.">			for ( String propname : props ) {</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">				if ( null != proplkp.get( propname ) ) {</span>
+<span class="nc" id="L165">					datatypes[dtcol] = proplkp.get( propname );</span>
+				}
+<span class="nc" id="L167">				dtcol++;</span>
+<span class="nc" id="L168">			}</span>
+
+<span class="nc" id="L170">			DataIterator di = rels.iterator();</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">			while ( di.hasNext() ) {</span>
+<span class="nc" id="L172">				LoadingNodeAndPropertyValues nap = di.next();</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">				if ( rels.hasErrors() ) {</span>
+<span class="nc" id="L174">					currentsheet.setTabColor( IndexedColors.ROSE.getIndex() );</span>
+				}
+
+				// do we need the relation name in the first column?
+<span class="nc bnc" id="L178" title="All 2 branches missed.">				row[0] = ( nextRowIsFirstRowOfTab() ? rels.getRelname() : null );</span>
+
+<span class="nc" id="L180">				row[1] = nap.getSubject();</span>
+<span class="nc bnc" id="L181" title="All 2 branches missed.">				fmts[1] = ( nap.isSubjectError() ? errorstyle : null );</span>
+
+<span class="nc" id="L183">				row[2] = nap.getObject();</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">				fmts[2] = ( nap.isObjectError() ? errorstyle : null );</span>
+
+<span class="nc" id="L186">				int col = 3;</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">				for ( String prop : props ) {</span>
+<span class="nc" id="L188">					Value val = nap.get( prop );</span>
+<span class="nc bnc" id="L189" title="All 2 branches missed.">					row[col++] = ( null == val ? null : val.stringValue() );</span>
+<span class="nc" id="L190">				}</span>
+
+<span class="nc" id="L192">				addRow( row, fmts, datatypes );</span>
+<span class="nc" id="L193">			}</span>
+<span class="nc" id="L194">		}</span>
+
+<span class="nc" id="L196">		write( output );</span>
+<span class="nc" id="L197">	}</span>
+
+	/**
+	 * Is the next row the first one of the tab (excluding headers)?
+	 *
+	 * @return true if the next call to {@link #addRow(
+	 * java.lang.String[], org.apache.poi.ss.usermodel.CellStyle[],
+	 * org.openrdf.model.URI[])} will be the first row of the tab
+	 */
+	protected boolean nextRowIsFirstRowOfTab() {
+<span class="nc bnc" id="L207" title="All 2 branches missed.">		if ( maxtabrows == rowcount ) {</span>
+<span class="nc" id="L208">			return true;</span>
+		}
+
+<span class="nc bnc" id="L211" title="All 2 branches missed.">		if ( currentheader.isEmpty() ) {</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">			return ( 0 == rowcount );</span>
+		}
+<span class="nc bnc" id="L214" title="All 2 branches missed.">		return ( 1 == rowcount );</span>
+	}
+
+	public void createWorkbook() {
+<span class="nc" id="L218">		currentwb = new XSSFWorkbook();</span>
+<span class="nc" id="L219">	}</span>
+
+	/**
+	 * Convenience function to
+	 * {@link #createTab(java.lang.String, java.lang.String[])} without a header
+	 * row
+	 *
+	 * @param tabname the desired tab name
+	 * @return the actual tab name
+	 */
+	public String createTab( String tabname ) {
+<span class="nc" id="L230">		return createTab( tabname, new String[0] );</span>
+	}
+
+	/**
+	 * Creates a new tab, but adds a header row that will be propagated to any new
+	 * tabs if the number of rows added &amp;gt; {@link #TAB_ROWLIMIT}. Subsequent
+	 * calls to {@link #addRow(java.lang.String[]) } will write to this new tab
+	 *
+	 * @param tabname the desired tab name
+	 * @param headerrow the header row to duplicate if new tabs must be created
+	 * @return the actual tab name
+	 */
+	public String createTab( String tabname, String[] headerrow ) {
+<span class="nc" id="L243">		currentheader.clear();</span>
+<span class="nc" id="L244">		desiredtabname = tabname;</span>
+<span class="nc" id="L245">		String realname = generateSheetName( tabname, currentnames );</span>
+
+<span class="nc bnc" id="L247" title="All 2 branches missed.">		if ( null == currentwb ) {</span>
+<span class="nc" id="L248">			createWorkbook();</span>
+		}
+
+<span class="nc" id="L251">		currentsheet = currentwb.createSheet( realname );</span>
+<span class="nc" id="L252">		rowcount = 0;</span>
+
+<span class="nc bnc" id="L254" title="All 4 branches missed.">		if ( !( null == headerrow || 0 == headerrow.length ) ) {</span>
+<span class="nc" id="L255">			currentheader.addAll( Arrays.asList( headerrow ) );</span>
+<span class="nc" id="L256">			addRow( headerrow );</span>
+		}
+
+<span class="nc" id="L259">		return realname;</span>
+	}
+
+	/**
+	 * Creates a new row in the current tab. If the current tab has more than
+	 * {@link #TAB_ROWLIMIT} rows, a new tab (with a duplicate header row, if set)
+	 * will be created and the row added to that tab instead.
+	 *
+	 * @param values the data
+	 */
+	public void addRow( String[] values ) {
+<span class="nc" id="L270">		addRow( values, null );</span>
+<span class="nc" id="L271">	}</span>
+
+	/**
+	 * Adds a new row to the current tab. If the new row requires a new tab to
+	 * also be created, do it
+	 *
+	 * @param values the row data
+	 * @param formatting cell formatting
+	 * @param datatypes
+	 * @return true, if a new tab is created, else false
+	 */
+	public boolean addRow( String[] values, CellStyle[] formatting, URI[] datatypes ) {
+<span class="nc bnc" id="L283" title="All 2 branches missed.">		boolean newtab = ( maxtabrows == rowcount );</span>
+
+<span class="nc bnc" id="L285" title="All 2 branches missed.">		if ( newtab ) {</span>
+			// need to make a new tab
+<span class="nc" id="L287">			createTab( desiredtabname, currentheader.toArray( new String[0] ) );</span>
+		}
+
+<span class="nc" id="L290">		currentrow = currentsheet.createRow( rowcount++ );</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">		for ( int col = 0; col &lt; values.length; col++ ) {</span>
+<span class="nc" id="L292">			Cell cell = currentrow.createCell( col );</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">			if ( null != formatting ) {</span>
+<span class="nc bnc" id="L294" title="All 4 branches missed.">				if ( formatting.length &gt; col &amp;&amp; null != formatting[col] ) {</span>
+<span class="nc" id="L295">					cell.setCellStyle( formatting[col] );</span>
+				}
+			}
+
+<span class="nc" id="L299">			String val = values[col];</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">			if ( null != val ) {</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">				if ( null == datatypes[col] ) {</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">					if ( NUMERIC.matcher( val ).find() ) {</span>
+<span class="nc" id="L303">						cell.setCellType( Cell.CELL_TYPE_NUMERIC );</span>
+<span class="nc" id="L304">						cell.setCellValue( Double.parseDouble( val ) );</span>
+					}
+					else {
+<span class="nc" id="L307">						cell.setCellValue( val.replaceAll( &quot;\&quot;&quot;, &quot;&quot; ) );</span>
+					}
+				}
+				else {
+					// set the datatype for this element
+<span class="nc" id="L312">					String str = val.replaceAll( &quot;\&quot;&quot;, &quot;&quot; );</span>
+<span class="nc" id="L313">					str = String.format( &quot;\&quot;%s\&quot;^^&lt;%s&gt;&quot;, str, datatypes[col] );</span>
+<span class="nc" id="L314">					cell.setCellValue( str );</span>
+				}
+			}
+		}
+
+<span class="nc" id="L319">		return newtab;</span>
+	}
+
+	public boolean addRow( Object[] values ) {
+<span class="nc" id="L323">		return addRow( values, null );</span>
+	}
+
+	public boolean addRow( Object[] values, CellStyle[] formatting ) {
+<span class="nc" id="L327">		String[] rows = new String[values.length];</span>
+<span class="nc bnc" id="L328" title="All 2 branches missed.">		for ( int i = 0; i &lt; rows.length; i++ ) {</span>
+<span class="nc bnc" id="L329" title="All 2 branches missed.">			rows[i] = ( null == values[i] ? null : values[i].toString() );</span>
+		}
+
+<span class="nc" id="L332">		return addRow( rows, formatting, new URI[values.length] );</span>
+	}
+
+	/**
+	 * Writes the current worksheet to the given file. Any parent directories will
+	 * be created automatically
+	 *
+	 * @param output the file to write to
+	 * @throws IOException
+	 */
+	public void write( File output ) throws IOException {
+<span class="nc" id="L343">		output.getParentFile().mkdirs();</span>
+<span class="nc" id="L344">		try ( OutputStream newExcelFile</span>
+				= new BufferedOutputStream( new FileOutputStream( output ) ) ) {
+<span class="nc" id="L346">			write( newExcelFile );</span>
+<span class="nc bnc" id="L347" title="All 8 branches missed.">		}</span>
+<span class="nc" id="L348">	}</span>
+
+	public void write( OutputStream output ) throws IOException {
+<span class="nc" id="L351">		currentwb.write( output );</span>
+<span class="nc" id="L352">	}</span>
+
+	private String[] makeHeaderRow( LoadingSheetData b, Collection&lt;String&gt; props ) {
+		// make the headers
+<span class="nc" id="L356">		List&lt;String&gt; heads = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L357" title="All 2 branches missed.">		if ( b.isRel() ) {</span>
+<span class="nc" id="L358">			heads.add( &quot;Relation&quot; );</span>
+<span class="nc" id="L359">			heads.add( b.getSubjectType() );</span>
+<span class="nc" id="L360">			heads.add( b.getObjectType() );</span>
+		}
+		else {
+<span class="nc" id="L363">			heads.add( &quot;Node&quot; );</span>
+<span class="nc" id="L364">			heads.add( b.getSubjectType() );</span>
+		}
+
+<span class="nc bnc" id="L367" title="All 2 branches missed.">		for ( String prop : props ) {</span>
+<span class="nc" id="L368">			heads.add( prop );</span>
+<span class="nc" id="L369">		}</span>
+
+<span class="nc" id="L371">		return heads.toArray( new String[0] );</span>
+	}
+
+	private void createWorkbook( ImportData importdata ) {
+<span class="nc" id="L375">		ImportMetadata data = importdata.getMetadata();</span>
+
+<span class="nc" id="L377">		List&lt;String[]&gt; mddata = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L378" title="All 2 branches missed.">		if ( null != data.getSchemaBuilder() ) {</span>
+<span class="nc" id="L379">			mddata.add( new String[]{ &quot;@prefix&quot;, &quot;:schema&quot;,</span>
+<span class="nc" id="L380">				&quot;&lt;&quot; + data.getSchemaBuilder().toString() + &quot;&gt;&quot; } );</span>
+		}
+
+<span class="nc bnc" id="L383" title="All 2 branches missed.">		if ( null != data.getDataBuilder() ) {</span>
+<span class="nc" id="L384">			mddata.add( new String[]{ &quot;@prefix&quot;, &quot;:data&quot;,</span>
+<span class="nc" id="L385">				&quot;&lt;&quot; + data.getDataBuilder().toString() + &quot;&gt;&quot; } );</span>
+		}
+
+<span class="nc bnc" id="L388" title="All 2 branches missed.">		if ( null != data.getBase() ) {</span>
+<span class="nc" id="L389">			mddata.add( new String[]{ &quot;@prefix&quot;, &quot;:&quot;,</span>
+<span class="nc" id="L390">				&quot;&lt;&quot; + data.getBase().toString() + &quot;&gt;&quot; } );</span>
+		}
+
+<span class="nc bnc" id="L393" title="All 2 branches missed.">		for ( Map.Entry&lt;String, String&gt; en : data.getNamespaces().entrySet() ) {</span>
+<span class="nc" id="L394">			mddata.add( new String[]{ &quot;@prefix&quot;, en.getKey(), &quot;&lt;&quot; + en.getValue() + &quot;&gt;&quot; } );</span>
+<span class="nc" id="L395">		}</span>
+
+<span class="nc bnc" id="L397" title="All 2 branches missed.">		for ( String[] stmt : data.getStatements() ) {</span>
+<span class="nc" id="L398">			mddata.add( new String[]{ stmt[0], stmt[1], stmt[2] } );</span>
+<span class="nc" id="L399">		}</span>
+
+<span class="nc" id="L401">		createWorkbook();</span>
+
+<span class="nc" id="L403">		List&lt;String&gt; tabnames = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L404">		Set&lt;String&gt; sheetnames = new HashSet&lt;&gt;();</span>
+
+<span class="nc bnc" id="L406" title="All 2 branches missed.">		for ( LoadingSheetData lsd : importdata.getSheets() ) {</span>
+<span class="nc" id="L407">			int count = 0;</span>
+
+			// if we have too many rows for one tab, we have
+			// to separate this sheet data into multiple tabs
+<span class="nc bnc" id="L411" title="All 2 branches missed.">			while ( count &lt; lsd.rows() ) {</span>
+<span class="nc" id="L412">				String tname = generateSheetName( lsd.getName(), sheetnames );</span>
+<span class="nc" id="L413">				tabnames.add( tname );</span>
+<span class="nc" id="L414">				count += maxtabrows;</span>
+<span class="nc" id="L415">			}</span>
+<span class="nc" id="L416">		}</span>
+
+		// don't write a metadata sheet if we don't have anything to put in it
+<span class="nc bnc" id="L419" title="All 2 branches missed.">		final String metaSheetName = ( mddata.isEmpty() ? null : &quot;MetadataInfo&quot; );</span>
+
+<span class="nc" id="L421">		writeLoadingSheet( tabnames, metaSheetName );</span>
+
+<span class="nc bnc" id="L423" title="All 2 branches missed.">		if ( !mddata.isEmpty() ) {</span>
+<span class="nc" id="L424">			XlsWriter.this.createTab( metaSheetName );</span>
+<span class="nc" id="L425">			boolean first = true;</span>
+<span class="nc bnc" id="L426" title="All 2 branches missed.">			for ( String[] row : mddata ) {</span>
+<span class="nc" id="L427">				String actuals[] = new String[4];</span>
+<span class="nc" id="L428">				System.arraycopy( row, 0, actuals, 1, row.length );</span>
+<span class="nc bnc" id="L429" title="All 2 branches missed.">				if ( first ) {</span>
+<span class="nc" id="L430">					actuals[0] = &quot;Metadata&quot;;</span>
+<span class="nc" id="L431">					first = false;</span>
+				}
+<span class="nc" id="L433">				addRow( actuals );</span>
+<span class="nc" id="L434">			}</span>
+		}
+<span class="nc" id="L436">	}</span>
+
+	/**
+	 * Creates a loading sheet with the given name
+	 *
+	 * @param nodes
+	 * @param metaSheetName if not null, add a metadata tab with this info
+	 */
+	protected void writeLoadingSheet( Collection&lt;String&gt; nodes,
+			String metaSheetName ) {
+
+<span class="nc" id="L447">		List&lt;String[]&gt; data = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L448">		data.add( new String[]{ &quot;Sheet Name&quot;, &quot;Type&quot; } );</span>
+<span class="nc bnc" id="L449" title="All 2 branches missed.">		for ( String key : nodes ) {</span>
+<span class="nc" id="L450">			data.add( new String[]{ key, &quot;Usual&quot; } );</span>
+<span class="nc" id="L451">		}</span>
+<span class="nc bnc" id="L452" title="All 2 branches missed.">		if ( null != metaSheetName ) {</span>
+<span class="nc" id="L453">			data.add( new String[]{ metaSheetName, &quot;Metadata&quot; } );</span>
+		}
+
+<span class="nc" id="L456">		XlsWriter.this.createTab( &quot;Loader&quot; );</span>
+<span class="nc bnc" id="L457" title="All 2 branches missed.">		for ( String[] row : data ) {</span>
+<span class="nc" id="L458">			addRow( row );</span>
+<span class="nc" id="L459">		}</span>
+<span class="nc" id="L460">	}</span>
+
+	/**
+	 * Common logic for finding a name for an excel workbook worksheet that is
+	 * unique for that workbook and not longer than 32 characters. Each call to
+	 * this function with the same &lt;code&gt;nodeKey&lt;/code&gt; will generate a different
+	 * name (Excel tabs cannot have identical names).
+	 *
+	 * @param nodeKey String to start with
+	 * @param keySet Set of names that are already in use. the return of this
+	 * function is automatically added to this set
+	 *
+	 * @return
+	 */
+	public static String generateSheetName( String nodeKey, Set&lt;String&gt; keySet ) {
+<span class="nc" id="L475">		final int maxSheetNameLength = 31;</span>
+
+<span class="nc bnc" id="L477" title="All 2 branches missed.">		if ( nodeKey.length() &gt; maxSheetNameLength ) {</span>
+<span class="nc" id="L478">			nodeKey = nodeKey.substring( 0, maxSheetNameLength );</span>
+		}
+
+<span class="nc bnc" id="L481" title="All 2 branches missed.">		while ( nodeKey.endsWith( &quot;-&quot; ) ) {</span>
+<span class="nc" id="L482">			nodeKey = nodeKey.substring( 0, nodeKey.length() - 1 );</span>
+		}
+
+<span class="nc" id="L485">		int inc = 10;</span>
+<span class="nc" id="L486">		final String loopkey = nodeKey;</span>
+<span class="nc bnc" id="L487" title="All 2 branches missed.">		while ( keySet.contains( nodeKey ) ) {</span>
+<span class="nc" id="L488">			boolean firstloop = loopkey.equals( nodeKey );</span>
+
+			// we don't have to chop off anything on the first loop unless it's too long
+<span class="nc bnc" id="L491" title="All 2 branches missed.">			if ( firstloop ) {</span>
+<span class="nc bnc" id="L492" title="All 2 branches missed.">				if ( nodeKey.length() &gt; maxSheetNameLength - 2 ) {</span>
+<span class="nc" id="L493">					nodeKey = nodeKey.substring( 0, maxSheetNameLength - 2 );</span>
+				}
+			}
+			else {
+				// on subsequent loops, we need to chop off the last thing we added
+<span class="nc" id="L498">				nodeKey = nodeKey.substring( 0, nodeKey.length() - 2 );</span>
+			}
+
+<span class="nc" id="L501">			nodeKey = nodeKey + ( inc++ );</span>
+<span class="nc" id="L502">		}</span>
+<span class="nc" id="L503">		keySet.add( nodeKey );</span>
+
+<span class="nc" id="L505">		return nodeKey;</span>
+	}
+
+	public static class NodeAndPropertyValues extends HashMap&lt;URI, Value&gt; {
+
+		private final URI subject;
+		private final URI object;
+
+		public NodeAndPropertyValues( URI subj ) {
+<span class="nc" id="L514">			this( subj, null );</span>
+<span class="nc" id="L515">		}</span>
+
+<span class="nc" id="L517">		public NodeAndPropertyValues( URI subject, URI object ) {</span>
+<span class="nc" id="L518">			this.subject = subject;</span>
+<span class="nc" id="L519">			this.object = object;</span>
+<span class="nc" id="L520">		}</span>
+
+		public URI getSubject() {
+<span class="nc" id="L523">			return subject;</span>
+		}
+
+		public URI getObject() {
+<span class="nc" id="L527">			return object;</span>
+		}
+
+		public boolean isRel() {
+<span class="nc bnc" id="L531" title="All 2 branches missed.">			return ( null != object );</span>
+		}
+	}
+
+	public static class SheetRowCol {
+
+		public final String sheetname;
+		public final int row;
+		public final int col;
+
+<span class="nc" id="L541">		public SheetRowCol( String sheetname, int row, int col ) {</span>
+<span class="nc" id="L542">			this.sheetname = sheetname;</span>
+<span class="nc" id="L543">			this.row = row;</span>
+<span class="nc" id="L544">			this.col = col;</span>
+<span class="nc" id="L545">		}</span>
+
+		@Override
+		public int hashCode() {
+<span class="nc" id="L549">			int hash = 7;</span>
+<span class="nc" id="L550">			hash = 41 * hash + Objects.hashCode( this.sheetname );</span>
+<span class="nc" id="L551">			hash = 41 * hash + this.row;</span>
+<span class="nc" id="L552">			hash = 41 * hash + this.col;</span>
+<span class="nc" id="L553">			return hash;</span>
+		}
+
+		@Override
+		public boolean equals( Object obj ) {
+<span class="nc bnc" id="L558" title="All 2 branches missed.">			if ( obj == null ) {</span>
+<span class="nc" id="L559">				return false;</span>
+			}
+<span class="nc bnc" id="L561" title="All 2 branches missed.">			if ( getClass() != obj.getClass() ) {</span>
+<span class="nc" id="L562">				return false;</span>
+			}
+<span class="nc" id="L564">			final SheetRowCol other = (SheetRowCol) obj;</span>
+<span class="nc bnc" id="L565" title="All 2 branches missed.">			if ( !Objects.equals( this.sheetname, other.sheetname ) ) {</span>
+<span class="nc" id="L566">				return false;</span>
+			}
+<span class="nc bnc" id="L568" title="All 2 branches missed.">			if ( this.row != other.row ) {</span>
+<span class="nc" id="L569">				return false;</span>
+			}
+<span class="nc bnc" id="L571" title="All 2 branches missed.">			return ( this.col == other.col );</span>
+		}
+
+		@Override
+		public String toString() {
+<span class="nc" id="L576">			return sheetname + &quot; (&quot; + row + &quot;,&quot; + col + &quot;)&quot;;</span>
+		}
+	}
+
+	public static class CellFormatting {
+
+		public final Color background;
+
+<span class="nc" id="L584">		public CellFormatting( Color background ) {</span>
+<span class="nc" id="L585">			this.background = background;</span>
+<span class="nc" id="L586">		}</span>
+
+		@Override
+		public String toString() {
+<span class="nc" id="L590">			return background.toString();</span>
+		}
+
+		@Override
+		public int hashCode() {
+<span class="nc" id="L595">			int hash = 5;</span>
+<span class="nc" id="L596">			hash = 89 * hash + Objects.hashCode( this.background );</span>
+<span class="nc" id="L597">			return hash;</span>
+		}
+
+		@Override
+		public boolean equals( Object obj ) {
+<span class="nc bnc" id="L602" title="All 2 branches missed.">			if ( obj == null ) {</span>
+<span class="nc" id="L603">				return false;</span>
+			}
+<span class="nc bnc" id="L605" title="All 2 branches missed.">			if ( getClass() != obj.getClass() ) {</span>
+<span class="nc" id="L606">				return false;</span>
+			}
+<span class="nc" id="L608">			final CellFormatting other = (CellFormatting) obj;</span>
+<span class="nc" id="L609">			return ( Objects.equals( this.background, other.background ) );</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

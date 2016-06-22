@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractBindable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.query.util</a> &gt; <span class="el_source">AbstractBindable.java</span></div><h1>AbstractBindable.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.query.util;
+
+import com.ostrichemulators.semtool.rdf.engine.api.Bindable;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.xml.datatype.DatatypeConfigurationException;
+import javax.xml.datatype.DatatypeFactory;
+import javax.xml.datatype.XMLGregorianCalendar;
+import org.apache.log4j.Logger;
+import org.openrdf.model.Literal;
+import org.openrdf.model.Resource;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.URIImpl;
+import org.openrdf.model.impl.ValueFactoryImpl;
+import org.openrdf.query.Operation;
+
+/**
+ * A class that handles all the housekeeping of the QueryExecutor interface
+ *
+ * @author ryan
+ */
+public abstract class AbstractBindable implements Bindable {
+
+<span class="nc" id="L35">	private static final Logger log = Logger.getLogger( AbstractBindable.class );</span>
+<span class="nc" id="L36">	private final Map&lt;String, Value&gt; vmap = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L37">	private final Map&lt;String, String&gt; namespaces = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L38">	private final ValueFactory vf = new ValueFactoryImpl();</span>
+	private String sparql;
+<span class="nc" id="L40">	private boolean infer = true;</span>
+	private URI context;
+
+<span class="nc" id="L43">	public AbstractBindable() {</span>
+<span class="nc" id="L44">	}</span>
+
+<span class="nc" id="L46">	public AbstractBindable( String sparq ) {</span>
+<span class="nc" id="L47">		sparql = sparq;</span>
+<span class="nc" id="L48">	}</span>
+
+	@Override
+	public void setContext( URI ctx ) {
+<span class="nc" id="L52">		context = ctx;</span>
+<span class="nc" id="L53">	}</span>
+
+	@Override
+	public URI getContext() {
+<span class="nc" id="L57">		return context;</span>
+	}
+
+	@Override
+	public void setSparql( String sparq ) {
+<span class="nc" id="L62">		sparql = sparq;</span>
+<span class="nc" id="L63">	}</span>
+
+	/**
+	 * Gets a reference to this Executor's namespace map.
+	 *
+	 * @return The reference (not a copy) to the namespace map
+	 */
+	@Override
+	public Map&lt;String, String&gt; getNamespaces() {
+<span class="nc" id="L72">		return namespaces;</span>
+	}
+
+	/**
+	 * Sets custom namespaces for use with the query. These namespaces take
+	 * precedence over system- and user- defined namespaces, but not over
+	 * namespaces explicitly set in the query itself.
+	 *
+	 * @param ns
+	 */
+	@Override
+	public void setNamespaces( Map&lt;String, String&gt; ns ) {
+<span class="nc" id="L84">		namespaces.clear();</span>
+<span class="nc" id="L85">		addNamespaces( ns );</span>
+<span class="nc" id="L86">	}</span>
+
+	@Override
+	public void addNamespaces( Map&lt;String, String&gt; ns ) {
+<span class="nc" id="L90">		namespaces.putAll( ns );</span>
+<span class="nc" id="L91">	}</span>
+
+	@Override
+	public void addNamespace( String prefix, String namespace ) {
+<span class="nc" id="L95">		namespaces.put( prefix, namespace );</span>
+<span class="nc" id="L96">	}</span>
+
+	@Override
+	public void removeNamespace( String prefix ) {
+<span class="nc" id="L100">		namespaces.remove( prefix );</span>
+<span class="nc" id="L101">	}</span>
+
+	@Override
+	public String bindAndGetSparql() {
+<span class="nc" id="L105">		return getBoundSparql( sparql, vmap );</span>
+	}
+
+	@Override
+	public AbstractBindable bindURI( String var, String uri ) {
+		try {
+<span class="nc" id="L111">			vmap.put( var, new URIImpl( uri ) );</span>
+		}
+<span class="nc" id="L113">		catch ( Exception e ) {</span>
+<span class="nc" id="L114">			log.error( &quot;Could not parse uri: &quot; + uri, e );</span>
+<span class="nc" id="L115">		}</span>
+<span class="nc" id="L116">		return this;</span>
+	}
+
+	@Override
+	public AbstractBindable bindURI( String var, String basename, String localname ) {
+		try {
+<span class="nc" id="L122">			ValueFactory vfac = new ValueFactoryImpl();</span>
+<span class="nc" id="L123">			vmap.put( var, vfac.createURI( basename, localname ) );</span>
+		}
+<span class="nc" id="L125">		catch ( Exception e ) {</span>
+<span class="nc" id="L126">			log.error( &quot;Could not parse uri: &quot; + basename + localname, e );</span>
+<span class="nc" id="L127">		}</span>
+<span class="nc" id="L128">		return this;</span>
+	}
+
+	@Override
+	public String getSparql() {
+<span class="nc" id="L133">		return sparql;</span>
+	}
+
+	@Override
+	public void setBindings( Operation tq, ValueFactory fac ) {
+<span class="nc bnc" id="L138" title="All 2 branches missed.">		for ( Map.Entry&lt;String, Value&gt; en : vmap.entrySet() ) {</span>
+<span class="nc" id="L139">			tq.setBinding( en.getKey(), en.getValue() );</span>
+<span class="nc" id="L140">		}</span>
+<span class="nc" id="L141">	}</span>
+
+	@Override
+	public AbstractBindable bind( String var, String s ) {
+<span class="nc" id="L145">		vmap.put( var, vf.createLiteral( s ) );</span>
+<span class="nc" id="L146">		return this;</span>
+	}
+
+	@Override
+	public AbstractBindable bind( String var, Resource r ) {
+<span class="nc" id="L151">		vmap.put( var, r );</span>
+<span class="nc" id="L152">		return this;</span>
+	}
+
+	@Override
+	public AbstractBindable bind( String var, String s, String lang ) {
+<span class="nc" id="L157">		vmap.put( var, vf.createLiteral( s, lang ) );</span>
+<span class="nc" id="L158">		return this;</span>
+	}
+
+	@Override
+	public AbstractBindable bind( String var, double d ) {
+<span class="nc" id="L163">		vmap.put( var, vf.createLiteral( d ) );</span>
+<span class="nc" id="L164">		return this;</span>
+	}
+
+	@Override
+	public AbstractBindable bind( String var, int d ) {
+<span class="nc" id="L169">		vmap.put( var, vf.createLiteral( d ) );</span>
+<span class="nc" id="L170">		return this;</span>
+	}
+
+	@Override
+	public AbstractBindable bind( String var, Date d ) {
+<span class="nc" id="L175">		vmap.put( var, vf.createLiteral( getCal( d ) ) );</span>
+<span class="nc" id="L176">		return this;</span>
+	}
+
+	@Override
+	public AbstractBindable bind( String var, boolean d ) {
+<span class="nc" id="L181">		vmap.put( var, vf.createLiteral( d ) );</span>
+<span class="nc" id="L182">		return this;</span>
+	}
+
+	@Override
+	public AbstractBindable bind( String var, Value val ) {
+<span class="nc" id="L187">		vmap.put( var, val );</span>
+<span class="nc" id="L188">		return this;</span>
+	}
+
+	@Override
+	public Bindable unbind( String var ) {
+<span class="nc" id="L193">		vmap.remove( var );</span>
+<span class="nc" id="L194">		return this;</span>
+	}
+
+	@Override
+	public void clearBindings() {
+<span class="nc" id="L199">		vmap.clear();</span>
+<span class="nc" id="L200">	}</span>
+
+	@Override
+	public void useInferred( boolean b ) {
+<span class="nc" id="L204">		infer = b;</span>
+<span class="nc" id="L205">	}</span>
+
+	@Override
+	public boolean usesInferred() {
+<span class="nc" id="L209">		return infer;</span>
+	}
+
+	@Override
+	public void done() {
+<span class="nc" id="L214">	}</span>
+
+	@Override
+	public Map&lt;String, Value&gt; getBindingMap() {
+<span class="nc" id="L218">		return new LinkedHashMap&lt;&gt;( vmap );</span>
+	}
+
+	@Override
+	public void setBindings( Map&lt;String, Value&gt; vals ) {
+<span class="nc" id="L223">		vmap.clear();</span>
+<span class="nc" id="L224">		addBindings( vals );</span>
+<span class="nc" id="L225">	}</span>
+
+	@Override
+	public void addBindings( Map&lt;String, Value&gt; map ) {
+<span class="nc" id="L229">		vmap.putAll( map );</span>
+<span class="nc" id="L230">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L234">		return getSparql();</span>
+	}
+
+	/**
+	 * Gets the given sparql with VALUES clauses appended for the given bindings.
+	 * This function does not cover all possible SPARQL, so please use with care
+	 *
+	 * @param sparql
+	 * @param bindings
+	 * @return
+	 */
+	public static String getBoundSparql( String sparql, Map&lt;String, Value&gt; bindings ) {
+<span class="nc" id="L246">		StringBuilder binds = new StringBuilder();</span>
+
+<span class="nc bnc" id="L248" title="All 2 branches missed.">		for ( Map.Entry&lt;String, Value&gt; en : bindings.entrySet() ) {</span>
+<span class="nc" id="L249">			String var = en.getKey();</span>
+
+			//Skip making a &quot;VALUES&quot; clause if the variable isn't in the query
+<span class="nc" id="L252">			Pattern pattern = Pattern.compile( &quot;\\?&quot; + var + &quot;\\b&quot; );</span>
+<span class="nc" id="L253">			Matcher matcher = pattern.matcher( sparql );</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">			if ( !matcher.find() ) {</span>
+<span class="nc" id="L255">				continue;</span>
+			}
+
+<span class="nc" id="L258">			Value v = en.getValue();</span>
+<span class="nc" id="L259">			binds.append( &quot; VALUES ?&quot; ).append( var );</span>
+<span class="nc bnc" id="L260" title="All 2 branches missed.">			if ( v instanceof Literal ) {</span>
+<span class="nc" id="L261">				binds.append( &quot; {&quot; ).append( en.getValue() ).append( &quot;}&quot; );</span>
+			}
+			else {
+<span class="nc" id="L264">				binds.append( &quot; {&lt;&quot; ).append( en.getValue() ).append( &quot;&gt;}&quot; );</span>
+			}
+<span class="nc" id="L266">		}</span>
+
+		// I don't really want to write a Sparql parser, so just replace the last }
+		// with our VALUES statements. This will break on just about any complicated
+		// Sparql
+<span class="nc" id="L271">		int last = sparql.lastIndexOf( '}' );</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">		if ( last &gt; -1 ) {</span>
+<span class="nc" id="L273">			String select = sparql.substring( 0, last );</span>
+<span class="nc" id="L274">			String end = sparql.substring( last );</span>
+<span class="nc" id="L275">			return select + binds.toString() + end;</span>
+		}
+		else {
+			// no }, so just append the bindings (is this even valid?)
+<span class="nc" id="L279">			return sparql + binds.toString();</span>
+		}
+	}
+
+	public static XMLGregorianCalendar getCal( Date date ) {
+<span class="nc" id="L284">		GregorianCalendar gCalendar = new GregorianCalendar();</span>
+<span class="nc" id="L285">		gCalendar.setTime( date );</span>
+<span class="nc" id="L286">		XMLGregorianCalendar xmlCalendar = null;</span>
+		try {
+<span class="nc" id="L288">			xmlCalendar = DatatypeFactory.newInstance().newXMLGregorianCalendar( gCalendar );</span>
+		}
+<span class="nc" id="L290">		catch ( DatatypeConfigurationException ex ) {</span>
+<span class="nc" id="L291">			log.error( ex );</span>
+<span class="nc" id="L292">		}</span>
+<span class="nc" id="L293">		return xmlCalendar;</span>
+	}
+
+	public static Date getDate( XMLGregorianCalendar cal ) {
+<span class="nc" id="L297">		return cal.toGregorianCalendar().getTime();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

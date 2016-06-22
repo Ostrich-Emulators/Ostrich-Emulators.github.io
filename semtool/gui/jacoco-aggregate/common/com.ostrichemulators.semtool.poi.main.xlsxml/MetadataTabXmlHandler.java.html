@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MetadataTabXmlHandler.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.poi.main.xlsxml</a> &gt; <span class="el_source">MetadataTabXmlHandler.java</span></div><h1>MetadataTabXmlHandler.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.poi.main.xlsxml;
+
+import com.ostrichemulators.semtool.poi.main.ImportMetadata;
+import com.ostrichemulators.semtool.poi.main.ImportValidationException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.log4j.Logger;
+import org.apache.poi.ss.usermodel.Cell;
+import org.openrdf.model.impl.URIImpl;
+import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
+
+/**
+ *
+ * @author ryan
+ */
+public class MetadataTabXmlHandler extends XlsXmlBase {
+
+<span class="nc" id="L27">	private static final Logger log = Logger.getLogger( MetadataTabXmlHandler.class );</span>
+<span class="nc" id="L28">	private static final Map&lt;String, Integer&gt; formats = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L30">	private final Map&lt;Integer, String&gt; currentrowdata = new LinkedHashMap&lt;&gt;();</span>
+	private final ImportMetadata metas;
+<span class="nc" id="L32">	private final List&lt;String[]&gt; triples = new ArrayList&lt;&gt;();</span>
+	private final Map&lt;String, String&gt; namespaces;
+
+	private int rownum;
+	private int colnum;
+	private int celltype;
+<span class="nc" id="L38">	private String datanamespace = null;</span>
+<span class="nc" id="L39">	private String schemanamespace = null;</span>
+<span class="nc" id="L40">	private String baseuri = null;</span>
+
+	static {
+<span class="nc" id="L43">		formats.put( &quot;s&quot;, Cell.CELL_TYPE_STRING );</span>
+<span class="nc" id="L44">		formats.put( &quot;n&quot;, Cell.CELL_TYPE_NUMERIC );</span>
+<span class="nc" id="L45">		formats.put( &quot;b&quot;, Cell.CELL_TYPE_BOOLEAN );</span>
+<span class="nc" id="L46">	}</span>
+
+	public MetadataTabXmlHandler( List&lt;String&gt; sst, ImportMetadata metadata ) {
+<span class="nc" id="L49">		super( sst );</span>
+<span class="nc" id="L50">		metas = metadata;</span>
+<span class="nc" id="L51">		namespaces = metas.getNamespaces();</span>
+<span class="nc" id="L52">	}</span>
+
+	public ImportMetadata getMetadata() {
+<span class="nc" id="L55">		return metas;</span>
+	}
+
+	@Override
+	public void startElement( String uri, String localName, String name,
+			Attributes attributes ) throws SAXException {
+<span class="nc bnc" id="L61" title="All 2 branches missed.">		if ( null != name ) {</span>
+<span class="nc bnc" id="L62" title="All 14 branches missed.">			switch ( name ) {</span>
+				case &quot;row&quot;:
+<span class="nc" id="L64">					rownum = Integer.parseInt( attributes.getValue( &quot;r&quot; ) ) - 1;</span>
+<span class="nc" id="L65">					currentrowdata.clear();</span>
+<span class="nc" id="L66">					break;</span>
+				case &quot;c&quot;: // c is a new cell
+<span class="nc" id="L68">					String celltypestr = attributes.getValue( &quot;t&quot; );</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">					celltype = ( formats.containsKey( celltypestr )</span>
+<span class="nc" id="L70">							? formats.get( celltypestr ) : Cell.CELL_TYPE_BLANK );</span>
+
+<span class="nc" id="L72">					String colname = attributes.getValue( &quot;r&quot; );</span>
+<span class="nc" id="L73">					colnum = LoadingSheetXmlHandler.getColNum( colname.substring( 0,</span>
+<span class="nc" id="L74">							colname.lastIndexOf( Integer.toString( rownum + 1 ) ) ) );</span>
+<span class="nc" id="L75">					break;</span>
+				case &quot;v&quot;: // new value for a cell
+<span class="nc" id="L77">					setReading( true );</span>
+<span class="nc" id="L78">					resetContents();</span>
+					break;
+			}
+		}
+<span class="nc" id="L82">	}</span>
+
+	@Override
+	public void endElement( String uri, String localName, String name )
+			throws SAXException {
+
+<span class="nc bnc" id="L88" title="All 2 branches missed.">		if ( &quot;row&quot;.equals( name ) ) {</span>
+<span class="nc" id="L89">			currentrowdata.remove( 0 );</span>
+<span class="nc" id="L90">			fillInMetadata( currentrowdata );</span>
+		}
+
+<span class="nc bnc" id="L93" title="All 2 branches missed.">		if ( isReading() ) {</span>
+			// If we've fully read the data, add it to our row mapping
+<span class="nc bnc" id="L95" title="All 2 branches missed.">			if ( Cell.CELL_TYPE_STRING == celltype ) {</span>
+<span class="nc" id="L96">				String strval = getStringFromContentsInt();</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">				if ( !strval.isEmpty() ) {</span>
+<span class="nc" id="L98">					currentrowdata.put( colnum, strval );</span>
+				}
+<span class="nc" id="L100">			}</span>
+			else {
+<span class="nc" id="L102">				currentrowdata.put( colnum, getContents() );</span>
+			}
+
+<span class="nc" id="L105">			setReading( false );</span>
+		}
+<span class="nc" id="L107">	}</span>
+
+	@Override
+	public void startDocument() throws SAXException {
+<span class="nc" id="L111">		super.startDocument();</span>
+<span class="nc" id="L112">		triples.clear();</span>
+<span class="nc" id="L113">		metas.clear();</span>
+<span class="nc" id="L114">		datanamespace = null;</span>
+<span class="nc" id="L115">		schemanamespace = null;</span>
+<span class="nc" id="L116">		baseuri = null;</span>
+<span class="nc" id="L117">	}</span>
+
+	@Override
+	public void endDocument() throws SAXException {
+<span class="nc" id="L121">		super.endDocument();</span>
+
+		// now set the data
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		if ( null != baseuri ) {</span>
+<span class="nc" id="L125">			log.debug( &quot;setting base uri to &quot; + baseuri );</span>
+<span class="nc" id="L126">			metas.setBase( new URIImpl( baseuri ) );</span>
+		}
+<span class="nc bnc" id="L128" title="All 2 branches missed.">		if ( null != datanamespace ) {</span>
+<span class="nc" id="L129">			log.debug( &quot;setting data namespace to &quot; + datanamespace );</span>
+<span class="nc" id="L130">			metas.setDataBuilder( datanamespace );</span>
+		}
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		if ( null != schemanamespace ) {</span>
+<span class="nc" id="L133">			log.debug( &quot;setting schema namespace to &quot; + schemanamespace );</span>
+<span class="nc" id="L134">			metas.setSchemaBuilder( schemanamespace );</span>
+		}
+
+<span class="nc bnc" id="L137" title="All 2 branches missed.">		for ( Map.Entry&lt;String, String&gt; en : namespaces.entrySet() ) {</span>
+<span class="nc" id="L138">			log.debug( &quot;registering namespace: &quot;</span>
+<span class="nc" id="L139">					+ en.getKey() + &quot; =&gt; &quot; + en.getValue() );</span>
+<span class="nc" id="L140">			metas.setNamespace( en.getKey(), en.getValue() );</span>
+<span class="nc" id="L141">		}</span>
+
+<span class="nc bnc" id="L143" title="All 2 branches missed.">		for ( String[] triple : triples ) {</span>
+<span class="nc" id="L144">			log.debug( &quot;adding custom triple: &quot;</span>
+					+ triple[0] + &quot; =&gt; &quot; + triple[1] + &quot; =&gt; &quot; + triple[2] );
+
+			try {
+<span class="nc" id="L148">				metas.add( triple[0], triple[1], triple[2] );</span>
+			}
+<span class="nc" id="L150">			catch ( Exception e ) {</span>
+<span class="nc" id="L151">				throw new ImportValidationException( ImportValidationException.ErrorType.INVALID_DATA, e );</span>
+<span class="nc" id="L152">			}</span>
+<span class="nc" id="L153">		}</span>
+
+<span class="nc" id="L155">		namespaces.clear();</span>
+<span class="nc" id="L156">	}</span>
+
+	/**
+	 * Handles a row of metadata from the event parser
+	 *
+	 * @param rowdata
+	 * @param metas
+	 * @throws ImportValidationException if something is wrong
+	 */
+	private void fillInMetadata( Map&lt;Integer, String&gt; rowdata ) {
+
+<span class="nc" id="L167">		metas.setLegacyMode( false );</span>
+		// we want to load the base uri first, data-namespace, schema-namespace,
+		// prefixes, and finally triples. so read everything first, and load later
+
+<span class="nc" id="L171">		removeComments( rowdata );</span>
+
+<span class="nc bnc" id="L173" title="All 2 branches missed.">		if ( rowdata.isEmpty() ) {</span>
+<span class="nc" id="L174">			return;</span>
+		}
+
+<span class="nc" id="L177">		String propName = rowdata.get( 1 );</span>
+<span class="nc" id="L178">		String propertyMiddleColumn = rowdata.get( 2 );</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">		if ( null == propertyMiddleColumn ) {</span>
+<span class="nc" id="L180">			propertyMiddleColumn = &quot;&quot;;</span>
+		}
+<span class="nc" id="L182">		String propValue = rowdata.get( 3 );</span>
+
+<span class="nc bnc" id="L184" title="All 2 branches missed.">		if ( &quot;@base&quot;.equals( propName ) ) {</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">			if ( null == baseuri ) {</span>
+<span class="nc bnc" id="L186" title="All 4 branches missed.">				if ( propValue.startsWith( &quot;&lt;&quot; ) &amp;&amp; propValue.endsWith( &quot;&gt;&quot; ) ) {</span>
+<span class="nc" id="L187">					baseuri = propValue.substring( 1, propValue.length() - 1 );</span>
+				}
+				else {
+<span class="nc" id="L190">					throw new ImportValidationException( ImportValidationException.ErrorType.INVALID_DATA,</span>
+							&quot;@base value does not appear to be a URI: \&quot;&quot; + propValue + &quot;\&quot;&quot; );
+				}
+			}
+			else {
+<span class="nc" id="L195">				throw new ImportValidationException( ImportValidationException.ErrorType.TOO_MUCH_DATA,</span>
+						&quot;Multiple @base lines in Metadata sheet&quot; );
+			}
+		}
+<span class="nc bnc" id="L199" title="All 2 branches missed.">		else if ( &quot;@prefix&quot;.equals( propName ) ) {</span>
+			// validate that this is necessary:
+<span class="nc bnc" id="L201" title="All 4 branches missed.">			if ( !( propValue.startsWith( &quot;&lt;&quot; ) &amp;&amp; propValue.endsWith( &quot;&gt;&quot; ) ) ) {</span>
+<span class="nc" id="L202">				throw new ImportValidationException( ImportValidationException.ErrorType.INVALID_DATA,</span>
+						&quot;@prefix value does not appear to be a URI: \&quot;&quot; + propValue + &quot;\&quot;&quot; );
+			}
+
+<span class="nc" id="L206">			propValue = propValue.substring( 1, propValue.length() - 1 );</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">			if ( &quot;:schema&quot;.equals( propertyMiddleColumn ) ) {</span>
+<span class="nc bnc" id="L208" title="All 2 branches missed.">				if ( null == schemanamespace ) {</span>
+<span class="nc" id="L209">					schemanamespace = propValue;</span>
+				}
+				else {
+<span class="nc" id="L212">					throw new ImportValidationException( ImportValidationException.ErrorType.TOO_MUCH_DATA,</span>
+							&quot;Multiple :schema lines in Metadata sheet&quot; );
+				}
+			}
+<span class="nc bnc" id="L216" title="All 2 branches missed.">			else if ( &quot;:data&quot;.equals( propertyMiddleColumn ) ) {</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">				if ( null == datanamespace ) {</span>
+<span class="nc" id="L218">					datanamespace = propValue;</span>
+				}
+				else {
+<span class="nc" id="L221">					throw new ImportValidationException( ImportValidationException.ErrorType.TOO_MUCH_DATA,</span>
+							&quot;Multiple :data lines in Metadata sheet&quot; );
+				}
+			}
+<span class="nc bnc" id="L225" title="All 2 branches missed.">			else if ( &quot;:&quot;.equals( propertyMiddleColumn ) ) {</span>
+				/*
+				 * The default namespace, &quot;:&quot;, applies to all un-prefixed data elements.
+				 * Specifically setting the schema or data namespace will override the
+				 * default namespace.
+				 */
+<span class="nc bnc" id="L231" title="All 2 branches missed.">				if ( null == schemanamespace ) {</span>
+<span class="nc" id="L232">					schemanamespace = propValue;</span>
+				}
+<span class="nc bnc" id="L234" title="All 2 branches missed.">				if ( null == datanamespace ) {</span>
+<span class="nc" id="L235">					datanamespace = propValue;</span>
+				}
+				// we may still need to set the default namespace to handle RDF exports. keep an eye on this.
+			}
+			else {
+<span class="nc" id="L240">				namespaces.put( propertyMiddleColumn.replaceAll( &quot;:$&quot;, &quot;&quot; ), propValue );</span>
+			}
+		}
+		else {
+<span class="nc bnc" id="L244" title="All 6 branches missed.">			if ( null == propName || null == propValue || propertyMiddleColumn.isEmpty() ) {</span>
+<span class="nc" id="L245">				throw new ImportValidationException( ImportValidationException.ErrorType.MISSING_DATA,</span>
+						&quot;Not enough data for a custom triple: &quot; + propName + &quot;,&quot;
+						+ propertyMiddleColumn + &quot;,&quot; + propValue );
+			}
+			else {
+<span class="nc" id="L250">				triples.add( new String[]{ propName, propertyMiddleColumn, propValue } );</span>
+			}
+		}
+<span class="nc" id="L253">	}</span>
+
+	/**
+	 * Removes any comments from the given mapping. Any column index after the
+	 * comment is likewise removed
+	 *
+	 * @param rowdata the data to remove comments from
+	 */
+	private static void removeComments( Map&lt;Integer, String&gt; rowdata ) {
+<span class="nc" id="L262">		int commentcol = Integer.MAX_VALUE;</span>
+<span class="nc" id="L263">		List&lt;Integer&gt; removers = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L264" title="All 2 branches missed.">		for ( Map.Entry&lt;Integer, String&gt; en : rowdata.entrySet() ) {</span>
+<span class="nc" id="L265">			int col = en.getKey();</span>
+<span class="nc" id="L266">			String val = en.getValue();</span>
+
+<span class="nc bnc" id="L268" title="All 4 branches missed.">			if ( val.startsWith( &quot;&lt;&quot; ) &amp;&amp; val.endsWith( &quot;&gt;&quot; ) ) {</span>
+				// this is really a URI and not a string, so skip it
+<span class="nc" id="L270">				continue;</span>
+			}
+
+<span class="nc bnc" id="L273" title="All 2 branches missed.">			if ( col &gt; commentcol ) {</span>
+<span class="nc" id="L274">				removers.add( col );</span>
+			}
+
+			// if we start with a comment, we need to remove the whole value
+			// but if we have a comment inside our text, only remove the commented part
+<span class="nc bnc" id="L279" title="All 2 branches missed.">			if ( val.startsWith( &quot;#&quot; ) ) {</span>
+<span class="nc" id="L280">				removers.add( col );</span>
+			}
+<span class="nc bnc" id="L282" title="All 2 branches missed.">			else if ( val.contains( &quot;#&quot; ) ) {</span>
+<span class="nc" id="L283">				commentcol = col;</span>
+<span class="nc" id="L284">				val = val.substring( 0, val.indexOf( &quot;#&quot; ) );</span>
+<span class="nc" id="L285">				en.setValue( val );</span>
+			}
+<span class="nc" id="L287">		}</span>
+
+<span class="nc bnc" id="L289" title="All 2 branches missed.">		for ( int col : removers ) {</span>
+<span class="nc" id="L290">			rowdata.remove( col );</span>
+<span class="nc" id="L291">		}</span>
+<span class="nc" id="L292">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

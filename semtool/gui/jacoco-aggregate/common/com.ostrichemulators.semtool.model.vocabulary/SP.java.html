@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SP.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.model.vocabulary</a> &gt; <span class="el_source">SP.java</span></div><h1>SP.java</h1><pre class="source lang-java linenums">package com.ostrichemulators.semtool.model.vocabulary;
+
+import org.openrdf.model.Namespace;
+import org.openrdf.model.URI;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.NamespaceImpl;
+import org.openrdf.model.impl.ValueFactoryImpl;
+
+/**
+ * Minimal vocabulary of the SPIN SPARQL Syntax schema.
+ *
+ */
+<span class="nc" id="L13">public class SP {</span>
+
+	/**
+	 * SPIN SPARQL Syntax schema namespace: http://spinrdf.org/spin#
+	 */
+	public final static String BASE_URI = &quot;http://spinrdf.org/sp&quot;;
+
+	/**
+	 * SPIN SPARQL Syntax schema namespace: http://spinrdf.org/spl#
+	 */
+	public final static String NAMESPACE = BASE_URI + &quot;#&quot;;
+
+	/**
+	 * Recommend prefix for the SPIN SPARQL Syntax schema namespace: &quot;sp&quot;
+	 */
+	public final static String PREFIX = &quot;sp&quot;;
+
+	/**
+	 * An immutable {@link Namespace} constant that represents the SPIN SPARQL
+	 * Syntax schema namespace.
+	 */
+<span class="nc" id="L34">	public static final Namespace NS = new NamespaceImpl( PREFIX, NAMESPACE );</span>
+
+	// ----- Classes ------
+	/**
+	 * http://spinrdf.org/sp#Construct
+	 */
+	public final static URI Construct;
+
+	/**
+	 * http://spinrdf.org/sp#Select
+	 */
+	public final static URI Select;
+
+	/**
+	 * http://spinrdf.org/sp#Describe
+	 */
+	public final static URI Describe;
+
+	// ----- Properties ------
+	/**
+	 * http://spinrdf.org/sp#text
+	 */
+	public final static URI text;
+
+	/**
+	 * http://spinrdf.org/sp#query
+	 */
+	public final static URI query;
+
+	static {
+<span class="nc" id="L64">		final ValueFactory factory = ValueFactoryImpl.getInstance();</span>
+
+		// ----- Classes ------
+<span class="nc" id="L67">		Construct = factory.createURI( NAMESPACE, &quot;Construct&quot; );</span>
+
+<span class="nc" id="L69">		Select = factory.createURI( NAMESPACE, &quot;Select&quot; );</span>
+<span class="nc" id="L70">		Describe = factory.createURI( NAMESPACE, &quot;Describe&quot; );</span>
+
+		// ----- Properties ------
+<span class="nc" id="L73">		text = factory.createURI( NAMESPACE, &quot;text&quot; );</span>
+
+<span class="nc" id="L75">		query = factory.createURI( NAMESPACE, &quot;query&quot; );</span>
+<span class="nc" id="L76">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

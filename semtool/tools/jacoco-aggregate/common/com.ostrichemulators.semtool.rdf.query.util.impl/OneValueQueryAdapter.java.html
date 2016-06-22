@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>OneValueQueryAdapter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.query.util.impl</a> &gt; <span class="el_source">OneValueQueryAdapter.java</span></div><h1>OneValueQueryAdapter.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.query.util.impl;
+
+import com.ostrichemulators.semtool.rdf.query.util.QueryExecutorAdapter;
+import java.util.List;
+import org.openrdf.model.Literal;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.query.BindingSet;
+
+/**
+ * A query adapter that returns a single value for the variable. If no variable
+ * is explicitly defined, the first binding variable will be returned. If the
+ * query returns many tuples, only the first one returned.
+ *
+ * @author ryan
+ * @param &lt;T&gt; the type of class in the returned list
+ */
+public abstract class OneValueQueryAdapter&lt;T&gt; extends QueryExecutorAdapter&lt;T&gt; {
+
+<span class="nc" id="L26">	private String varname = null;</span>
+
+<span class="nc" id="L28">	public OneValueQueryAdapter() {</span>
+<span class="nc" id="L29">	}</span>
+
+	public OneValueQueryAdapter( String sparq ) {
+<span class="nc" id="L32">		super( sparq );</span>
+<span class="nc" id="L33">	}</span>
+
+	public OneValueQueryAdapter( String sparq, String vname ) {
+<span class="nc" id="L36">		super( sparq );</span>
+<span class="nc" id="L37">	}</span>
+
+	public final void setVariableName( String name ) {
+<span class="nc" id="L40">		varname = name;</span>
+<span class="nc" id="L41">	}</span>
+
+	@Override
+	public void start( List&lt;String&gt; bnames ) {
+<span class="nc" id="L45">		super.start( bnames );</span>
+<span class="nc bnc" id="L46" title="All 4 branches missed.">		if ( null == varname &amp;&amp; !bnames.isEmpty() ) {</span>
+<span class="nc" id="L47">			varname = bnames.get( 0 );</span>
+		}
+<span class="nc" id="L49">	}</span>
+
+	@Override
+	public void handleTuple( BindingSet set, ValueFactory fac ) {
+<span class="nc bnc" id="L53" title="All 2 branches missed.">		if ( null == result ) {</span>
+<span class="nc" id="L54">			result = getValue( set.getValue( varname ), fac );</span>
+		}
+<span class="nc" id="L56">	}</span>
+
+	protected abstract T getValue( Value val, ValueFactory fac );
+
+	public static OneValueQueryAdapter&lt;URI&gt; getUri( String sparql, String var ) {
+<span class="nc" id="L61">		return new OneValueQueryAdapter&lt;URI&gt;( sparql, var ) {</span>
+
+			@Override
+			protected URI getValue( Value value, ValueFactory fac ) {
+<span class="nc" id="L65">				return URI.class.cast( value );</span>
+			}
+		};
+	}
+
+	public static OneValueQueryAdapter&lt;URI&gt; getUri( String sparql ) {
+<span class="nc" id="L71">		return getUri( sparql, null );</span>
+	}
+
+	public static OneValueQueryAdapter&lt;String&gt; getString( String sparql, String var ) {
+<span class="nc" id="L75">		return new OneValueQueryAdapter&lt;String&gt;( sparql, var ) {</span>
+
+			@Override
+			protected String getValue( Value value, ValueFactory fac ) {
+<span class="nc" id="L79">				return value.stringValue();</span>
+			}
+		};
+	}
+
+	public static OneValueQueryAdapter&lt;String&gt; getString( String sparql ) {
+<span class="nc" id="L85">		return getString( sparql, null );</span>
+	}
+
+	public static OneValueQueryAdapter&lt;Double&gt; getDouble( String sparql, String var ) {
+<span class="nc" id="L89">		return new OneValueQueryAdapter&lt;Double&gt;( sparql, var ) {</span>
+
+			@Override
+			protected Double getValue( Value value, ValueFactory fac ) {
+<span class="nc" id="L93">				return Literal.class.cast( value ).doubleValue();</span>
+			}
+		};
+	}
+
+	public static OneValueQueryAdapter&lt;Double&gt; getDouble( String sparql ) {
+<span class="nc" id="L99">		return getDouble( sparql, null );</span>
+	}
+
+	public static OneValueQueryAdapter&lt;Boolean&gt; getBoolean( String sparql, String var ) {
+<span class="nc" id="L103">		return new OneValueQueryAdapter&lt;Boolean&gt;( sparql, var ) {</span>
+
+			@Override
+			protected Boolean getValue( Value value, ValueFactory fac ) {
+<span class="nc bnc" id="L107" title="All 2 branches missed.">				return ( null == value ? false : Literal.class.cast( value ).booleanValue() );</span>
+			}
+		};
+	}
+
+	public static OneValueQueryAdapter&lt;Boolean&gt; getBoolean( String sparql ) {
+<span class="nc" id="L113">		return getBoolean( sparql, null );</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractUser.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.user</a> &gt; <span class="el_source">AbstractUser.java</span></div><h1>AbstractUser.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.user;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ *
+ * @author ryan
+ */
+public abstract class AbstractUser implements User {
+
+<span class="nc" id="L17">	private String username = null;</span>
+<span class="nc" id="L18">	private final Map&lt;String, String&gt; props = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L20">	public AbstractUser() {</span>
+<span class="nc" id="L21">	}</span>
+
+<span class="nc" id="L23">	public AbstractUser( String username ) {</span>
+<span class="nc" id="L24">		this.username = username;</span>
+<span class="nc" id="L25">	}</span>
+
+	@Override
+	public String getUsername() {
+<span class="nc" id="L29">		return username;</span>
+	}
+
+	@Override
+	public String getProperty( String prop ) {
+<span class="nc" id="L34">		return props.get( prop );</span>
+	}
+
+	@Override
+	public void setProperty( String prop, String value ) {
+<span class="nc" id="L39">		props.put( prop, value );</span>
+<span class="nc" id="L40">	}</span>
+
+	/**
+	 * Gets information in a consistent manner for keeping track of provenance
+	 * items. This should be: &lt;code&gt;FullName &amp;lt;email&amp;gt;, organization&lt;/code&gt;
+	 *
+	 * @return
+	 */
+	@Override
+	public String getAuthorInfo() {
+<span class="nc" id="L50">		return getAuthorInformation( this );</span>
+	}
+
+	public static String getAuthorInformation( User author ) {
+
+<span class="nc" id="L55">		String userPrefName = author.getProperty( UserProperty.USER_FULLNAME );</span>
+<span class="nc" id="L56">		String userPrefEmail = author.getProperty( UserProperty.USER_EMAIL );</span>
+<span class="nc" id="L57">		String userPrefOrg = author.getProperty( UserProperty.USER_ORG );</span>
+
+<span class="nc bnc" id="L59" title="All 6 branches missed.">		if ( userPrefName.isEmpty() &amp;&amp; userPrefEmail.isEmpty() &amp;&amp; userPrefOrg.isEmpty() ) {</span>
+<span class="nc" id="L60">			return author.getUsername();</span>
+		}
+
+<span class="nc" id="L63">		boolean hasNameAndEmail</span>
+<span class="nc bnc" id="L64" title="All 4 branches missed.">				= !( userPrefName.isEmpty() || userPrefEmail.isEmpty() );</span>
+
+<span class="nc" id="L66">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">		if ( !userPrefName.isEmpty() ) {</span>
+<span class="nc" id="L68">			sb.append( userPrefName );</span>
+
+<span class="nc bnc" id="L70" title="All 2 branches missed.">			if ( hasNameAndEmail ){</span>
+<span class="nc" id="L71">				sb.append( &quot; &quot; );</span>
+			}
+		}
+
+<span class="nc bnc" id="L75" title="All 2 branches missed.">		if ( !userPrefEmail.isEmpty() ) {</span>
+<span class="nc" id="L76">			sb.append( &quot;&lt;&quot; ).append( userPrefEmail ).append( &quot;&gt;&quot; );</span>
+		}
+
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		if( !userPrefOrg.isEmpty() ){</span>
+<span class="nc bnc" id="L80" title="All 4 branches missed.">			if( hasNameAndEmail || !userPrefName.isEmpty() ){</span>
+<span class="nc" id="L81">				sb.append( &quot;, &quot; );</span>
+			}
+<span class="nc bnc" id="L83" title="All 2 branches missed.">			else if( !userPrefEmail.isEmpty() ){</span>
+<span class="nc" id="L84">				sb.append( &quot; &quot; );</span>
+			}
+
+<span class="nc" id="L87">			sb.append( userPrefOrg );</span>
+		}
+
+<span class="nc" id="L90">		return sb.toString();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

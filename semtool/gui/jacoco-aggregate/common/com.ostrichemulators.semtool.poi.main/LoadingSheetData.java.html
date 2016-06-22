@@ -1,0 +1,721 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>LoadingSheetData.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.poi.main</a> &gt; <span class="el_source">LoadingSheetData.java</span></div><h1>LoadingSheetData.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.poi.main;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import org.apache.log4j.Logger;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.ValueFactoryImpl;
+
+/**
+ * A class to encapsulate relationship loading sheet information.
+ *
+ * @author ryan
+ */
+public class LoadingSheetData {
+
+<span class="nc" id="L33">	private static final Logger log = Logger.getLogger( LoadingSheetData.class );</span>
+	private String subjectType;
+	private String objectType;
+	private String relname;
+
+<span class="nc" id="L38">	private boolean sbjErr = false;</span>
+<span class="nc" id="L39">	private boolean objErr = false;</span>
+<span class="nc" id="L40">	private boolean relErr = false;</span>
+<span class="nc" id="L41">	private final Set&lt;String&gt; propErrs = new HashSet&lt;&gt;();</span>
+
+	// property name =&gt; datatype lookup
+<span class="nc" id="L44">	private final Map&lt;String, URI&gt; propcache = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L45">	private final Set&lt;String&gt; proplink = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L46">	private final Set&lt;String&gt; napcache = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L47">	private final List&lt;LoadingNodeAndPropertyValues&gt; data = new ArrayList&lt;&gt;();</span>
+	private final String tabname;
+
+	protected LoadingSheetData( String tabtitle, String type ) {
+<span class="nc" id="L51">		this( tabtitle, type, new HashMap&lt;&gt;() );</span>
+<span class="nc" id="L52">	}</span>
+
+	protected LoadingSheetData( String tabtitle, String type, Map&lt;String, URI&gt; props ) {
+<span class="nc" id="L55">		this( tabtitle, type, null, null, props );</span>
+<span class="nc" id="L56">	}</span>
+
+	protected LoadingSheetData( String tabtitle, String sType, String oType,
+			String relname ) {
+<span class="nc" id="L60">		this( tabtitle, sType, oType, relname, new HashMap&lt;&gt;() );</span>
+<span class="nc" id="L61">	}</span>
+
+	protected LoadingSheetData( String tabtitle, String sType, String oType,
+<span class="nc" id="L64">			String relname, Map&lt;String, URI&gt; props ) {</span>
+<span class="nc" id="L65">		subjectType = sType;</span>
+<span class="nc" id="L66">		tabname = tabtitle;</span>
+<span class="nc" id="L67">		this.objectType = oType;</span>
+<span class="nc" id="L68">		this.relname = relname;</span>
+<span class="nc" id="L69">		propcache.putAll( props );</span>
+<span class="nc" id="L70">	}</span>
+
+	public int rows() {
+<span class="nc" id="L73">		return data.size();</span>
+	}
+
+	public boolean hasErrors() {
+<span class="nc" id="L77">		DataIterator di = iterator();</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">		while ( di.hasNext() ) {</span>
+<span class="nc" id="L79">			LoadingNodeAndPropertyValues nap = di.next();</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">			if ( nap.hasError() ) {</span>
+<span class="nc" id="L81">				return true;</span>
+			}
+<span class="nc" id="L83">		}</span>
+
+<span class="nc" id="L85">		return false;</span>
+	}
+
+	/**
+	 * Removes a single node from the list. This may be an expensive operation.
+	 *
+	 * @param nap
+	 */
+	public void remove( LoadingNodeAndPropertyValues nap ) {
+<span class="nc" id="L94">		data.remove( nap );</span>
+<span class="nc" id="L95">	}</span>
+
+	/**
+	 * Removes nodes from the list. This may be an expensive operation.
+	 *
+	 * @param naps
+	 */
+	public void removeAll( Collection&lt;LoadingNodeAndPropertyValues&gt; naps ) {
+<span class="nc" id="L103">		data.removeAll( naps );</span>
+<span class="nc" id="L104">	}</span>
+
+	public DataIterator iterator() {
+<span class="nc" id="L107">		return new DataIteratorImpl();</span>
+	}
+
+	public boolean hasSubjectTypeError() {
+<span class="nc" id="L111">		return sbjErr;</span>
+	}
+
+	public void setSubjectTypeIsError( boolean sbjErr ) {
+<span class="nc" id="L115">		this.sbjErr = sbjErr;</span>
+<span class="nc" id="L116">	}</span>
+
+	public boolean hasObjectTypeError() {
+<span class="nc" id="L119">		return objErr;</span>
+	}
+
+	public void setObjectTypeIsError( boolean objErr ) {
+<span class="nc" id="L123">		this.objErr = objErr;</span>
+<span class="nc" id="L124">	}</span>
+
+	public boolean hasRelationError() {
+<span class="nc" id="L127">		return relErr;</span>
+	}
+
+	public void setRelationIsError( boolean relErr ) {
+<span class="nc" id="L131">		this.relErr = relErr;</span>
+<span class="nc" id="L132">	}</span>
+
+	public void setPropertyIsError( String errprop, boolean iserr ) {
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		if ( propcache.containsKey( errprop ) ) {</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">			if ( iserr ) {</span>
+<span class="nc" id="L137">				propErrs.add( errprop );</span>
+			}
+			else {
+<span class="nc" id="L140">				propErrs.remove( errprop );</span>
+			}
+		}
+<span class="nc" id="L143">	}</span>
+
+	public void setSubjectType( String subjectType ) {
+<span class="nc" id="L146">		this.subjectType = subjectType;</span>
+<span class="nc" id="L147">	}</span>
+
+	public void setObjectType( String objectType ) {
+<span class="nc" id="L150">		this.objectType = objectType;</span>
+<span class="nc" id="L151">	}</span>
+
+	public void setRelname( String relname ) {
+<span class="nc" id="L154">		this.relname = relname;</span>
+<span class="nc" id="L155">	}</span>
+
+	public boolean propertyIsError( String prop ) {
+<span class="nc" id="L158">		return propErrs.contains( prop );</span>
+	}
+
+	public boolean hasModelErrors() {
+<span class="nc bnc" id="L162" title="All 8 branches missed.">		return ( relErr || sbjErr || objErr || !propErrs.isEmpty() );</span>
+	}
+
+	/**
+	 * Sets the URI for a given property
+	 *
+	 * @param prop the property name
+	 * @param type the datatype it should be
+	 */
+	public void setPropertyDataType( String prop, URI type ) {
+<span class="nc" id="L172">		propcache.put( prop, type );</span>
+<span class="nc" id="L173">	}</span>
+
+	public boolean hasPropertyDataType( String prop ) {
+<span class="nc bnc" id="L176" title="All 2 branches missed.">		return ( propcache.containsKey( prop )</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">				? null != propcache.get( prop ) : false );</span>
+	}
+
+	public URI getPropertyDataType( String prop ) {
+<span class="nc" id="L181">		return propcache.get( prop );</span>
+	}
+
+	public String getObjectType() {
+<span class="nc" id="L185">		return objectType;</span>
+	}
+
+	public String getRelname() {
+<span class="nc" id="L189">		return relname;</span>
+	}
+
+	public String getName() {
+<span class="nc" id="L193">		return tabname;</span>
+	}
+
+	public void addProperty( String prop ) {
+<span class="nc" id="L197">		addProperty( prop, null );</span>
+<span class="nc" id="L198">	}</span>
+
+	public void addProperty( String prop, URI type ) {
+<span class="nc" id="L201">		propcache.put( prop, type );</span>
+<span class="nc" id="L202">	}</span>
+
+	public Collection&lt;String&gt; getProperties() {
+<span class="nc" id="L205">		return propcache.keySet();</span>
+	}
+
+	public boolean hasProperties() {
+<span class="nc bnc" id="L209" title="All 2 branches missed.">		return !propcache.isEmpty();</span>
+	}
+
+	public final void addProperties( Collection&lt;String&gt; props ) {
+<span class="nc bnc" id="L213" title="All 2 branches missed.">		for ( String s : props ) {</span>
+<span class="nc" id="L214">			addProperty( s );</span>
+<span class="nc" id="L215">		}</span>
+<span class="nc" id="L216">	}</span>
+
+	/**
+	 * Releases any resources used by this class. Technically, this function must
+	 * only be called when {@link #isMemOnly() } returns false, but it's good
+	 * practice to always call it
+	 */
+	public void release() {
+<span class="nc" id="L224">	}</span>
+
+	public void finishLoading() {
+<span class="nc" id="L227">	}</span>
+
+	/**
+	 * Clears any stored loading data
+	 */
+	public void clear() {
+<span class="nc" id="L233">		data.clear();</span>
+<span class="nc" id="L234">		propcache.clear();</span>
+<span class="nc" id="L235">	}</span>
+
+	public void setProperties( Map&lt;String, URI&gt; props ) {
+<span class="nc" id="L238">		propcache.clear();</span>
+<span class="nc" id="L239">		propcache.putAll( props );</span>
+<span class="nc" id="L240">	}</span>
+
+	public Map&lt;String, URI&gt; getPropertiesAndDataTypes() {
+<span class="nc" id="L243">		return new HashMap&lt;&gt;( propcache );</span>
+	}
+
+	public String getSubjectType() {
+<span class="nc" id="L247">		return subjectType;</span>
+	}
+
+	protected void cacheNapLabel( String label ) {
+<span class="nc" id="L251">		napcache.add( label );</span>
+<span class="nc" id="L252">	}</span>
+
+	protected boolean isNapLabelCached( String s ) {
+<span class="nc" id="L255">		return napcache.contains( s );</span>
+	}
+
+	protected boolean isPropLabelCached( String s ) {
+<span class="nc" id="L259">		return propcache.containsKey( s );</span>
+	}
+
+	/**
+	 * Gets this instance's node and property data. Changes made to the returned
+	 * collection are NOT propagated to the internal copy
+	 *
+	 * @return the internal data
+	 */
+	public List&lt;LoadingNodeAndPropertyValues&gt; getData() {
+<span class="nc" id="L269">		return new ArrayList&lt;&gt;( data );</span>
+	}
+
+	protected void commit() {
+<span class="nc" id="L273">	}</span>
+
+	/**
+	 * Notifies subclasses when a new NAP is added
+	 *
+	 * @param nap
+	 */
+	protected void added( LoadingNodeAndPropertyValues nap ) {
+<span class="nc" id="L281">	}</span>
+
+	public void add( LoadingNodeAndPropertyValues nap ) {
+<span class="nc" id="L284">		data.add( nap );</span>
+<span class="nc" id="L285">		added( nap );</span>
+
+		// add this NAP's label to our cache, if we have it (we should)
+<span class="nc" id="L288">		cacheNapLabel( nap.getSubject() );</span>
+<span class="nc" id="L289">	}</span>
+
+	public LoadingNodeAndPropertyValues add( String slabel ) {
+<span class="nc" id="L292">		LoadingNodeAndPropertyValues nap = new LoadingNodeAndPropertyValues( slabel );</span>
+<span class="nc" id="L293">		add( nap );</span>
+<span class="nc" id="L294">		return nap;</span>
+	}
+
+	public LoadingNodeAndPropertyValues add( String slabel, Map&lt;String, Value&gt; props ) {
+<span class="nc" id="L298">		LoadingNodeAndPropertyValues nap = add( slabel );</span>
+<span class="nc" id="L299">		nap.putAll( props );</span>
+<span class="nc" id="L300">		return nap;</span>
+	}
+
+	public LoadingNodeAndPropertyValues add( String slabel, String olabel ) {
+
+<span class="nc" id="L305">		LoadingNodeAndPropertyValues nap</span>
+				= new LoadingNodeAndPropertyValues( slabel, olabel );
+<span class="nc" id="L307">		cacheNapLabel( olabel );</span>
+<span class="nc" id="L308">		add( nap );</span>
+<span class="nc" id="L309">		return nap;</span>
+	}
+
+	/**
+	 * Adds a new nap to the list. This is the preferred way to construct the nap
+	 *
+	 * @param slabel
+	 * @param olabel
+	 * @param props
+	 * @return
+	 */
+	public LoadingNodeAndPropertyValues add( String slabel, String olabel,
+			Map&lt;String, Value&gt; props ) {
+<span class="nc" id="L322">		LoadingNodeAndPropertyValues nap</span>
+				= new LoadingNodeAndPropertyValues( slabel, olabel, props );
+<span class="nc" id="L324">		add( nap );</span>
+<span class="nc" id="L325">		return nap;</span>
+	}
+
+	public List&lt;String&gt; getHeaders() {
+<span class="nc" id="L329">		List&lt;String&gt; heads = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L330">		heads.add( getSubjectType() );</span>
+<span class="nc bnc" id="L331" title="All 2 branches missed.">		if ( isRel() ) {</span>
+<span class="nc" id="L332">			heads.add( getObjectType() );</span>
+		}
+
+<span class="nc" id="L335">		heads.addAll( propcache.keySet() );</span>
+<span class="nc" id="L336">		return heads;</span>
+	}
+
+	/**
+	 * Sets the headers of this loading sheet, including subject, object, and all
+	 * properties. Note that the relation name cannot be changed with this
+	 * function, nor can the type of loading sheet it is. The actual number of
+	 * headers cannot be changed, either, but if attempted, will silently fail.
+	 *
+	 * @param newheads The new headers.
+	 */
+	public void setHeaders( List&lt;String&gt; newheads ) {
+<span class="nc bnc" id="L348" title="All 2 branches missed.">		if ( newheads.size() != getHeaders().size() ) {</span>
+<span class="nc" id="L349">			log.error( &quot;cannot change header size&quot; );</span>
+<span class="nc" id="L350">			return;</span>
+		}
+
+<span class="nc" id="L353">		String st = newheads.get( 0 );</span>
+<span class="nc" id="L354">		setSubjectType( st );</span>
+
+<span class="nc" id="L356">		int firstPropCol = 1;</span>
+<span class="nc bnc" id="L357" title="All 2 branches missed.">		if ( isRel() ) {</span>
+<span class="nc" id="L358">			String ot = newheads.get( 1 );</span>
+<span class="nc" id="L359">			setObjectType( ot );</span>
+<span class="nc" id="L360">			firstPropCol = 2;</span>
+		}
+
+		// properties are a little tough because we cannot change the key of the map,
+		// and if we add a new key, it'll mess up the iteration order
+		// so we'll create a new map, and add the columns in the right order
+		// also, worry about propagating errors 
+<span class="nc" id="L367">		String[] oldkeys = propcache.keySet().toArray( new String[0] );</span>
+<span class="nc" id="L368">		int col = 0;</span>
+<span class="nc" id="L369">		Map&lt;String, URI&gt; newtypes = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L370">		Set&lt;String&gt; newerrors = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L371">		ListIterator&lt;String&gt; propit = newheads.listIterator( firstPropCol );</span>
+<span class="nc bnc" id="L372" title="All 2 branches missed.">		while ( propit.hasNext() ) {</span>
+<span class="nc" id="L373">			String newkey = propit.next();</span>
+<span class="nc" id="L374">			String oldkey = oldkeys[col++];</span>
+<span class="nc" id="L375">			URI proptype = propcache.get( oldkey );</span>
+<span class="nc" id="L376">			newtypes.put( newkey, proptype );</span>
+<span class="nc bnc" id="L377" title="All 2 branches missed.">			if ( this.propertyIsError( oldkey ) ) {</span>
+<span class="nc" id="L378">				newerrors.add( newkey );</span>
+			}
+<span class="nc" id="L380">		}</span>
+
+<span class="nc" id="L382">		setProperties( newtypes );</span>
+<span class="nc" id="L383">		propErrs.clear();</span>
+<span class="nc" id="L384">		propErrs.addAll( newerrors );</span>
+<span class="nc" id="L385">	}</span>
+
+	public boolean isRel() {
+<span class="nc bnc" id="L388" title="All 2 branches missed.">		return ( null != objectType );</span>
+	}
+
+	public boolean isEmpty() {
+<span class="nc" id="L392">		return data.isEmpty();</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc bnc" id="L397" title="All 2 branches missed.">		return getName() + ( isRel() ? &quot;(rel)&quot; : &quot;(node)&quot; ) + &quot; with &quot;</span>
+<span class="nc" id="L398">				+ rows() + &quot; naps&quot;;</span>
+	}
+
+	/**
+	 * Looks through all properties of this sheet to see if any are actually a
+	 * link to the {@link #subjectType} of one of the given sheets
+	 *
+	 * @param others
+	 */
+	public void findPropertyLinks( Collection&lt;LoadingSheetData&gt; others ) {
+<span class="nc" id="L408">		proplink.clear();</span>
+<span class="nc bnc" id="L409" title="All 2 branches missed.">		for ( String propname : propcache.keySet() ) {</span>
+<span class="nc bnc" id="L410" title="All 2 branches missed.">			for ( LoadingSheetData lsd : others ) {</span>
+<span class="nc bnc" id="L411" title="All 2 branches missed.">				if ( lsd.getSubjectType().equals( propname ) ) {</span>
+<span class="nc" id="L412">					proplink.add( propname );</span>
+				}
+<span class="nc" id="L414">			}</span>
+<span class="nc" id="L415">		}</span>
+<span class="nc" id="L416">	}</span>
+
+	public boolean isLink( String propname ) {
+<span class="nc" id="L419">		return proplink.contains( propname );</span>
+	}
+
+	public boolean isMemOnly() {
+<span class="nc" id="L423">		return true;</span>
+	}
+
+	public static LoadingSheetData copyHeadersOf( LoadingSheetData model ) {
+		LoadingSheetData lsd;
+<span class="nc bnc" id="L428" title="All 2 branches missed.">		if ( model.isRel() ) {</span>
+<span class="nc" id="L429">			lsd = new LoadingSheetData( model.getName(), model.getSubjectType(),</span>
+<span class="nc" id="L430">					model.getObjectType(), model.getRelname(), model.getPropertiesAndDataTypes() );</span>
+		}
+		else {
+<span class="nc" id="L433">			lsd = new LoadingSheetData( model.getName(), model.getSubjectType(),</span>
+<span class="nc" id="L434">					model.getPropertiesAndDataTypes() );</span>
+		}
+
+<span class="nc bnc" id="L437" title="All 2 branches missed.">		if ( model.hasModelErrors() ) {</span>
+<span class="nc" id="L438">			lsd.setSubjectTypeIsError( model.hasSubjectTypeError() );</span>
+<span class="nc" id="L439">			lsd.setObjectTypeIsError( model.hasObjectTypeError() );</span>
+<span class="nc" id="L440">			lsd.setRelationIsError( model.hasRelationError() );</span>
+<span class="nc bnc" id="L441" title="All 2 branches missed.">			for ( String p : model.getProperties() ) {</span>
+<span class="nc" id="L442">				lsd.setPropertyIsError( p, model.propertyIsError( p ) );</span>
+<span class="nc" id="L443">			}</span>
+		}
+
+<span class="nc" id="L446">		return lsd;</span>
+	}
+
+	public static LoadingSheetData nodesheet( String subject ) {
+<span class="nc" id="L450">		return nodesheet( subject, subject );</span>
+	}
+
+	public static LoadingSheetData nodesheet( String tabname, String subject ) {
+<span class="nc" id="L454">		return nodesheet( tabname, subject, true );</span>
+	}
+
+	public static LoadingSheetData nodesheet( String tabname, String subject,
+			boolean inMemOnly ) {
+<span class="nc bnc" id="L459" title="All 2 branches missed.">		if ( !inMemOnly ) {</span>
+			try {
+<span class="nc" id="L461">				return new DiskBackedLoadingSheetData( tabname, subject );</span>
+			}
+<span class="nc" id="L463">			catch ( IOException ioe ) {</span>
+<span class="nc" id="L464">				log.warn( &quot;could not create file-based loading sheet&quot;, ioe );</span>
+				// just fall through
+			}
+		}
+
+<span class="nc" id="L469">		return new LoadingSheetData( tabname, subject );</span>
+	}
+
+	public static LoadingSheetData relsheet( String subject, String object,
+			String relname ) {
+<span class="nc" id="L474">		return relsheet( subject, object, relname, true );</span>
+	}
+
+	public static LoadingSheetData relsheet( String subject, String object,
+			String relname, boolean inMemOnly ) {
+<span class="nc" id="L479">		StringBuilder sb = new StringBuilder( subject ).append( &quot;-&quot; );</span>
+<span class="nc" id="L480">		sb.append( relname ).append( &quot;-&quot; ).append( object );</span>
+<span class="nc" id="L481">		return relsheet( sb.toString(), subject, object, relname, inMemOnly );</span>
+	}
+
+	public static LoadingSheetData relsheet( String tabname, String subject,
+			String object, String relname ) {
+<span class="nc" id="L486">		return relsheet( tabname, subject, object, relname, true );</span>
+	}
+
+	public static LoadingSheetData relsheet( String tabname, String subject,
+			String object, String relname, boolean inMemOnly ) {
+
+<span class="nc bnc" id="L492" title="All 2 branches missed.">		if ( !inMemOnly ) {</span>
+			try {
+<span class="nc" id="L494">				return new DiskBackedLoadingSheetData( tabname, subject, object, relname );</span>
+			}
+
+<span class="nc" id="L497">			catch ( IOException ioe ) {</span>
+<span class="nc" id="L498">				log.warn( &quot;could not create file-based loading sheet&quot;, ioe );</span>
+				// just fall through
+			}
+		}
+
+<span class="nc" id="L503">		return new LoadingSheetData( tabname, subject, object, relname );</span>
+	}
+
+	/**
+	 * A Node And Properties (NAP) object
+	 */
+	public class LoadingNodeAndPropertyValues extends HashMap&lt;String, Value&gt; {
+
+		private String subject;
+		private String object;
+<span class="nc" id="L513">		private boolean subjectIsError = false;</span>
+<span class="nc" id="L514">		private boolean objectIsError = false;</span>
+
+		public LoadingNodeAndPropertyValues( String subj ) {
+<span class="nc" id="L517">			this( subj, new HashMap&lt;&gt;() );</span>
+<span class="nc" id="L518">		}</span>
+
+<span class="nc" id="L520">		public LoadingNodeAndPropertyValues( String subject, String object ) {</span>
+<span class="nc" id="L521">			this.subject = subject;</span>
+<span class="nc" id="L522">			this.object = object;</span>
+<span class="nc" id="L523">		}</span>
+
+		/**
+		 * If at all possible, this is the ctor to use
+		 *
+		 * @param subject
+		 * @param object
+		 * @param props
+		 */
+		public LoadingNodeAndPropertyValues( String subject, String object,
+<span class="nc" id="L533">				Map&lt;String, Value&gt; props ) {</span>
+<span class="nc" id="L534">			super( props );</span>
+<span class="nc" id="L535">			this.subject = subject;</span>
+<span class="nc" id="L536">			this.object = object;</span>
+<span class="nc" id="L537">		}</span>
+
+		public LoadingNodeAndPropertyValues( String subject, Map&lt;String, Value&gt; props ) {
+<span class="nc" id="L540">			this( subject, null, props );</span>
+<span class="nc" id="L541">		}</span>
+
+		public String getSubject() {
+<span class="nc" id="L544">			return subject;</span>
+		}
+
+		public String getObject() {
+<span class="nc" id="L548">			return object;</span>
+		}
+
+		public String getSheetName() {
+<span class="nc" id="L552">			return LoadingSheetData.this.getName();</span>
+		}
+
+		public String getRelname() {
+<span class="nc" id="L556">			return LoadingSheetData.this.getRelname();</span>
+		}
+
+		public void setSubject( String s ) {
+<span class="nc" id="L560">			subject = s;</span>
+<span class="nc" id="L561">		}</span>
+
+		public void setObject( String s ) {
+<span class="nc" id="L564">			object = s;</span>
+<span class="nc" id="L565">		}</span>
+
+		public boolean hasError() {
+<span class="nc bnc" id="L568" title="All 4 branches missed.">			return ( subjectIsError || objectIsError );</span>
+		}
+
+		public void setSubjectIsError( boolean iserr ) {
+<span class="nc" id="L572">			subjectIsError = iserr;</span>
+<span class="nc" id="L573">		}</span>
+
+		public void setObjectIsError( boolean iserr ) {
+<span class="nc" id="L576">			objectIsError = iserr;</span>
+<span class="nc" id="L577">		}</span>
+
+		public boolean isSubjectError() {
+<span class="nc" id="L580">			return subjectIsError;</span>
+		}
+
+		public boolean isObjectError() {
+<span class="nc" id="L584">			return objectIsError;</span>
+		}
+
+		public String getSubjectType() {
+<span class="nc" id="L588">			return LoadingSheetData.this.subjectType;</span>
+		}
+
+		public String getObjectType() {
+<span class="nc" id="L592">			return LoadingSheetData.this.objectType;</span>
+		}
+
+		public Value[] convertToValueArray( ValueFactory vf ) {
+<span class="nc bnc" id="L596" title="All 2 branches missed.">			int arrsize = propcache.size() + ( isRel() ? 2 : 1 );</span>
+
+<span class="nc" id="L598">			Value vals[] = new Value[arrsize];</span>
+
+<span class="nc" id="L600">			vals[0] = vf.createLiteral( getSubject() );</span>
+<span class="nc" id="L601">			int i = 0;</span>
+<span class="nc bnc" id="L602" title="All 2 branches missed.">			if ( isRel() ) {</span>
+<span class="nc" id="L603">				vals[1] = vf.createLiteral( getObject() );</span>
+<span class="nc" id="L604">				i = 1;</span>
+			}
+
+<span class="nc bnc" id="L607" title="All 2 branches missed.">			for ( String prop : propcache.keySet() ) {</span>
+<span class="nc bnc" id="L608" title="All 2 branches missed.">				vals[++i] = ( containsKey( prop ) ? get( prop ) : null );</span>
+<span class="nc" id="L609">			}</span>
+
+<span class="nc" id="L611">			return vals;</span>
+		}
+
+		public boolean hasProperty( URI needle, Map&lt;String, String&gt; namespaces ) {
+<span class="nc" id="L615">			ValueFactory vf = new ValueFactoryImpl();</span>
+<span class="nc bnc" id="L616" title="All 2 branches missed.">			for ( String head : keySet() ) {</span>
+<span class="nc bnc" id="L617" title="All 2 branches missed.">				if ( head.contains( &quot;:&quot; ) ) {</span>
+<span class="nc" id="L618">					int idx = head.indexOf( &quot;:&quot; );</span>
+<span class="nc" id="L619">					String headns = head.substring( 0, idx );</span>
+<span class="nc" id="L620">					String localname = head.substring( idx + 1 );</span>
+
+<span class="nc bnc" id="L622" title="All 2 branches missed.">					if ( namespaces.containsKey( headns ) ) {</span>
+<span class="nc" id="L623">						URI uri = vf.createURI( namespaces.get( headns ), localname );</span>
+<span class="nc bnc" id="L624" title="All 2 branches missed.">						if ( uri.equals( needle ) ) {</span>
+<span class="nc" id="L625">							return true;</span>
+						}
+					}
+				}
+<span class="nc" id="L629">			}</span>
+
+<span class="nc" id="L631">			return false;</span>
+		}
+
+		@Override
+		public int hashCode() {
+<span class="nc" id="L636">			int hash = 7;</span>
+<span class="nc" id="L637">			hash = 31 * hash + Objects.hashCode( this.subject );</span>
+<span class="nc" id="L638">			hash = 31 * hash + Objects.hashCode( this.object );</span>
+<span class="nc" id="L639">			hash = 31 * hash + Objects.hashCode( this.keySet() );</span>
+<span class="nc" id="L640">			return hash;</span>
+		}
+
+		@Override
+		public boolean equals( Object obj ) {
+<span class="nc bnc" id="L645" title="All 2 branches missed.">			if ( obj == null ) {</span>
+<span class="nc" id="L646">				return false;</span>
+			}
+<span class="nc bnc" id="L648" title="All 2 branches missed.">			if ( getClass() != obj.getClass() ) {</span>
+<span class="nc" id="L649">				return false;</span>
+			}
+<span class="nc" id="L651">			final LoadingNodeAndPropertyValues other = (LoadingNodeAndPropertyValues) obj;</span>
+<span class="nc bnc" id="L652" title="All 2 branches missed.">			if ( !Objects.equals( this.subject, other.subject ) ) {</span>
+<span class="nc" id="L653">				return false;</span>
+			}
+
+<span class="nc" id="L656">			return Objects.equals( this.object, other.object );</span>
+		}
+
+		@Override
+		public String toString() {
+<span class="nc" id="L661">			StringBuilder sb = new StringBuilder( subject );</span>
+<span class="nc bnc" id="L662" title="All 2 branches missed.">			if ( this.subjectIsError ) {</span>
+<span class="nc" id="L663">				sb.append( &quot;&lt;e&gt;&quot; );</span>
+			}
+<span class="nc bnc" id="L665" title="All 2 branches missed.">			if ( isRel() ) {</span>
+<span class="nc" id="L666">				sb.append( &quot;;&quot; );</span>
+<span class="nc" id="L667">				sb.append( object );</span>
+<span class="nc bnc" id="L668" title="All 2 branches missed.">				if ( this.objectIsError ) {</span>
+<span class="nc" id="L669">					sb.append( &quot;&lt;e&gt;&quot; );</span>
+				}
+
+<span class="nc" id="L672">				sb.append( &quot;; &quot; ).append( relname );</span>
+			}
+
+<span class="nc" id="L675">			return sb.toString();</span>
+		}
+	}
+
+	public interface DataIterator extends Iterator&lt;LoadingNodeAndPropertyValues&gt; {
+
+		/**
+		 * Releases any unused resources. This method will be called automatically
+		 * if the iterator is exhausted, but must be called manually if the iterator
+		 * is discarded before the iteration is complete
+		 */
+		public void release();
+	}
+
+<span class="nc" id="L689">	public class DataIteratorImpl implements DataIterator {</span>
+
+<span class="nc" id="L691">		private final Iterator&lt;LoadingNodeAndPropertyValues&gt; iter = data.iterator();</span>
+
+		@Override
+		public void release() {
+			// does nothing by default
+<span class="nc" id="L696">		}</span>
+
+		@Override
+		public boolean hasNext() {
+<span class="nc" id="L700">			boolean hasnext = iter.hasNext();</span>
+
+			// if we're totally empty, release anything we're still holding onto
+<span class="nc bnc" id="L703" title="All 2 branches missed.">			if ( !hasnext ) {</span>
+<span class="nc" id="L704">				release();</span>
+			}
+
+<span class="nc" id="L707">			return hasnext;</span>
+		}
+
+		@Override
+		public LoadingNodeAndPropertyValues next() {
+<span class="nc" id="L712">			return iter.next();</span>
+		}
+
+		@Override
+		public void remove() {
+<span class="nc" id="L717">			iter.remove();</span>
+<span class="nc" id="L718">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

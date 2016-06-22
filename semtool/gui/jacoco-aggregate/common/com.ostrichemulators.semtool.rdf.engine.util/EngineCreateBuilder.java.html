@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>EngineCreateBuilder.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.util</a> &gt; <span class="el_source">EngineCreateBuilder.java</span></div><h1>EngineCreateBuilder.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.util;
+
+import com.ostrichemulators.semtool.rdf.engine.api.ReificationStyle;
+import com.ostrichemulators.semtool.rdf.engine.impl.AbstractSesameEngine;
+import com.ostrichemulators.semtool.rdf.engine.impl.SesameEngine;
+import java.io.File;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import org.openrdf.model.URI;
+
+/**
+ *
+ * @author ryan
+ */
+public class EngineCreateBuilder {
+
+	private URI defaultBaseUri;
+	private ReificationStyle reificationModel;
+	private File questions;
+	private final File topdir;
+	private boolean defaultBaseOverridesFiles;
+	private boolean stageInMemory;
+	private boolean calcInfers;
+	private boolean dometamodel;
+<span class="nc" id="L32">	private Class&lt;? extends AbstractSesameEngine&gt; impl = SesameEngine.class;</span>
+	private final String engine;
+<span class="nc" id="L34">	private final List&lt;File&gt; toload = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L35">	private final List&lt;URL&gt; vocabularies = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L37">	public EngineCreateBuilder( File parentdir, String engineName ) {</span>
+<span class="nc" id="L38">		topdir = parentdir;</span>
+<span class="nc" id="L39">		engine = engineName;</span>
+<span class="nc" id="L40">	}</span>
+
+	public EngineCreateBuilder setDefaultBaseUri( URI base, boolean override ) {
+<span class="nc" id="L43">		defaultBaseUri = base;</span>
+<span class="nc" id="L44">		defaultBaseOverridesFiles = override;</span>
+<span class="nc" id="L45">		return this;</span>
+	}
+
+	public EngineCreateBuilder setEngineImpl( Class&lt;? extends AbstractSesameEngine&gt; klass ) {
+<span class="nc" id="L49">		impl = klass;</span>
+<span class="nc" id="L50">		return this;</span>
+	}
+
+	public EngineCreateBuilder setReificationModel( ReificationStyle model ) {
+<span class="nc" id="L54">		reificationModel = model;</span>
+<span class="nc" id="L55">		return this;</span>
+	}
+
+	public EngineCreateBuilder setInsightsFile( File questionsmodel ) {
+<span class="nc" id="L59">		questions = questionsmodel;</span>
+<span class="nc" id="L60">		return this;</span>
+	}
+
+	public EngineCreateBuilder setInsightsFile( String questionsmodel ) {
+<span class="nc bnc" id="L64" title="All 4 branches missed.">		questions = ( null == questionsmodel || questionsmodel.isEmpty()</span>
+				? null : new File( questionsmodel ) );
+<span class="nc" id="L66">		return this;</span>
+	}
+
+	public EngineCreateBuilder setBooleans( boolean inmem, boolean infers, boolean metamodel ) {
+<span class="nc" id="L70">		stageInMemory = inmem;</span>
+<span class="nc" id="L71">		calcInfers = infers;</span>
+<span class="nc" id="L72">		dometamodel = metamodel;</span>
+<span class="nc" id="L73">		return this;</span>
+	}
+
+	public EngineCreateBuilder addFile( File f ) {
+<span class="nc" id="L77">		toload.add( f );</span>
+<span class="nc" id="L78">		return this;</span>
+	}
+
+	public EngineCreateBuilder setFiles( Collection&lt;File&gt; f ) {
+<span class="nc" id="L82">		toload.clear();</span>
+<span class="nc" id="L83">		toload.addAll( f );</span>
+<span class="nc" id="L84">		return this;</span>
+	}
+
+	public List&lt;File&gt; getFiles() {
+<span class="nc" id="L88">		return new ArrayList&lt;&gt;( toload );</span>
+	}
+
+	public EngineCreateBuilder addVocabulary( URL f ) {
+<span class="nc" id="L92">		vocabularies.add( f );</span>
+<span class="nc" id="L93">		return this;</span>
+	}
+
+	public EngineCreateBuilder setVocabularies( Collection&lt;URL&gt; f ) {
+<span class="nc" id="L97">		vocabularies.clear();</span>
+<span class="nc" id="L98">		vocabularies.addAll( f );</span>
+<span class="nc" id="L99">		return this;</span>
+	}
+
+	public List&lt;URL&gt; getVocabularies() {
+<span class="nc" id="L103">		return new ArrayList&lt;&gt;( vocabularies );</span>
+	}
+
+	public URI getDefaultBaseUri() {
+<span class="nc" id="L107">		return defaultBaseUri;</span>
+	}
+
+	public boolean isDefaultBaseOverridesFiles() {
+<span class="nc" id="L111">		return defaultBaseOverridesFiles;</span>
+	}
+
+	public ReificationStyle getReificationModel() {
+<span class="nc" id="L115">		return reificationModel;</span>
+	}
+
+	public File getQuestions() {
+<span class="nc" id="L119">		return questions;</span>
+	}
+
+	public boolean isStageInMemory() {
+<span class="nc" id="L123">		return stageInMemory;</span>
+	}
+
+	public boolean isCalcInfers() {
+<span class="nc" id="L127">		return calcInfers;</span>
+	}
+
+	public boolean isDoMetamodel() {
+<span class="nc" id="L131">		return dometamodel;</span>
+	}
+
+	public String getEngineName() {
+<span class="nc" id="L135">		return engine;</span>
+	}
+
+	public File getEngineDir() {
+<span class="nc" id="L139">		return topdir;</span>
+	}
+
+	public Class&lt;? extends AbstractSesameEngine&gt; getEngineImpl() {
+<span class="nc" id="L143">		return impl;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

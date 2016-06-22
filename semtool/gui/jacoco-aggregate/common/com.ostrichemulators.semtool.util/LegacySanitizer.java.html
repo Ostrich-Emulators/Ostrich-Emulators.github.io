@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>LegacySanitizer.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.util</a> &gt; <span class="el_source">LegacySanitizer.java</span></div><h1>LegacySanitizer.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.util;
+
+/**
+ * A Sanitizer that creates URIs the same way the legacy code code. The
+ * resulting URIs &lt;strong&gt;COULD BE&lt;/strong&gt; invalid
+ *
+ * @author ryan
+ */
+<span class="nc" id="L14">public class LegacySanitizer implements UriSanitizer {</span>
+
+  @Override
+  public String sanitize( String raw ) {
+<span class="nc" id="L18">    String trimmed = raw.trim();</span>
+<span class="nc bnc" id="L19" title="All 2 branches missed.">    if ( trimmed.isEmpty() ) {</span>
+<span class="nc" id="L20">      return trimmed;</span>
+    }
+
+    // replace all whitespace with underscores
+<span class="nc" id="L24">    trimmed = trimmed.replaceAll( &quot;[\\s]+&quot;, &quot;_&quot; );</span>
+
+<span class="nc" id="L26">    trimmed = trimmed.replaceAll( &quot;\\{&quot;, &quot;(&quot; );</span>
+<span class="nc" id="L27">    trimmed = trimmed.replaceAll( &quot;\\}&quot;, &quot;)&quot; );</span>
+<span class="nc" id="L28">    trimmed = trimmed.replaceAll( &quot;\\\\&quot;, &quot;-&quot; );//replace backslashes with dashes</span>
+<span class="nc" id="L29">    trimmed = trimmed.replaceAll( &quot;'&quot;, &quot;&quot; );//remove apostrophe</span>
+<span class="nc" id="L30">    trimmed = trimmed.replaceAll( &quot;\&quot;&quot;, &quot;'&quot; );//replace double quotes with single quotes</span>
+<span class="nc" id="L31">    trimmed = trimmed.replaceAll( &quot;/&quot;, &quot;-&quot; );//replace forward slashes with dashes</span>
+
+<span class="nc" id="L33">    trimmed = trimmed.replaceAll( &quot;\\|&quot;, &quot;-&quot; );//replace vertical lines with dashes</span>
+<span class="nc" id="L34">    trimmed = trimmed.replaceAll( &quot;&lt;&quot;, &quot;(&quot; );</span>
+<span class="nc" id="L35">    trimmed = trimmed.replaceAll( &quot;&gt;&quot;, &quot;)&quot; );</span>
+
+<span class="nc" id="L37">    trimmed = trimmed.replaceAll( &quot;:&quot;, &quot;_x_&quot; ); // can't have colons</span>
+
+<span class="nc" id="L39">    return trimmed;</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

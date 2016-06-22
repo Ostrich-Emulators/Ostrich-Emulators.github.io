@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>LowMemXlsReader.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.poi.main</a> &gt; <span class="el_source">LowMemXlsReader.java</span></div><h1>LowMemXlsReader.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.poi.main;
+
+import com.ostrichemulators.semtool.poi.main.xlsxml.LoadingSheetXmlHandler;
+import com.ostrichemulators.semtool.poi.main.xlsxml.SheetTypeXmlHandler;
+import com.ostrichemulators.semtool.poi.main.xlsxml.LoaderTabXmlHandler;
+import com.ostrichemulators.semtool.poi.main.xlsxml.MetadataTabXmlHandler;
+import com.ostrichemulators.semtool.poi.main.ImportValidationException.ErrorType;
+import com.ostrichemulators.semtool.poi.main.xlsxml.XlsXmlBase;
+import com.ostrichemulators.semtool.util.MultiMap;
+import com.ostrichemulators.semtool.util.Utility;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.apache.log4j.Logger;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
+import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.xssf.eventusermodel.XSSFReader;
+import org.apache.poi.xssf.model.StylesTable;
+import org.dom4j.Document;
+import org.dom4j.Element;
+import org.dom4j.Namespace;
+import org.dom4j.QName;
+import org.dom4j.io.SAXReader;
+import org.xml.sax.Attributes;
+import org.xml.sax.ContentHandler;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.XMLReaderFactory;
+
+/**
+ * A class to read an xlsx file and produce an ImportData instance.
+ *
+ * @author ryan
+ */
+public class LowMemXlsReader {
+
+<span class="nc" id="L54">	private static final Logger log = Logger.getLogger( LowMemXlsReader.class );</span>
+
+	private final LinkedHashMap&lt;String, String&gt; sheetNameIdLkp;
+	private final List&lt;String&gt; sharedStrings;
+	private final XSSFReader reader;
+	private final OPCPackage pkg;
+	private final StylesTable styles;
+<span class="nc" id="L61">	private boolean lsInMem = false;</span>
+
+	public LowMemXlsReader( File filename ) throws IOException {
+<span class="nc" id="L64">		this( new BufferedInputStream( new FileInputStream( filename ) ) );</span>
+<span class="nc" id="L65">	}</span>
+
+	public LowMemXlsReader( String filename ) throws IOException {
+<span class="nc" id="L68">		this( new File( filename ) );</span>
+<span class="nc" id="L69">	}</span>
+
+<span class="nc" id="L71">	public LowMemXlsReader( InputStream stream ) throws IOException {</span>
+<span class="nc" id="L72">		log.debug( &quot;reading with lo-mem xls reader&quot; );</span>
+<span class="nc" id="L73">		sharedStrings = new ArrayList&lt;&gt;();</span>
+		try {
+<span class="nc" id="L75">			pkg = OPCPackage.open( stream );</span>
+<span class="nc" id="L76">			reader = new XSSFReader( pkg );</span>
+
+<span class="nc" id="L78">			styles = reader.getStylesTable();</span>
+
+<span class="nc" id="L80">			sheetNameIdLkp = readSheetInfo( reader );</span>
+<span class="nc" id="L81">			populateSharedStrings( reader );</span>
+		}
+<span class="nc" id="L83">		catch ( OpenXML4JException e ) {</span>
+<span class="nc" id="L84">			throw new IOException( &quot;unexpected error&quot; + e.getLocalizedMessage(), e );</span>
+<span class="nc" id="L85">		}</span>
+<span class="nc" id="L86">	}</span>
+
+	public void keepSheetDataInMemory( boolean b ) {
+<span class="nc" id="L89">		lsInMem = b;</span>
+<span class="nc" id="L90">	}</span>
+
+	/**
+	 * Releases resources used by this reader
+	 */
+	public void release() {
+		try {
+<span class="nc" id="L97">			pkg.close();</span>
+<span class="nc" id="L98">			sheetNameIdLkp.clear();</span>
+<span class="nc" id="L99">			sharedStrings.clear();</span>
+		}
+<span class="nc" id="L101">		catch ( Exception e ) {</span>
+<span class="nc" id="L102">			log.error( e, e );</span>
+<span class="nc" id="L103">		}</span>
+<span class="nc" id="L104">	}</span>
+
+	/**
+	 * Gets the sheet types. If a loader tab exists, only those tabs will be
+	 * checked (and the metadata tab will be verified against what the loader tab
+	 * says).
+	 *
+	 *
+	 * @return
+	 * @throws ImportValidationException
+	 */
+	public Map&lt;String, SheetType&gt; getSheetTypes() throws ImportValidationException {
+<span class="nc" id="L116">		Map&lt;String, SheetType&gt; types = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L117">		Set&lt;String&gt; tabsToCheck = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L118">		boolean checktypes = false;</span>
+
+		try {
+<span class="nc" id="L121">			XMLReader parser = XMLReaderFactory.createXMLReader();</span>
+
+<span class="nc bnc" id="L123" title="All 2 branches missed.">			if ( sheetNameIdLkp.containsKey( &quot;Loader&quot; ) ) {</span>
+<span class="nc" id="L124">				checktypes = true;</span>
+<span class="nc" id="L125">				try ( InputStream is = reader.getSheet( sheetNameIdLkp.get( &quot;Loader&quot; ) ) ) {</span>
+
+<span class="nc" id="L127">					LoaderTabXmlHandler handler = new LoaderTabXmlHandler( sharedStrings );</span>
+<span class="nc" id="L128">					parser.setContentHandler( handler );</span>
+
+<span class="nc" id="L130">					InputSource sheetSource = new InputSource( is );</span>
+<span class="nc" id="L131">					parser.parse( sheetSource );</span>
+
+<span class="nc" id="L133">					types.putAll( handler.getSheetTypes() );</span>
+<span class="nc" id="L134">					tabsToCheck.addAll( types.keySet() );</span>
+
+<span class="nc bnc" id="L136" title="All 2 branches missed.">					if ( tabsToCheck.isEmpty() ) {</span>
+<span class="nc" id="L137">						throw new ImportValidationException( ErrorType.MISSING_DATA,</span>
+								&quot;No data to process&quot; );
+					}
+<span class="nc bnc" id="L140" title="All 8 branches missed.">				}</span>
+			}
+			else {
+<span class="nc" id="L143">				tabsToCheck.addAll( sheetNameIdLkp.keySet() );</span>
+			}
+
+			// now check the actual sheets
+<span class="nc" id="L147">			SheetTypeXmlHandler handler = new SheetTypeXmlHandler( sharedStrings );</span>
+<span class="nc" id="L148">			parser.setContentHandler( handler );</span>
+
+<span class="nc" id="L150">			boolean seenMetadata = false; // we can only have 1 metadata tab</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">			for ( String sheetname : tabsToCheck ) {</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">				if ( !sheetNameIdLkp.containsKey( sheetname ) ) {</span>
+<span class="nc" id="L153">					throw new ImportValidationException( ErrorType.MISSING_DATA,</span>
+							&quot;Missing sheet: &quot; + sheetname );
+				}
+
+<span class="nc" id="L157">				try ( InputStream is = reader.getSheet( sheetNameIdLkp.get( sheetname ) ) ) {</span>
+<span class="nc" id="L158">					InputSource sheetSource = new InputSource( is );</span>
+<span class="nc" id="L159">					parser.parse( sheetSource );</span>
+
+<span class="nc" id="L161">					SheetType sheettype = handler.getSheetType();</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">					boolean sheetsaysM = ( SheetType.METADATA == sheettype );</span>
+
+<span class="nc bnc" id="L164" title="All 2 branches missed.">					if ( sheetsaysM ) {</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">						if ( seenMetadata ) {</span>
+<span class="nc" id="L166">							throw new ImportValidationException( ErrorType.TOO_MUCH_DATA,</span>
+									&quot;Too many metadata tabs in loading file&quot; );
+						}
+<span class="nc" id="L169">						seenMetadata = true;</span>
+					}
+
+<span class="nc" id="L172">					SheetType loadertype = types.get( sheetname );</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">					if ( checktypes ) {</span>
+<span class="nc bnc" id="L174" title="All 8 branches missed.">						if ( ( SheetType.USUAL == loadertype &amp;&amp; sheetsaysM )</span>
+								|| SheetType.METADATA == loadertype &amp;&amp; !sheetsaysM ) {
+							// if the loader or the sheet itself says its a metadata sheet,
+							// then both types must agree
+<span class="nc" id="L178">							throw new ImportValidationException( ErrorType.WRONG_TABTYPE,</span>
+									&quot;Loader Sheet data type for &quot; + sheetname
+									+ &quot; conflicts with sheet type&quot; );
+						}
+					}
+
+<span class="nc" id="L184">					types.put( sheetname, sheettype );</span>
+<span class="nc bnc" id="L185" title="All 8 branches missed.">				}</span>
+<span class="nc" id="L186">			}</span>
+		}
+<span class="nc" id="L188">		catch ( SAXException | IOException | InvalidFormatException e ) {</span>
+<span class="nc" id="L189">			log.error( e, e );</span>
+<span class="nc" id="L190">		}</span>
+
+<span class="nc" id="L192">		return types;</span>
+	}
+
+	public ImportMetadata getMetadata() throws ImportValidationException {
+<span class="nc" id="L196">		ImportData id = new ImportData();</span>
+<span class="nc" id="L197">		id.getMetadata().setNamespaces( Utility.DEFAULTNAMESPACES );</span>
+
+		try {
+<span class="nc" id="L200">			XMLReader parser = XMLReaderFactory.createXMLReader();</span>
+
+<span class="nc" id="L202">			Map&lt;String, SheetType&gt; types = getSheetTypes();</span>
+<span class="nc" id="L203">			MultiMap&lt;SheetType, String&gt; mm = MultiMap.flip( types );</span>
+
+			// load the metadata sheet first, if we have one
+<span class="nc bnc" id="L206" title="All 2 branches missed.">			for ( String metasheet : mm.getNN( SheetType.METADATA ) ) {</span>
+<span class="nc" id="L207">				try ( InputStream is = reader.getSheet( sheetNameIdLkp.get( metasheet ) ) ) {</span>
+<span class="nc" id="L208">					MetadataTabXmlHandler handler</span>
+<span class="nc" id="L209">							= new MetadataTabXmlHandler( sharedStrings, id.getMetadata() );</span>
+<span class="nc" id="L210">					parser.setContentHandler( handler );</span>
+
+<span class="nc" id="L212">					InputSource sheetSource = new InputSource( is );</span>
+<span class="nc" id="L213">					parser.parse( sheetSource );</span>
+
+<span class="nc" id="L215">					id.setMetadata( handler.getMetadata() );</span>
+<span class="nc bnc" id="L216" title="All 8 branches missed.">				}</span>
+<span class="nc" id="L217">			}</span>
+		}
+<span class="nc" id="L219">		catch ( SAXException | InvalidFormatException | IOException ife ) {</span>
+<span class="nc" id="L220">			log.error( ife, ife );</span>
+<span class="nc" id="L221">		}</span>
+
+<span class="nc" id="L223">		return id.getMetadata();</span>
+	}
+
+	public ImportData getData() throws ImportValidationException {
+<span class="nc" id="L227">		ImportData id = new ImportData();</span>
+<span class="nc" id="L228">		id.getMetadata().setNamespaces( Utility.DEFAULTNAMESPACES );</span>
+
+		try {
+<span class="nc" id="L231">			XMLReader parser = XMLReaderFactory.createXMLReader();</span>
+
+<span class="nc" id="L233">			Map&lt;String, SheetType&gt; types = getSheetTypes();</span>
+<span class="nc" id="L234">			MultiMap&lt;SheetType, String&gt; mm = MultiMap.flip( types );</span>
+
+			// load the metadata sheet first, if we have one
+<span class="nc bnc" id="L237" title="All 2 branches missed.">			for ( String metasheet : mm.getNN( SheetType.METADATA ) ) {</span>
+<span class="nc" id="L238">				try ( InputStream is = reader.getSheet( sheetNameIdLkp.get( metasheet ) ) ) {</span>
+<span class="nc" id="L239">					MetadataTabXmlHandler handler</span>
+<span class="nc" id="L240">							= new MetadataTabXmlHandler( sharedStrings, id.getMetadata() );</span>
+<span class="nc" id="L241">					parser.setContentHandler( handler );</span>
+
+<span class="nc" id="L243">					InputSource sheetSource = new InputSource( is );</span>
+<span class="nc" id="L244">					parser.parse( sheetSource );</span>
+
+<span class="nc" id="L246">					id.setMetadata( handler.getMetadata() );</span>
+<span class="nc bnc" id="L247" title="All 8 branches missed.">				}</span>
+
+<span class="nc" id="L249">				types.remove( metasheet ); // don't reprocess in the next loop								</span>
+<span class="nc" id="L250">			}</span>
+
+<span class="nc bnc" id="L252" title="All 2 branches missed.">			for ( Map.Entry&lt;String, SheetType&gt; typeen : types.entrySet() ) {</span>
+<span class="nc" id="L253">				String sheetname = typeen.getKey();</span>
+<span class="nc" id="L254">				String sheetid = sheetNameIdLkp.get( sheetname );</span>
+<span class="nc" id="L255">				SheetType sheettype = typeen.getValue();</span>
+
+<span class="nc" id="L257">				try ( InputStream is = reader.getSheet( sheetid ) ) {</span>
+<span class="nc bnc" id="L258" title="All 4 branches missed.">					if ( SheetType.NODE == sheettype || SheetType.RELATION == sheettype ) {</span>
+<span class="nc" id="L259">						LoadingSheetXmlHandler handler</span>
+								= new LoadingSheetXmlHandler( sharedStrings, styles, sheetname,
+<span class="nc" id="L261">										id.getMetadata().getNamespaces(), lsInMem );</span>
+<span class="nc" id="L262">						parser.setContentHandler( handler );</span>
+
+<span class="nc" id="L264">						InputSource sheetSource = new InputSource( is );</span>
+<span class="nc" id="L265">						parser.parse( sheetSource );</span>
+
+<span class="nc" id="L267">						LoadingSheetData lsd = handler.getSheet();</span>
+<span class="nc bnc" id="L268" title="All 2 branches missed.">						if ( lsd.isEmpty() ) {</span>
+<span class="nc" id="L269">							lsd.release();</span>
+<span class="nc" id="L270">							throw new ImportValidationException( ErrorType.NOT_A_LOADING_SHEET,</span>
+									&quot;Sheet &quot; + sheetname + &quot; contains no loadable data&quot; );
+						}
+<span class="nc" id="L273">						id.add( lsd );</span>
+					}
+<span class="nc bnc" id="L275" title="All 8 branches missed.">				}</span>
+<span class="nc" id="L276">			}</span>
+		}
+<span class="nc" id="L278">		catch ( SAXException | InvalidFormatException | IOException ife ) {</span>
+<span class="nc" id="L279">			log.error( ife, ife );</span>
+<span class="nc" id="L280">		}</span>
+
+<span class="nc bnc" id="L282" title="All 2 branches missed.">		if ( id.isEmpty() ) {</span>
+<span class="nc" id="L283">			id.release();</span>
+<span class="nc" id="L284">			throw new ImportValidationException( ErrorType.MISSING_DATA,</span>
+					&quot;No data to process&quot; );
+		}
+
+<span class="nc" id="L288">		return id;</span>
+	}
+
+	public Collection&lt;String&gt; getSheetNames() {
+<span class="nc" id="L292">		return sheetNameIdLkp.keySet();</span>
+	}
+
+	/**
+	 * Gets sheet name-to-id mapping
+	 *
+	 * @param r
+	 * @return
+	 */
+	private LinkedHashMap&lt;String, String&gt; readSheetInfo( XSSFReader r ) {
+<span class="nc" id="L302">		LinkedHashMap&lt;String, String&gt; map = new LinkedHashMap&lt;&gt;();</span>
+
+<span class="nc" id="L304">		try ( InputStream is = r.getWorkbookData() ) {</span>
+<span class="nc" id="L305">			SAXReader sax = new SAXReader();</span>
+<span class="nc" id="L306">			Document doc = sax.read( is );</span>
+
+<span class="nc" id="L308">			Namespace ns = new Namespace( &quot;r&quot;,</span>
+					&quot;http://schemas.openxmlformats.org/officeDocument/2006/relationships&quot; );
+
+<span class="nc" id="L311">			Element sheets = doc.getRootElement().element( &quot;sheets&quot; );</span>
+<span class="nc bnc" id="L312" title="All 2 branches missed.">			for ( Object sheet : sheets.elements( &quot;sheet&quot; ) ) {</span>
+<span class="nc" id="L313">				Element e = Element.class.cast( sheet );</span>
+<span class="nc" id="L314">				String name = e.attributeValue( &quot;name&quot; );</span>
+<span class="nc" id="L315">				String id = e.attributeValue( new QName( &quot;id&quot;, ns ) );</span>
+<span class="nc" id="L316">				map.put( name, id );</span>
+<span class="nc" id="L317">			}</span>
+<span class="nc bnc" id="L318" title="All 8 branches missed.">		}</span>
+<span class="nc" id="L319">		catch ( Exception e ) {</span>
+<span class="nc" id="L320">			log.error( e, e );</span>
+<span class="nc" id="L321">		}</span>
+
+<span class="nc" id="L323">		return map;</span>
+	}
+
+	private void populateSharedStrings( XSSFReader r ) {
+
+<span class="nc" id="L328">		try ( InputStream is = r.getSharedStringsData() ) {</span>
+<span class="nc" id="L329">			XMLReader parser = XMLReaderFactory.createXMLReader();</span>
+<span class="nc" id="L330">			ContentHandler handler = new XlsXmlBase( new ArrayList&lt;&gt;() ) {</span>
+<span class="nc" id="L331">				int count = 0;</span>
+
+				@Override
+				public void startDocument() throws SAXException {
+<span class="nc" id="L335">					super.startDocument();</span>
+<span class="nc" id="L336">					count = 0;</span>
+<span class="nc" id="L337">				}</span>
+
+				@Override
+				public void endDocument() throws SAXException {
+<span class="nc" id="L341">					super.endDocument();</span>
+<span class="nc" id="L342">					log.debug( count + &quot; strings cached&quot; );</span>
+<span class="nc" id="L343">				}</span>
+
+				@Override
+				public void startElement( String uri, String localName, String qName,
+						Attributes atts ) throws SAXException {
+<span class="nc" id="L348">					setReading( &quot;t&quot;.equals( localName ) );</span>
+<span class="nc" id="L349">					resetContents();</span>
+<span class="nc" id="L350">				}</span>
+
+				@Override
+				public void endElement( String uri, String localName, String qName )
+						throws SAXException {
+<span class="nc bnc" id="L355" title="All 2 branches missed.">					if ( isReading() ) {</span>
+<span class="nc" id="L356">						sharedStrings.add( getContents() );</span>
+<span class="nc" id="L357">						setReading( false );</span>
+<span class="nc" id="L358">						count++;</span>
+					}
+<span class="nc" id="L360">				}</span>
+			};
+<span class="nc" id="L362">			parser.setContentHandler( handler );</span>
+<span class="nc" id="L363">			parser.parse( new InputSource( is ) );</span>
+<span class="nc bnc" id="L364" title="All 8 branches missed.">		}</span>
+<span class="nc" id="L365">		catch ( Exception e ) {</span>
+<span class="nc" id="L366">			log.error( e, e );</span>
+<span class="nc" id="L367">		}</span>
+<span class="nc" id="L368">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

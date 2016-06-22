@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>RetrievingLabelCache.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.util</a> &gt; <span class="el_source">RetrievingLabelCache.java</span></div><h1>RetrievingLabelCache.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.util;
+
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.log4j.Logger;
+import org.openrdf.model.Literal;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+
+/**
+ * A class that will cache labels for URIs. Cache misses will result in a label
+ * retrieval. This class is really just a convenience around
+ * {@link Utility#getInstanceLabel(org.openrdf.model.Resource, com.ostrichemulators.semtool.rdf.engine.api.IEngine) }
+ *
+ * @author ryan
+ */
+public final class RetrievingLabelCache extends HashMap&lt;Value, String&gt; {
+
+<span class="nc" id="L25">	private static final Logger log = Logger.getLogger( RetrievingLabelCache.class );</span>
+	private IEngine engine;
+<span class="nc" id="L27">	private boolean caching = true;</span>
+
+<span class="nc" id="L29">	public RetrievingLabelCache( IEngine eng, boolean docache ) {</span>
+<span class="nc" id="L30">		engine = eng;</span>
+<span class="nc" id="L31">		caching = docache;</span>
+<span class="nc" id="L32">	}</span>
+
+	public RetrievingLabelCache( IEngine eng, Map&lt;? extends Value, String&gt; map ) {
+<span class="nc" id="L35">		super( map );</span>
+<span class="nc" id="L36">		engine = eng;</span>
+<span class="nc" id="L37">	}</span>
+
+	public RetrievingLabelCache( IEngine engine ) {
+<span class="nc" id="L40">		this( engine, true );</span>
+<span class="nc" id="L41">	}</span>
+
+<span class="nc" id="L43">	public RetrievingLabelCache() {</span>
+<span class="nc" id="L44">	}</span>
+
+	public void setEngine( IEngine e ) {
+<span class="nc" id="L47">		engine = e;</span>
+<span class="nc" id="L48">	}</span>
+
+	@Override
+	public boolean containsKey( Object o ) {
+<span class="nc" id="L52">		return ( o instanceof Value );</span>
+	}
+
+	public boolean isCaching() {
+<span class="nc" id="L56">		return caching;</span>
+	}
+	
+	/**
+	 * Should this cache actually cache results?
+	 *
+	 * @param b
+	 */
+	public void setCaching( boolean b ) {
+<span class="nc" id="L65">		caching = b;</span>
+<span class="nc" id="L66">	}</span>
+
+	@Override
+	public String get( Object value ) {
+<span class="nc bnc" id="L70" title="All 2 branches missed.">		if ( value instanceof Value ) {</span>
+<span class="nc" id="L71">			Value val = Value.class.cast( value );</span>
+<span class="nc" id="L72">			String label = null;</span>
+
+<span class="nc bnc" id="L74" title="All 2 branches missed.">			if ( !super.containsKey( val ) ) {</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">				if ( value instanceof URI ) {</span>
+<span class="nc" id="L76">					URI uri = URI.class.cast( value );</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">					label = ( null == engine</span>
+<span class="nc" id="L78">							? uri.getLocalName()</span>
+<span class="nc" id="L79">							: Utility.getInstanceLabel( uri, engine ) );</span>
+<span class="nc" id="L80">				}</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">				else if ( value instanceof Literal ) {</span>
+<span class="nc" id="L82">					Literal lit = Literal.class.cast( value );</span>
+<span class="nc" id="L83">					label = lit.getLabel();</span>
+<span class="nc" id="L84">				}</span>
+				else {
+<span class="nc" id="L86">					label = value.toString();</span>
+				}
+
+<span class="nc bnc" id="L89" title="All 2 branches missed.">				if ( caching ) {</span>
+<span class="nc" id="L90">					put( Value.class.cast( value ), label );</span>
+				}
+				else {
+<span class="nc" id="L93">					return label;</span>
+				}
+			}
+		}
+
+<span class="nc" id="L98">		return super.get( value );</span>
+	}
+
+	public void reset( Map&lt;Value, String&gt; newdata ) {
+<span class="nc" id="L102">		clear();</span>
+<span class="nc" id="L103">		putAll( newdata );</span>
+<span class="nc" id="L104">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>UI.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.model.vocabulary</a> &gt; <span class="el_source">UI.java</span></div><h1>UI.java</h1><pre class="source lang-java linenums">package com.ostrichemulators.semtool.model.vocabulary;
+
+import org.openrdf.model.Namespace;
+import org.openrdf.model.URI;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.NamespaceImpl;
+import org.openrdf.model.impl.ValueFactoryImpl;
+
+
+/**
+ * Minimal vocabulary of the UISPIN Modeling Vocabulary.
+ *
+ * For now we go with &quot;ui:&quot; as the namespace prefix in keeping with the SPIN namespace convention applied
+ * by TopBraid Composer. Later we might move this namespace to &quot;uispin:&quot; if we create our own UI vocabulary
+ * for VA SEMOSS.
+ */
+<span class="nc" id="L17">public class UI {</span>
+
+	/**
+	 * UI SPIN Base URI: hhttp://uispin.org/ui
+	 */
+	public final static String BASE_URI = &quot;http://uispin.org/ui&quot;;
+	
+	/**
+	 * UI SPIN schema namespace: http://uispin.org/ui#
+	 */
+	public final static String NAMESPACE = BASE_URI + &quot;#&quot;;
+
+	/**
+	 * Recommend prefix for the UISPIN Modeling Vocabulary namespace: &quot;ui&quot;
+	 */
+	public final static String PREFIX = &quot;ui&quot;;
+
+	/**
+	 * An immutable {@link Namespace} constant that represents the UISPIN 
+	 * Modeling Vocabulary namespace.
+	 */
+<span class="nc" id="L38">	public static final Namespace NS = new NamespaceImpl(PREFIX, NAMESPACE);</span>
+
+	
+	// ----- Properties ------
+    
+	/**
+	 * http://uispin.org/ui#element
+	 */
+	public final static URI element;
+    
+	/**
+	 * http://uispin.org/ui#dataView
+	 */
+	public final static URI dataView;
+    
+	/**
+	 * http://uispin.org/ui#viewClass
+	 */
+	public final static URI viewClass;
+	
+	
+	static {
+<span class="nc" id="L60">		final ValueFactory factory = ValueFactoryImpl.getInstance();</span>
+		
+		// ----- Properties ------
+<span class="nc" id="L63">		element = factory.createURI(NAMESPACE, &quot;element&quot;);</span>
+<span class="nc" id="L64">		dataView = factory.createURI(NAMESPACE, &quot;dataView&quot;);</span>
+<span class="nc" id="L65">		viewClass = factory.createURI(NAMESPACE, &quot;viewClass&quot;);</span>
+<span class="nc" id="L66">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

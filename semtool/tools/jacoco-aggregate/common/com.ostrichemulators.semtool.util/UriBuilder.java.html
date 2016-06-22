@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>UriBuilder.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.util</a> &gt; <span class="el_source">UriBuilder.java</span></div><h1>UriBuilder.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.util;
+
+import java.util.Objects;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.commons.lang.RandomStringUtils;
+import org.apache.log4j.Logger;
+import org.openrdf.model.Resource;
+import org.openrdf.model.URI;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.URIImpl;
+import org.openrdf.model.impl.ValueFactoryImpl;
+
+/**
+ * A class that helps to build URIs.
+ *
+ * @author ryan
+ */
+public class UriBuilder {
+
+<span class="nc" id="L27">	private static final Logger log = Logger.getLogger( UriBuilder.class );</span>
+<span class="nc" id="L28">	private static Class&lt;? extends UriBuilder&gt; bldrclass = UriBuilder.class;</span>
+<span class="nc" id="L29">	private static Class&lt;? extends UriSanitizer&gt; saniclass = DefaultSanitizer.class;</span>
+<span class="nc" id="L30">	private final ValueFactory vf = new ValueFactoryImpl();</span>
+<span class="nc" id="L31">	private final StringBuilder content = new StringBuilder();</span>
+	private UriSanitizer sanitizer;
+	private boolean lastIsConcatenator;
+<span class="nc" id="L34">	private static final Pattern CONCAT_PAT = Pattern.compile( &quot;(.*)([/#:])$&quot; );</span>
+<span class="nc" id="L35">	private static final Pattern PUNCTUATION = Pattern.compile( &quot;\\p{Punct}&quot;,</span>
+			Pattern.UNICODE_CHARACTER_CLASS );
+
+	/**
+	 * Sets the class to use when a user calls
+	 * {@link #getBuilder(java.lang.String)} or
+	 * {@link #getBuilder(org.openrdf.model.URI)}
+	 *
+	 * @param &lt;T&gt; the type of class (must extend or be UriBuilder)
+	 * @param klass the class to use
+	 */
+	public static &lt;T extends UriBuilder&gt; void setFactoryClass( Class&lt;T&gt; klass ) {
+<span class="nc" id="L47">		bldrclass = klass;</span>
+<span class="nc" id="L48">	}</span>
+
+	public static &lt;T extends UriSanitizer&gt; void setDefaultSanitizerClass( Class&lt;T&gt; klass ) {
+<span class="nc" id="L51">		saniclass = klass;</span>
+<span class="nc" id="L52">	}</span>
+
+	public static &lt;T extends UriBuilder, V extends UriSanitizer&gt; void setFactoryClasses( Class&lt;T&gt; bldr, Class&lt;V&gt; sani ) {
+<span class="nc" id="L55">		setFactoryClass( bldr );</span>
+<span class="nc" id="L56">		setDefaultSanitizerClass( sani );</span>
+<span class="nc" id="L57">	}</span>
+
+	/**
+	 * Creates an uninitialized instance
+	 */
+<span class="nc" id="L62">	protected UriBuilder() {</span>
+
+<span class="nc" id="L64">	}</span>
+
+	/**
+	 * Calls {@link #setBase(java.lang.String)}, and throws the same exceptions
+	 *
+	 * @param owl
+	 */
+<span class="nc" id="L71">	protected UriBuilder( String owl ) {</span>
+<span class="nc" id="L72">		setBase( owl );</span>
+<span class="nc" id="L73">	}</span>
+
+	/**
+	 * Sets the sanitizer to use, assuming it is non-null
+	 *
+	 * @param s the sanitizer to use
+	 */
+	public final void setSanitizer( UriSanitizer s ) {
+<span class="nc bnc" id="L81" title="All 2 branches missed.">		if ( null != s ) {</span>
+<span class="nc" id="L82">			sanitizer = s;</span>
+		}
+<span class="nc" id="L84">	}</span>
+
+	/**
+	 * Sets the base URI from which to build other URIs
+	 *
+	 * @param owl
+	 *
+	 * @throws IllegalArgumentException if &lt;code&gt;owl&lt;/code&gt; would lead to invalid
+	 * URIs
+	 */
+	protected final void setBase( String owl ) {
+<span class="nc bnc" id="L95" title="All 4 branches missed.">		if ( null == owl || owl.isEmpty() ) {</span>
+<span class="nc" id="L96">			throw new IllegalArgumentException( &quot;argument cannot be null or empty&quot; );</span>
+		}
+
+		// do a check to see that we have a valid URI to start with
+		try {
+<span class="nc" id="L101">			URI impl = vf.createURI( owl );</span>
+<span class="nc" id="L102">			content.append( impl.stringValue() );</span>
+		}
+<span class="nc" id="L104">		catch ( Exception e ) {</span>
+<span class="nc" id="L105">			throw new IllegalArgumentException( &quot;invalid URI component&quot;, e );</span>
+<span class="nc" id="L106">		}</span>
+
+<span class="nc bnc" id="L108" title="All 2 branches missed.">		lastIsConcatenator = ( owl.endsWith( &quot;/&quot; )</span>
+<span class="nc bnc" id="L109" title="All 4 branches missed.">				|| owl.endsWith( &quot;#&quot; ) || owl.endsWith( &quot;:&quot; ) );</span>
+<span class="nc" id="L110">	}</span>
+
+	/**
+	 * Converts the &quot;starter&quot; URI into an actual URI. If the working URI ends in a
+	 * separator (&quot;/&quot;, &quot;#&quot;, &quot;:&quot;), the separator is removed.
+	 *
+	 * @return a URI
+	 */
+	public URI toUri() {
+<span class="nc" id="L119">		String uristart = content.toString();</span>
+
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		boolean removeLast = ( uristart.endsWith( &quot;/&quot; )</span>
+<span class="nc bnc" id="L122" title="All 4 branches missed.">				|| uristart.endsWith( &quot;#&quot; ) || uristart.endsWith( &quot;:&quot; ) );</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		return vf.createURI( removeLast</span>
+<span class="nc" id="L124">				? uristart.substring( 0, uristart.length() - 1 ) : uristart );</span>
+	}
+
+	public URI build() {
+<span class="nc" id="L128">		return toUri();</span>
+	}
+
+	public URI build( String extra ) {
+<span class="nc" id="L132">		return copy().add( sanitizer.sanitize( extra ) ).build();</span>
+	}
+
+	public URI uniqueUri() {
+<span class="nc" id="L136">		StringBuilder uristr = new StringBuilder( content );</span>
+<span class="nc" id="L137">		uristr.append( RandomStringUtils.randomAlphabetic( 1 ) );</span>
+<span class="nc" id="L138">		uristr.append( UUID.randomUUID().toString() );</span>
+<span class="nc" id="L139">		return vf.createURI( uristr.toString() );</span>
+	}
+
+	/**
+	 * Gets a new UriBuilder from this instance's content
+	 *
+	 * @return a new builder
+	 */
+	public UriBuilder copy() {
+<span class="nc" id="L148">		UriBuilder bldr = new UriBuilder( content.toString() );</span>
+		try {
+<span class="nc" id="L150">			bldr.setSanitizer( sanitizer.getClass().newInstance() );</span>
+		}
+<span class="nc" id="L152">		catch ( InstantiationException | IllegalAccessException e ) {</span>
+<span class="nc" id="L153">			log.error( &quot;BUG: unable to create new instance of &quot; + sanitizer, e );</span>
+<span class="nc" id="L154">			bldr.setSanitizer( new DefaultSanitizer() );</span>
+<span class="nc" id="L155">		}</span>
+
+<span class="nc" id="L157">		return bldr;</span>
+	}
+
+	/**
+	 * Gets a new UriBuilder like {@link #copy()}, but with an unsanitized segment
+	 *
+	 * @param additional the extra stuff to add to the content. MUST BE URI-VALID
+	 *
+	 * @return a new copy of this instance's content, with the extra segment added
+	 */
+	private UriBuilder internalCopy( String additional ) {
+<span class="nc" id="L168">		StringBuilder newcontent = new StringBuilder( content );</span>
+<span class="nc bnc" id="L169" title="All 2 branches missed.">		if ( !lastIsConcatenator ) {</span>
+<span class="nc" id="L170">			newcontent.append( &quot;/&quot; );</span>
+		}
+<span class="nc" id="L172">		newcontent.append( additional );</span>
+<span class="nc" id="L173">		UriBuilder bldr = getBuilder( newcontent.toString() );</span>
+		try {
+<span class="nc" id="L175">			bldr.setSanitizer( sanitizer.getClass().newInstance() );</span>
+		}
+<span class="nc" id="L177">		catch ( InstantiationException | IllegalAccessException e ) {</span>
+<span class="nc" id="L178">			log.error( &quot;BUG: unable to create new instance of &quot; + sanitizer, e );</span>
+<span class="nc" id="L179">			bldr.setSanitizer( new DefaultSanitizer() );</span>
+<span class="nc" id="L180">		}</span>
+<span class="nc" id="L181">		return bldr;</span>
+	}
+
+	public static UriBuilder getBuilder( String ns ) {
+		UriBuilder ldr;
+		UriSanitizer sani;
+		try {
+<span class="nc" id="L188">			ldr = bldrclass.newInstance();</span>
+		}
+<span class="nc" id="L190">		catch ( InstantiationException | IllegalAccessException e ) {</span>
+<span class="nc" id="L191">			log.error( &quot;BUG: cannot create UriBuilder instance; using fallback&quot;, e );</span>
+<span class="nc" id="L192">			ldr = new UriBuilder();</span>
+<span class="nc" id="L193">		}</span>
+
+		try {
+<span class="nc" id="L196">			sani = saniclass.newInstance();</span>
+		}
+<span class="nc" id="L198">		catch ( InstantiationException | IllegalAccessException e ) {</span>
+<span class="nc" id="L199">			log.error( &quot;BUG: cannot create UriSanitizer instance; using fallback&quot;, e );</span>
+<span class="nc" id="L200">			sani = new DefaultSanitizer();</span>
+<span class="nc" id="L201">		}</span>
+
+<span class="nc" id="L203">		ldr.setBase( ns );</span>
+<span class="nc" id="L204">		ldr.setSanitizer( sani );</span>
+<span class="nc" id="L205">		return ldr;</span>
+	}
+
+	public static UriBuilder getBuilder( URI ns ) {
+<span class="nc" id="L209">		return getBuilder( ns.stringValue() );</span>
+	}
+
+	/**
+	 * Adds a new part to the URI, after sanitizing it. If &lt;code&gt;localname&lt;/code&gt;
+	 * ends in a &quot;concatenator&quot; character, the character is preserved, but
+	 * everything else is sent to the sanitizer
+	 *
+	 * @param localname the part to add to the URI
+	 *
+	 * @return this UriBuilder
+	 */
+	public UriBuilder add( String localname ) {
+<span class="nc bnc" id="L222" title="All 2 branches missed.">		localname = ( null == localname ? &quot;&quot; : localname.trim() );</span>
+
+<span class="nc bnc" id="L224" title="All 2 branches missed.">		if ( localname.isEmpty() ) {</span>
+<span class="nc" id="L225">			return this;</span>
+		}
+
+<span class="nc bnc" id="L228" title="All 2 branches missed.">		if ( !lastIsConcatenator ) {</span>
+<span class="nc" id="L229">			content.append( &quot;/&quot; );</span>
+		}
+
+		String newlocal;
+		String lastchar;
+<span class="nc" id="L234">		Matcher m = CONCAT_PAT.matcher( localname );</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">		if ( m.matches() ) {</span>
+<span class="nc" id="L236">			newlocal = m.group( 1 );</span>
+<span class="nc" id="L237">			lastchar = m.group( 2 );</span>
+<span class="nc" id="L238">			lastIsConcatenator = true;</span>
+		}
+		else {
+<span class="nc" id="L241">			newlocal = localname;</span>
+<span class="nc" id="L242">			lastchar = &quot;&quot;;</span>
+<span class="nc" id="L243">			lastIsConcatenator = false;</span>
+		}
+
+<span class="nc" id="L246">		content.append( sanitizer.sanitize( newlocal ) ).append( lastchar );</span>
+
+<span class="nc" id="L248">		return this;</span>
+	}
+
+	/**
+	 * Does the given string start with our current content?
+	 *
+	 * @param uri the uri to check
+	 * @return true, if &lt;code&gt;uri.startsWith( content.toString() )&lt;/code&gt;
+	 */
+	public boolean contains( String uri ) {
+<span class="nc" id="L258">		return uri.startsWith( content.toString() );</span>
+	}
+
+	public boolean contains( Resource uri ) {
+<span class="nc" id="L262">		return contains( uri.stringValue() );</span>
+	}
+
+	/**
+	 * Checks if the given URI's namespace is the same as our current content.
+	 * This is a stricter check than {@link #contains(org.openrdf.model.Resource)}
+	 * because the namespace must match the this builder's content exactly, and
+	 * not just start the same way
+	 *
+	 * @param uri the uri to check
+	 * @return true, if
+	 * &lt;code&gt;uri.getNamespace().equals( content.toString() )&lt;/code&gt;
+	 */
+	public boolean namespaceOf( URI uri ) {
+<span class="nc" id="L276">		return uri.getNamespace().equals( content.toString() );</span>
+	}
+
+	/**
+	 * Gets a copy of this instance, as if in the core namespace
+	 *
+	 * @return a copy of this instance
+	 */
+	public UriBuilder getCoreUri() {
+<span class="nc" id="L285">		return internalCopy( &quot;core#&quot; );</span>
+	}
+
+	/**
+	 * A convenience {@link #getCoreUri()}.{@link #add(java.lang.String) }.
+	 *
+	 * @param localname the core name to add
+	 *
+	 * @return a copy of this instance
+	 */
+	public URI getCoreUri( String localname ) {
+<span class="nc" id="L296">		return getCoreUri().add( localname ).build();</span>
+	}
+
+	/**
+	 * Gets a copy of this instance, as if in the relation namespace
+	 *
+	 * @return a copy of this instance
+	 */
+	public UriBuilder getRelationUri() {
+<span class="nc" id="L305">		return internalCopy( &quot;Relation/&quot; );</span>
+	}
+
+	/**
+	 * A convenience {@link #getRelationUri() }.{@link #add(java.lang.String) }.
+	 *
+	 * @param localname the core name to add
+	 *
+	 * @return a copy of this instance
+	 */
+	public URI getRelationUri( String localname ) {
+<span class="nc" id="L316">		return getRelationUri().add( localname ).build();</span>
+	}
+
+	public URI getContainsUri() {
+<span class="nc" id="L320">		return getRelationUri( Constants.CONTAINS );</span>
+	}
+
+	/**
+	 * Gets a copy of this instance, as if in the concept instance (does not have
+	 * a trailing &quot;/&quot;)
+	 *
+	 * @return a copy of this instance
+	 */
+	public UriBuilder getConceptUri() {
+<span class="nc" id="L330">		return internalCopy( Constants.DEFAULT_NODE_CLASS );</span>
+	}
+
+	/**
+	 * Gets a copy of this instance, as if in the concept namespace (has a
+	 * trailing &quot;/&quot;)
+	 *
+	 * @return a copy of this instance
+	 */
+	public UriBuilder getConceptNamespace() {
+<span class="nc" id="L340">		return internalCopy( Constants.DEFAULT_NODE_CLASS + &quot;/&quot; );</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L345">		return content.toString();</span>
+	}
+
+	/**
+	 * A convenience to {@link #getConceptUri()}.{@link  #add(java.lang.String)
+	 * }.
+	 *
+	 * @param localname the core name to add
+	 *
+	 * @return a copy of this instance
+	 */
+	public URI getConceptUri( String localname ) {
+<span class="nc" id="L357">		return getConceptUri().add( localname ).build();</span>
+	}
+
+	public UriSanitizer getSanitizer() {
+<span class="nc" id="L361">		return sanitizer;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L366">		int hash = 7;</span>
+<span class="nc" id="L367">		hash = 29 * hash + Objects.hashCode( this.content );</span>
+<span class="nc" id="L368">		return hash;</span>
+	}
+
+	@Override
+	public boolean equals( Object obj ) {
+<span class="nc bnc" id="L373" title="All 2 branches missed.">		if ( obj == null ) {</span>
+<span class="nc" id="L374">			return false;</span>
+		}
+<span class="nc bnc" id="L376" title="All 2 branches missed.">		if ( getClass() != obj.getClass() ) {</span>
+<span class="nc" id="L377">			return false;</span>
+		}
+<span class="nc" id="L379">		final UriBuilder other = (UriBuilder) obj;</span>
+<span class="nc" id="L380">		return content.toString().equals( other.content.toString() );</span>
+	}
+
+<span class="nc" id="L383">	public static class DefaultSanitizer implements UriSanitizer {</span>
+
+<span class="nc" id="L385">		private final int localPartMaxLength = 54; // TBD: qualify this limit, consider making a semoss property</span>
+
+		public String getUUIDLocalName() {
+<span class="nc" id="L388">			return RandomStringUtils.randomAlphabetic( 1 ) + UUID.randomUUID().toString();</span>
+		}
+
+		@Override
+		public String sanitize( String raw ) {
+			// Check if the string is already valid:
+<span class="nc" id="L394">			String sanitized = raw;</span>
+<span class="nc bnc" id="L395" title="All 2 branches missed.">			if ( !RDFDatatypeTools.isValidUriChars( raw ) ) {</span>
+				// Attempt a simple sanitizing:
+
+<span class="nc" id="L398">				String rawWithUnderscores</span>
+<span class="nc" id="L399">						= raw.trim().replaceAll( &quot;(\\p{Punct}|\\s)&quot;, &quot;_&quot; );</span>
+
+<span class="nc bnc" id="L401" title="All 2 branches missed.">				if ( RDFDatatypeTools.isValidUriChars( rawWithUnderscores ) ) {</span>
+<span class="nc" id="L402">					sanitized = rawWithUnderscores;</span>
+				}
+				else {
+					// Still not clean enough, just use a random URI (below)
+<span class="nc" id="L406">					sanitized = &quot;&quot;;</span>
+				}
+			}
+
+			// At issue here was a that truncating the local part at the length limit (as done previously) did not
+			// guarantee uniqueness.  This lead to occasional URI collisions and the overlap of data.  So now when
+			// we hit the max length limit, we graph a UUID since we are otherwise unable to check for uniqueness
+			// at this stage.
+			//
+<span class="nc bnc" id="L415" title="All 4 branches missed.">			return ( sanitized.length() &gt; localPartMaxLength || sanitized.isEmpty() )</span>
+<span class="nc" id="L416">					? getUUIDLocalName() : sanitized;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

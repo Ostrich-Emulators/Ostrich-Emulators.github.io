@@ -1,0 +1,564 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Utility.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.util</a> &gt; <span class="el_source">Utility.java</span></div><h1>Utility.java</h1><pre class="source lang-java linenums">/**
+ * *****************************************************************************
+ * Copyright 2013 SEMOSS.ORG
+ *
+ * This file is part of SEMOSS.
+ *
+ * SEMOSS is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * SEMOSS is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * SEMOSS. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ * ****************************************************************************
+ */
+package com.ostrichemulators.semtool.util;
+
+import com.ostrichemulators.semtool.model.vocabulary.SEMONTO;
+import com.ostrichemulators.semtool.model.vocabulary.SEMCORE;
+import com.ostrichemulators.semtool.model.vocabulary.SEMTOOL;
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import com.ostrichemulators.semtool.rdf.engine.api.MetadataConstants;
+import com.ostrichemulators.semtool.rdf.query.util.impl.VoidQueryAdapter;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+import org.apache.commons.io.FilenameUtils;
+import org.apache.log4j.Logger;
+import org.openrdf.model.BNode;
+import org.openrdf.model.Model;
+import org.openrdf.model.Resource;
+import org.openrdf.model.Statement;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.vocabulary.DCTERMS;
+import org.openrdf.model.vocabulary.FOAF;
+import org.openrdf.model.vocabulary.OWL;
+import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.model.vocabulary.RDFS;
+import org.openrdf.model.vocabulary.XMLSchema;
+import org.openrdf.query.BindingSet;
+import org.openrdf.rio.RDFHandler;
+import org.openrdf.rio.ntriples.NTriplesWriter;
+import org.openrdf.rio.rdfxml.RDFXMLWriter;
+import org.openrdf.rio.turtle.TurtleWriter;
+
+/**
+ * The GuiUtility class contains a variety of miscellaneous functions
+ * implemented extensively throughout SEMONTO. Some of these functionalities
+ * include getting concept names, printing messages, loading engines, and
+ * writing Excel workbooks.
+ */
+<span class="nc" id="L86">public class Utility {</span>
+
+<span class="nc" id="L88">	private static final Logger log = Logger.getLogger( Utility.class );</span>
+<span class="nc" id="L89">	private static final UriBuilder BUILDER = UriBuilder.getBuilder( Constants.INTERNAL_NS );</span>
+<span class="nc" id="L90">	public static final Map&lt;String, String&gt; DEFAULTNAMESPACES = new HashMap&lt;&gt;();</span>
+
+	static {
+<span class="nc" id="L93">		DEFAULTNAMESPACES.put( RDF.PREFIX, RDF.NAMESPACE );</span>
+<span class="nc" id="L94">		DEFAULTNAMESPACES.put( RDFS.PREFIX, RDFS.NAMESPACE );</span>
+<span class="nc" id="L95">		DEFAULTNAMESPACES.put( OWL.PREFIX, OWL.NAMESPACE );</span>
+<span class="nc" id="L96">		DEFAULTNAMESPACES.put( XMLSchema.PREFIX, XMLSchema.NAMESPACE );</span>
+<span class="nc" id="L97">		DEFAULTNAMESPACES.put( DCTERMS.PREFIX, DCTERMS.NAMESPACE );</span>
+<span class="nc" id="L98">		DEFAULTNAMESPACES.put( FOAF.PREFIX, FOAF.NAMESPACE );</span>
+<span class="nc" id="L99">		DEFAULTNAMESPACES.put( MetadataConstants.VOID_PREFIX, MetadataConstants.VOID_NS );</span>
+<span class="nc" id="L100">		DEFAULTNAMESPACES.put( SEMTOOL.PREFIX, SEMTOOL.NAMESPACE );</span>
+<span class="nc" id="L101">		DEFAULTNAMESPACES.put( SEMCORE.PREFIX, SEMCORE.NAMESPACE );</span>
+<span class="nc" id="L102">		DEFAULTNAMESPACES.put( SEMONTO.PREFIX, SEMONTO.NAMESPACE );</span>
+<span class="nc" id="L103">	}</span>
+
+	public static URI getUniqueUri() {
+<span class="nc" id="L106">		return BUILDER.uniqueUri();</span>
+	}
+
+	public static URI makeInternalUri( String something ) {
+<span class="nc" id="L110">		return BUILDER.build( something );</span>
+	}
+
+	/**
+	 * Checks if a given string is a URL or File
+	 *
+	 * @param fileOrUrl
+	 * @return true, if the arg is a file
+	 */
+	public static boolean isFile( String fileOrUrl ) {
+<span class="nc" id="L120">		Pattern pat = Pattern.compile( &quot;^\\w+?://&quot; );</span>
+<span class="nc" id="L121">		Matcher m = pat.matcher( fileOrUrl );</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">		if ( m.find() ) {</span>
+<span class="nc" id="L123">			return fileOrUrl.toLowerCase().startsWith( &quot;file://&quot; );</span>
+		}
+<span class="nc" id="L125">		return true;</span>
+	}
+
+	/**
+	 * A convenience for {@link #getInstanceLabels(java.util.Collection,
+	 * gov.va.semoss.rdf.engine.api.IEngine) }, but returns a sorted map with
+	 * consistent iteration pattern
+	 *
+	 * @param &lt;X&gt;
+	 * @param urilabels a mapping of URIs to their labels. Say, the results of {@link #getInstanceLabels(java.util.Collection,
+	 * gov.va.semoss.rdf.engine.api.IEngine) }
+	 *
+	 * @return the results
+	 */
+	public static &lt;X extends Resource&gt; Map&lt;X, String&gt; sortUrisByLabel( Map&lt;X, String&gt; urilabels ) {
+<span class="nc" id="L140">		List&lt;ResourceLabelPair&gt; pairs = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L142" title="All 2 branches missed.">		for ( Map.Entry&lt;X, String&gt; p : urilabels.entrySet() ) {</span>
+<span class="nc" id="L143">			Resource r = p.getKey();</span>
+
+<span class="nc" id="L145">			pairs.add( new ResourceLabelPair( r, p.getValue() ) );</span>
+<span class="nc" id="L146">		}</span>
+<span class="nc" id="L147">		Collections.sort( pairs );</span>
+
+<span class="nc" id="L149">		LinkedHashMap&lt;Resource, String&gt; ret = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">		for ( ResourceLabelPair ulp : pairs ) {</span>
+<span class="nc" id="L151">			ret.put( ulp.r, ulp.l );</span>
+<span class="nc" id="L152">		}</span>
+
+<span class="nc" id="L154">		return (Map&lt;X, String&gt;) ret;</span>
+	}
+
+	/**
+	 * Rounds the given value to the given number of decimal places
+	 *
+	 * @param valueToRound double
+	 * @param numberOfDecimalPlaces int
+	 *
+	 * @return double
+	 */
+	public static double round( double valueToRound, int numberOfDecimalPlaces ) {
+<span class="nc" id="L166">		double multipicationFactor = Math.pow( 10, numberOfDecimalPlaces );</span>
+<span class="nc" id="L167">		double interestedInZeroDPs = valueToRound * multipicationFactor;</span>
+<span class="nc" id="L168">		return Math.round( interestedInZeroDPs ) / multipicationFactor;</span>
+	}
+
+	/**
+	 * Copies the &lt;code&gt;newones&lt;/code&gt; to &lt;code&gt;original&lt;/code&gt;.
+	 *
+	 * @param original the properties &quot;base&quot;
+	 * @param newones the properties to add to &quot;base&quot;
+	 * @param appendClashes when true, if both properties have the same keys,
+	 * append &lt;code&gt;newones&lt;/code&gt; values to those already in
+	 * &lt;code&gt;original&lt;/code&gt;. if false, replace the original values with the new
+	 * ones
+	 * @param delimiter The delimiter to use when appending two values together
+	 */
+	public static void mergeProperties( Properties original, Properties newones,
+			boolean appendClashes, String delimiter ) {
+<span class="nc bnc" id="L184" title="All 2 branches missed.">		for ( String prop : newones.stringPropertyNames() ) {</span>
+<span class="nc" id="L185">			String newval = newones.getProperty( prop );</span>
+
+<span class="nc bnc" id="L187" title="All 4 branches missed.">			if ( original.containsKey( prop ) &amp;&amp; appendClashes ) {</span>
+<span class="nc" id="L188">				newval = original.getProperty( prop ) + delimiter + newval;</span>
+			}
+<span class="nc" id="L190">			original.setProperty( prop, newval );</span>
+<span class="nc" id="L191">		}</span>
+<span class="nc" id="L192">	}</span>
+
+	/**
+	 * Loads the Properties from the given file
+	 *
+	 * @param file The properties file to be loaded.
+	 * @param props the properties object to load
+	 *
+	 * @throws java.io.IOException
+	 */
+	public static void loadProp( File file, Properties props ) throws IOException {
+<span class="nc" id="L203">		try ( FileReader fis = new FileReader( file ) ) {</span>
+<span class="nc" id="L204">			props.load( fis );</span>
+
+<span class="nc bnc" id="L206" title="All 2 branches missed.">			if ( log.isDebugEnabled() ) {</span>
+<span class="nc" id="L207">				StringWriter sw = new StringWriter();</span>
+<span class="nc" id="L208">				PrintWriter pw = new PrintWriter( sw );</span>
+<span class="nc" id="L209">				props.list( pw );</span>
+<span class="nc" id="L210">				log.debug( sw );</span>
+			}
+<span class="nc bnc" id="L212" title="All 8 branches missed.">		}</span>
+<span class="nc" id="L213">	}</span>
+
+	public static void loadProp( URL file, Properties props ) throws IOException {
+<span class="nc" id="L216">		try ( InputStream is = file.openStream() ) {</span>
+<span class="nc" id="L217">			props.load( is );</span>
+
+<span class="nc bnc" id="L219" title="All 2 branches missed.">			if ( log.isDebugEnabled() ) {</span>
+<span class="nc" id="L220">				StringWriter sw = new StringWriter();</span>
+<span class="nc" id="L221">				PrintWriter pw = new PrintWriter( sw );</span>
+<span class="nc" id="L222">				props.list( pw );</span>
+<span class="nc" id="L223">				log.debug( sw );</span>
+			}
+<span class="nc bnc" id="L225" title="All 8 branches missed.">		}</span>
+<span class="nc" id="L226">	}</span>
+
+	/**
+	 * Loads a Properties object from the given file
+	 *
+	 * @param file The properties file to be loaded.
+	 *
+	 * @return a new properties object
+	 *
+	 * @throws java.io.IOException
+	 *
+	 */
+	public static Properties loadProp( File file ) throws IOException {
+<span class="nc" id="L239">		Properties p = new Properties();</span>
+<span class="nc" id="L240">		loadProp( file, p );</span>
+<span class="nc" id="L241">		return p;</span>
+	}
+
+	public static Properties loadProp( URL url ) throws IOException {
+<span class="nc" id="L245">		Properties p = new Properties();</span>
+<span class="nc" id="L246">		loadProp( url, p );</span>
+<span class="nc" id="L247">		return p;</span>
+	}
+
+	/**
+	 * Copies the given properties into a new Properties object. This function
+	 * does NOT do a deep-copy of the argument's supporting Properties, if any
+	 *
+	 * @param from the source properties
+	 *
+	 * @return the new copy
+	 */
+	public static Properties copyProperties( Properties from ) {
+<span class="nc" id="L259">		Properties to = new Properties();</span>
+<span class="nc bnc" id="L260" title="All 2 branches missed.">		for ( String key : from.stringPropertyNames() ) {</span>
+<span class="nc" id="L261">			to.setProperty( key, from.getProperty( key ) );</span>
+<span class="nc" id="L262">		}</span>
+<span class="nc" id="L263">		return to;</span>
+	}
+
+	/**
+	 * Creates a formatted time string of the difference between the input
+	 * parameters, &quot;startTime&quot; and &quot;stopTime&quot;, appropriate for display in the
+	 * status bar and in popup message boxes.
+	 *
+	 * @param startTime -- (Date) Beginning of duration.
+	 * @param stopTime -- (Date) End of duration.
+	 *
+	 * @return getDuration -- (String) Formatted time string described above.
+	 */
+	public static String getDuration( Date startTime, Date stopTime ) {
+<span class="nc" id="L277">		Calendar starter = Calendar.getInstance();</span>
+<span class="nc" id="L278">		starter.setTime( startTime );</span>
+<span class="nc" id="L279">		Calendar stopper = Calendar.getInstance();</span>
+<span class="nc" id="L280">		stopper.setTime( stopTime );</span>
+
+<span class="nc" id="L282">		int sval = starter.get( Calendar.MILLISECOND );</span>
+<span class="nc" id="L283">		int eval = stopper.get( Calendar.MILLISECOND );</span>
+<span class="nc" id="L284">		int msecs = eval - sval;</span>
+
+<span class="nc" id="L286">		sval = starter.get( Calendar.SECOND );</span>
+<span class="nc" id="L287">		eval = stopper.get( Calendar.SECOND );</span>
+<span class="nc" id="L288">		int secs = eval - sval;</span>
+
+<span class="nc" id="L290">		sval = starter.get( Calendar.MINUTE );</span>
+<span class="nc" id="L291">		eval = stopper.get( Calendar.MINUTE );</span>
+<span class="nc" id="L292">		int mins = eval - sval;</span>
+
+<span class="nc bnc" id="L294" title="All 2 branches missed.">		if ( msecs &lt; 0 ) {</span>
+<span class="nc" id="L295">			msecs += 1000;</span>
+<span class="nc" id="L296">			secs--;</span>
+		}
+
+<span class="nc bnc" id="L299" title="All 2 branches missed.">		if ( secs &lt; 0 ) {</span>
+<span class="nc" id="L300">			secs += 60;</span>
+<span class="nc" id="L301">			mins--;</span>
+		}
+
+		// we don't expect any duration to be more than 1 hour
+<span class="nc bnc" id="L305" title="All 2 branches missed.">		if ( mins &lt; 0 ) {</span>
+<span class="nc" id="L306">			mins += 60;</span>
+		}
+
+<span class="nc bnc" id="L309" title="All 2 branches missed.">		if ( 0 == mins ) {</span>
+			// don't print &quot;00m&quot; if we don't have any minutes to report
+<span class="nc" id="L311">			return String.format( &quot;%02d.%02ds&quot;, secs, msecs / 10 );</span>
+		}
+<span class="nc" id="L313">		return String.format( &quot;%02dm, %02d.%02ds&quot;, mins, secs, msecs / 10 );</span>
+	}
+
+	public static String getSaveFilename( String base, String extension ) {
+<span class="nc" id="L317">		SimpleDateFormat sdf = new SimpleDateFormat( &quot;_MMM dd, yyyy HHmm.&quot; );</span>
+<span class="nc" id="L318">		return base + sdf.format( new Date() )</span>
+<span class="nc bnc" id="L319" title="All 2 branches missed.">				+ ( extension.startsWith( &quot;.&quot; ) ? extension.substring( 1 ) : extension );</span>
+	}
+
+	public static void unzip( String zipFilePath, String destDir ) throws IOException {
+<span class="nc" id="L323">		try ( ZipInputStream zips</span>
+				= new ZipInputStream( new BufferedInputStream(
+								new FileInputStream( new File( zipFilePath ) ) ) ) ) {
+<span class="nc" id="L326">							unzip( zips, new File( destDir ) );</span>
+<span class="nc bnc" id="L327" title="All 8 branches missed.">						}</span>
+<span class="nc" id="L328">	}</span>
+
+	public static void unzip( ZipInputStream zis, File destDir ) throws IOException {
+		ZipEntry zipEntry;
+<span class="nc bnc" id="L332" title="All 2 branches missed.">		while ( null != ( zipEntry = zis.getNextEntry() ) ) {</span>
+<span class="nc" id="L333">			String name = zipEntry.getName();</span>
+			/* For debugging when needed
+			 *
+			 long size = zipEntry.getSize();
+			 long compressedSize = zipEntry.getCompressedSize();
+			 System.out.printf(&quot;name: %-20s | size: %6d | compressed size: %6d\n&quot;,
+			 name, size, compressedSize);
+			 */
+
+<span class="nc" id="L342">			File file = new File( destDir, name );</span>
+<span class="nc bnc" id="L343" title="All 2 branches missed.">			if ( name.endsWith( &quot;/&quot; ) ) {</span>
+<span class="nc" id="L344">				file.mkdirs();</span>
+<span class="nc" id="L345">				continue;</span>
+			}
+
+<span class="nc" id="L348">			File parent = file.getParentFile();</span>
+<span class="nc bnc" id="L349" title="All 2 branches missed.">			if ( parent != null ) {</span>
+<span class="nc" id="L350">				parent.mkdirs();</span>
+			}
+
+<span class="nc" id="L353">			try ( FileOutputStream fos = new FileOutputStream( file ) ) {</span>
+<span class="nc" id="L354">				byte[] bytes = new byte[1024];</span>
+				int length;
+<span class="nc bnc" id="L356" title="All 2 branches missed.">				while ( ( length = zis.read( bytes ) ) &gt;= 0 ) {</span>
+<span class="nc" id="L357">					fos.write( bytes, 0, length );</span>
+				}
+<span class="nc" id="L359">				zis.closeEntry();</span>
+<span class="nc bnc" id="L360" title="All 8 branches missed.">			}</span>
+<span class="nc" id="L361">		}</span>
+<span class="nc" id="L362">	}</span>
+
+	/**
+	 * Implodes the given collection, appending &lt;code&gt;start&lt;/code&gt; before each
+	 * element, and &lt;code&gt;stop&lt;/code&gt; after each one, and &lt;code&gt;sep&lt;/code&gt; in
+	 * between
+	 *
+	 * @param collection the elements to implode. {@link Object#toString()} will
+	 * be called on each one
+	 * @param start what to put before each element
+	 * @param stop what to put after each element
+	 * @param sep what to put between elements
+	 * @return a string representation of the given collection. If the collection
+	 * is empty or null, an empty string will be returned.
+	 */
+	public static String implode( Collection&lt;?&gt; collection, String start, String stop,
+			String sep ) {
+<span class="nc bnc" id="L379" title="All 2 branches missed.">		if ( null == collection ) {</span>
+<span class="nc" id="L380">			return &quot;&quot;;</span>
+		}
+
+<span class="nc" id="L383">		StringBuilder sb = new StringBuilder();</span>
+<span class="nc bnc" id="L384" title="All 2 branches missed.">		for ( Object o : collection ) {</span>
+<span class="nc bnc" id="L385" title="All 2 branches missed.">			if ( 0 != sb.length() ) {</span>
+<span class="nc" id="L386">				sb.append( sep );</span>
+			}
+<span class="nc" id="L388">			sb.append( start ).append( o.toString() ).append( stop );</span>
+<span class="nc" id="L389">		}</span>
+
+<span class="nc" id="L391">		return sb.toString();</span>
+	}
+
+	/**
+	 * Gets the implosion suitable for building a SPARQL VALUES token . This is a
+	 * convenience function to {@link #implode(java.util.Collection,
+	 * java.lang.String, java.lang.String, java.lang.String)
+	 * implode( collection, &quot;&amp;lt;&quot;, &quot;&amp;gt;&quot;, &quot; &quot; ) }
+	 *
+	 * @param collection
+	 * @return
+	 */
+	public static String implode( Collection&lt;URI&gt; collection ) {
+<span class="nc" id="L404">		return implode( collection, &quot;&lt;&quot;, &quot;&gt;&quot;, &quot; &quot; );</span>
+	}
+
+	/**
+	 * Gets the appropriate exporter for the given filename. &quot;Appropriate&quot; means
+	 * the file's suffix determines exporter. If no appropriate handler can be
+	 * found, an NTriples one is returned. Handled suffixes (case insensitive):
+	 * &lt;ul&gt;
+	 * &lt;li&gt;nt
+	 * &lt;li&gt;rdf
+	 * &lt;li&gt;ttl
+	 * &lt;/ul&gt;
+	 *
+	 * @param filename the filename to determine the handler to use
+	 * @param out the output writer to use to create the handler
+	 * @return a handler (always)
+	 */
+	public static RDFHandler getExporterFor( String filename, Writer out ) {
+<span class="nc" id="L422">		String suffix = FilenameUtils.getExtension( filename ).toLowerCase();</span>
+<span class="nc bnc" id="L423" title="All 10 branches missed.">		switch ( suffix ) {</span>
+			case &quot;rdf&quot;:
+<span class="nc" id="L425">				return new RDFXMLWriter( out );</span>
+			case &quot;ttl&quot;:
+<span class="nc" id="L427">				return new TurtleWriter( out );</span>
+			default:
+<span class="nc" id="L429">				return new NTriplesWriter( out );</span>
+		}
+	}
+
+	/**
+	 * A convenience function to {@link #getInstanceLabels(java.util.Collection,
+	 * gov.va.semoss.rdf.engine.api.IEngine) } when you only have a single URI. If
+	 * you have more than one URI, {@link #getInstanceLabels(java.util.Collection,
+	 * gov.va.semoss.rdf.engine.api.IEngine) } is much more performant.
+	 *
+	 * @param &lt;X&gt;
+	 * @param eng where to get the label from
+	 * @param uri the uri we need a label for
+	 *
+	 * @return the label, or the localname if no label is in the engine
+	 */
+	public static &lt;X extends Resource&gt; String getInstanceLabel( X uri, IEngine eng ) {
+<span class="nc" id="L446">		return getInstanceLabels( Arrays.asList( uri ), eng ).get( uri );</span>
+	}
+
+	/**
+	 * Gets labels for the given uris from the given engine. If the engine doesn't
+	 * contain a {@link RDFS#LABEL} element, just use a
+	 * {@link URLDecoder#decode(java.lang.String, java.lang.String) URLDecoded}
+	 * version of the local name
+	 *
+	 * @param &lt;X&gt;
+	 * @param uris the URIs to retrieve the labels from
+	 * @param eng the engine to search for labels
+	 *
+	 * @return a map of URI=&amp;gt;label
+	 */
+	public static &lt;X extends Resource&gt; Map&lt;X, String&gt;
+			getInstanceLabels( final Collection&lt;X&gt; uris, IEngine eng ) {
+
+<span class="nc bnc" id="L464" title="All 4 branches missed.">		if ( null == uris || uris.isEmpty() ) {</span>
+<span class="nc" id="L465">			return new HashMap&lt;&gt;();</span>
+		}
+
+<span class="nc" id="L468">		final Map&lt;Resource, String&gt; retHash = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L470">		StringBuilder sb</span>
+				= new StringBuilder( &quot;SELECT ?s ?label WHERE { ?s rdfs:label ?label }&quot; );
+<span class="nc" id="L472">		sb.append( &quot; VALUES ?s {&quot; );</span>
+<span class="nc bnc" id="L473" title="All 2 branches missed.">		for ( Resource uri : uris ) {</span>
+<span class="nc bnc" id="L474" title="All 2 branches missed.">			if ( null == uri ) {</span>
+<span class="nc" id="L475">				log.warn( &quot;trying to find the label of a null Resource? (probably a bug)&quot; );</span>
+			}
+			else {
+<span class="nc bnc" id="L478" title="All 2 branches missed.">				if ( !( uri instanceof BNode ) ) { // don't know how to query a BNode</span>
+<span class="nc" id="L479">					sb.append( &quot; &lt;&quot; ).append( uri.stringValue() ).append( &quot;&gt;\n&quot; );</span>
+				}
+			}
+<span class="nc" id="L482">		}</span>
+<span class="nc" id="L483">		sb.append( &quot;}&quot; );</span>
+
+<span class="nc" id="L485">		VoidQueryAdapter vqa = new VoidQueryAdapter( sb.toString() ) {</span>
+			@Override
+			public void handleTuple( BindingSet set, ValueFactory fac ) {
+<span class="nc" id="L488">				String lbl = set.getValue( &quot;label&quot; ).stringValue();</span>
+<span class="nc" id="L489">				Value r = set.getValue( &quot;s&quot; );</span>
+<span class="nc" id="L490">				retHash.put( Resource.class.cast( r ), lbl );</span>
+<span class="nc" id="L491">			}</span>
+		};
+
+<span class="nc bnc" id="L494" title="All 2 branches missed.">		if ( null == eng ) {</span>
+<span class="nc" id="L495">			log.warn( &quot;querying null engine in getInstanceLabels not likely to work&quot; );</span>
+		}
+		else {
+<span class="nc" id="L498">			eng.queryNoEx( vqa );</span>
+		}
+
+		// add any URIs that don't have a label, but were in the argument collection
+<span class="nc" id="L502">		Set&lt;Resource&gt; todo = new HashSet&lt;&gt;( uris );</span>
+<span class="nc" id="L503">		todo.removeAll( retHash.keySet() );</span>
+<span class="nc bnc" id="L504" title="All 2 branches missed.">		for ( Resource u : todo ) {</span>
+<span class="nc bnc" id="L505" title="All 2 branches missed.">			if ( u instanceof URI ) {</span>
+<span class="nc" id="L506">				retHash.put( u, URI.class.cast( u ).getLocalName() );</span>
+			}
+<span class="nc bnc" id="L508" title="All 2 branches missed.">			else if ( u instanceof BNode ) {</span>
+<span class="nc" id="L509">				retHash.put( u, BNode.class.cast( u ).getID() );</span>
+			}
+			else {
+<span class="nc" id="L512">				retHash.put( u, u.stringValue() );</span>
+			}
+<span class="nc" id="L514">		}</span>
+
+<span class="nc" id="L516">		return (Map&lt;X, String&gt;) retHash;</span>
+	}
+
+	public static Properties getBuildProperties( Class&lt;?&gt; klass ) {
+		try {
+<span class="nc" id="L521">			return Utility.loadProp( klass.getResource( &quot;/build.properties&quot; ) );</span>
+		}
+<span class="nc" id="L523">		catch ( IOException ioe ) {</span>
+<span class="nc" id="L524">			log.warn( ioe, ioe );</span>
+		}
+<span class="nc" id="L526">		return new Properties();</span>
+	}
+
+	public static void ttlToStdout( Model model ) {
+<span class="nc" id="L530">		TurtleWriter tw = new TurtleWriter( System.out );</span>
+		try {
+<span class="nc" id="L532">			tw.startRDF();</span>
+<span class="nc bnc" id="L533" title="All 2 branches missed.">			for ( Map.Entry&lt;String, String&gt; en : DEFAULTNAMESPACES.entrySet() ) {</span>
+<span class="nc" id="L534">				tw.handleNamespace( en.getKey(), en.getValue() );</span>
+<span class="nc" id="L535">			}</span>
+
+<span class="nc bnc" id="L537" title="All 2 branches missed.">			for ( Statement s : model ) {</span>
+<span class="nc" id="L538">				tw.handleStatement( s );</span>
+<span class="nc" id="L539">			}</span>
+<span class="nc" id="L540">			tw.endRDF();</span>
+		}
+<span class="nc" id="L542">		catch ( Exception e ) {</span>
+<span class="nc" id="L543">			log.error( e, e );</span>
+<span class="nc" id="L544">		}</span>
+<span class="nc" id="L545">	}</span>
+
+	private static class ResourceLabelPair implements Comparable&lt;ResourceLabelPair&gt; {
+
+		public final Resource r;
+		public final String l;
+
+<span class="nc" id="L552">		public ResourceLabelPair( Resource r, String l ) {</span>
+<span class="nc" id="L553">			this.r = r;</span>
+<span class="nc" id="L554">			this.l = l;</span>
+<span class="nc" id="L555">		}</span>
+
+		@Override
+		public int compareTo( ResourceLabelPair t ) {
+<span class="nc" id="L559">			return l.compareTo( t.l );</span>
+		}
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

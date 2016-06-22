@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>EngineConsistencyChecker.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool GUI</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.util</a> &gt; <span class="el_source">EngineConsistencyChecker.java</span></div><h1>EngineConsistencyChecker.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.util;
+
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import com.ostrichemulators.semtool.rdf.query.util.impl.VoidQueryAdapter;
+import com.ostrichemulators.semtool.util.MultiMap;
+import java.io.Closeable;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import javax.swing.text.Document;
+import org.apache.log4j.Logger;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.search.spell.PlainTextDictionary;
+import org.apache.lucene.search.spell.SpellChecker;
+import org.apache.lucene.search.spell.StringDistance;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.RAMDirectory;
+import org.openrdf.model.URI;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.query.BindingSet;
+
+/**
+ * Checks the values from a Loading Sheet against the values in an existing
+ * engine. This is a string-based checking, based on a particular sound
+ * algorithm
+ *
+ * @author ryan
+ */
+public class EngineConsistencyChecker {
+
+<span class="nc" id="L42">	private static final Logger log = Logger.getLogger( EngineConsistencyChecker.class );</span>
+
+<span class="nc" id="L44">	public static enum Type {</span>
+
+<span class="nc" id="L46">		CONCEPT, RELATIONSHIP</span>
+	};
+
+	private final IEngine engine;
+	private final boolean across;
+	private final StringDistance strdist;
+<span class="nc" id="L52">	private final Map&lt;URI, String&gt; labels = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L53">	private final Map&lt;URI, URI&gt; uriToTypeLkp = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L54">	private final MultiMap&lt;URI, URI&gt; typeToURILkp = new MultiMap&lt;&gt;();</span>
+
+<span class="nc" id="L56">	public EngineConsistencyChecker( IEngine eng, boolean across, StringDistance dist ) {</span>
+<span class="nc" id="L57">		this.engine = eng;</span>
+<span class="nc" id="L58">		this.across = across;</span>
+<span class="nc" id="L59">		this.strdist = dist;</span>
+<span class="nc" id="L60">	}</span>
+
+	public void release() {
+<span class="nc" id="L63">		labels.clear();</span>
+<span class="nc" id="L64">		uriToTypeLkp.clear();</span>
+<span class="nc" id="L65">		typeToURILkp.clear();</span>
+<span class="nc" id="L66">	}</span>
+
+	/**
+	 * Adds the given uris as the specified type
+	 *
+	 * @param uris A collection of concept classes (not instances)
+	 * @param type
+	 */
+	public void add( Collection&lt;URI&gt; uris, Type type ) {
+<span class="nc bnc" id="L75" title="All 2 branches missed.">		if ( Type.CONCEPT == type ) {</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">			for ( URI uri : uris ) {</span>
+<span class="nc" id="L77">				makeConceptDocuments( uri );</span>
+<span class="nc" id="L78">			}</span>
+		}
+		else {
+<span class="nc bnc" id="L81" title="All 2 branches missed.">			for ( URI uri : uris ) {</span>
+<span class="nc" id="L82">				makeRelationDocuments( uri );</span>
+<span class="nc" id="L83">			}</span>
+		}
+<span class="nc" id="L85">	}</span>
+
+	private void makeConceptDocuments( URI concept ) {
+
+<span class="nc" id="L89">		String query = &quot;SELECT DISTINCT ?s ?slabel WHERE { ?s a ?concept ; rdfs:label ?slabel } ORDER BY ?s&quot;;</span>
+<span class="nc" id="L90">		VoidQueryAdapter vqa = new VoidQueryAdapter( query ) {</span>
+<span class="nc" id="L91">			URI lastS = null;</span>
+<span class="nc" id="L92">			Document currentDoc = null;</span>
+<span class="nc" id="L93">			Set&lt;String&gt; seenLabels = new HashSet&lt;&gt;();</span>
+
+			@Override
+			public void handleTuple( BindingSet set, ValueFactory fac ) {
+<span class="nc" id="L97">				URI s = URI.class.cast( set.getValue( &quot;s&quot; ) );</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">				if ( s != lastS ) {</span>
+<span class="nc" id="L99">					seenLabels.clear();</span>
+<span class="nc" id="L100">					typeToURILkp.add( concept, s );</span>
+<span class="nc" id="L101">					uriToTypeLkp.put( s, concept );</span>
+<span class="nc" id="L102">					lastS = s;</span>
+				}
+
+<span class="nc" id="L105">				String label = set.getValue( &quot;slabel&quot; ).stringValue();</span>
+				// don't add multiple copies of the same label
+<span class="nc bnc" id="L107" title="All 2 branches missed.">				if ( !seenLabels.contains( label ) ) {</span>
+<span class="nc" id="L108">					seenLabels.add( label );</span>
+<span class="nc" id="L109">					labels.put( s, label );</span>
+				}
+<span class="nc" id="L111">			}</span>
+		};
+
+<span class="nc" id="L114">		vqa.bind( &quot;concept&quot;, concept );</span>
+		// log.debug( vqa.bindAndGetSparql() );
+<span class="nc" id="L116">		engine.queryNoEx( vqa );</span>
+<span class="nc" id="L117">	}</span>
+
+	private void makeRelationDocuments( URI superclass ) {
+		// get all suclasses of superclass
+<span class="nc" id="L121">		String query = &quot;SELECT DISTINCT ?rel ?label WHERE {\n&quot;</span>
+				+ &quot; ?rel rdfs:subPropertyOf ?superclass ; rdfs:label ?label .\n&quot;
+				+ &quot; FILTER( ?rel != ?superclass )\n&quot;
+				+ &quot;} ORDER BY ?rel&quot;;
+<span class="nc" id="L125">		VoidQueryAdapter vqa = new VoidQueryAdapter( query ) {</span>
+<span class="nc" id="L126">			URI lastRel = null;</span>
+<span class="nc" id="L127">			Set&lt;String&gt; seenLabels = new HashSet&lt;&gt;();</span>
+
+			@Override
+			public void handleTuple( BindingSet set, ValueFactory fac ) {
+<span class="nc" id="L131">				URI rel = URI.class.cast( set.getValue( &quot;rel&quot; ) );</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">				if ( rel != lastRel ) {</span>
+<span class="nc" id="L133">					seenLabels.clear();</span>
+
+					// add the URI information now; seenLabels later (avoid saving too much data)
+<span class="nc" id="L136">					typeToURILkp.add( superclass, rel );</span>
+<span class="nc" id="L137">					uriToTypeLkp.put( rel, superclass );</span>
+<span class="nc" id="L138">					lastRel = rel;</span>
+				}
+
+<span class="nc" id="L141">				String label = set.getValue( &quot;label&quot; ).stringValue();</span>
+				// don't add multiple copies of the same label
+<span class="nc bnc" id="L143" title="All 2 branches missed.">				if ( !seenLabels.contains( label ) ) {</span>
+<span class="nc" id="L144">					seenLabels.add( label );</span>
+<span class="nc" id="L145">					labels.put( rel, label );</span>
+				}
+<span class="nc" id="L147">			}</span>
+		};
+
+<span class="nc" id="L150">		vqa.bind( &quot;superclass&quot;, superclass );</span>
+<span class="nc" id="L151">		log.debug( vqa.bindAndGetSparql() );</span>
+<span class="nc" id="L152">		engine.queryNoEx( vqa );</span>
+<span class="nc" id="L153">	}</span>
+
+	public int getItemsForType( URI uri ) {
+<span class="nc" id="L156">		return typeToURILkp.getNN( uri ).size();</span>
+	}
+
+	/**
+	 * Resolves &quot;near&quot; matches from the elements of the given type. If
+	 * {@link #across} is &lt;code&gt;true&lt;/code&gt;, each element will be compared to all
+	 * elements of all types.
+	 *
+	 * @param uri the concept/relation class (not instance) to resolve
+	 * @param minDistance the minimum allowable similarity
+	 * @return map of uri-to-hits
+	 */
+	public MultiMap&lt;URI, Hit&gt; check( URI uri, final float minDistance ) {
+<span class="nc" id="L169">		MultiMap&lt;URI, Hit&gt; hits = new MultiMap&lt;&gt;();</span>
+
+		// get our universe of possible hits
+<span class="nc" id="L172">		Map&lt;URI, String&gt; possibles = getHitUniverse( uri );</span>
+<span class="nc" id="L173">		MultiMap&lt;String, URI&gt; revpos = MultiMap.flip( possibles );</span>
+
+<span class="nc" id="L175">		Directory ramdir = new RAMDirectory();</span>
+<span class="nc" id="L176">		StandardAnalyzer analyzer = null;</span>
+<span class="nc" id="L177">		SpellChecker speller = null;</span>
+
+<span class="nc" id="L179">		List&lt;URI&gt; errors = new ArrayList&lt;&gt;();</span>
+		try {
+<span class="nc" id="L181">			analyzer = new StandardAnalyzer();</span>
+<span class="nc" id="L182">			IndexWriterConfig config = new IndexWriterConfig( analyzer );</span>
+<span class="nc" id="L183">			speller = new SpellChecker( ramdir, strdist );</span>
+
+<span class="nc" id="L185">			StringBuilder names = new StringBuilder();</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">			for ( String s : possibles.values() ) {</span>
+<span class="nc" id="L187">				names.append( s ).append( &quot;\n&quot; );</span>
+<span class="nc" id="L188">			}</span>
+<span class="nc" id="L189">			PlainTextDictionary ptd = new PlainTextDictionary( new StringReader( names.toString() ) );</span>
+<span class="nc" id="L190">			speller.indexDictionary( ptd, config, true );</span>
+
+<span class="nc" id="L192">			List&lt;URI&gt; needles = typeToURILkp.get( uri );</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">			for ( URI needle : needles ) {</span>
+<span class="nc" id="L194">				String needlelabel = labels.get( needle );</span>
+				try {
+<span class="nc" id="L196">					String[] suggestions = speller.suggestSimilar( needlelabel, 20, minDistance );</span>
+<span class="nc bnc" id="L197" title="All 2 branches missed.">					for ( String s : suggestions ) {</span>
+						// found a match, so figure out what we actually matched
+<span class="nc" id="L199">						float distance = strdist.getDistance( needlelabel, s );</span>
+
+<span class="nc bnc" id="L201" title="All 2 branches missed.">						for ( URI match : revpos.get( s ) ) {</span>
+<span class="nc" id="L202">							hits.add( needle,</span>
+<span class="nc" id="L203">									new Hit( match, s, uriToTypeLkp.get( match ), distance ) );</span>
+<span class="nc" id="L204">						}</span>
+					}
+				}
+<span class="nc" id="L207">				catch ( Exception e ) {</span>
+					// our fallback resolution always works; it's just a ton slower
+<span class="nc" id="L209">					errors.add( needle );</span>
+<span class="nc" id="L210">				}</span>
+<span class="nc" id="L211">			}</span>
+		}
+<span class="nc" id="L213">		catch ( Exception e ) {</span>
+<span class="nc" id="L214">			log.error( e, e );</span>
+		}
+		finally {
+<span class="nc bnc" id="L217" title="All 6 branches missed.">			for ( Closeable c : new Closeable[]{ analyzer, ramdir, speller } ) {</span>
+<span class="nc bnc" id="L218" title="All 6 branches missed.">				if ( null != c ) {</span>
+					try {
+<span class="nc" id="L220">						c.close();</span>
+					}
+<span class="nc" id="L222">					catch ( Exception e ) {</span>
+<span class="nc" id="L223">						log.warn( e, e );</span>
+<span class="nc" id="L224">					}</span>
+				}
+			}
+<span class="nc" id="L227">		}</span>
+
+<span class="nc bnc" id="L229" title="All 2 branches missed.">		if ( !errors.isEmpty() ) {</span>
+<span class="nc" id="L230">			fallbackResolve( errors, possibles, hits, strdist, minDistance );</span>
+		}
+
+<span class="nc" id="L233">		return hits;</span>
+	}
+
+	/**
+	 * Resolves terms that could not be resolved with the lucene approach. This
+	 * brute-force function is significantly slower, but always works
+	 *
+	 * @param needles the URIs that produced errors in lucene
+	 * @param possibles the set of all possible solutions
+	 * @param hits populate this multimap with matches
+	 * @param levy the string distance object to use to measure hits
+	 * @param minDistance the minimum similarity measure
+	 */
+	private void fallbackResolve( Collection&lt;URI&gt; needles, Map&lt;URI, String&gt; possibles,
+			MultiMap&lt;URI, Hit&gt; hits, StringDistance levy, float minDistance ) {
+<span class="nc" id="L248">		log.debug( &quot;falling back to resolve &quot; + needles.size() + &quot; items&quot; );</span>
+
+<span class="nc bnc" id="L250" title="All 2 branches missed.">		for ( URI needle : needles ) {</span>
+<span class="nc" id="L251">			String needlelabel = labels.get( needle );</span>
+
+<span class="nc bnc" id="L253" title="All 2 branches missed.">			for ( Map.Entry&lt;URI, String&gt; en : possibles.entrySet() ) {</span>
+<span class="nc" id="L254">				URI match = en.getKey();</span>
+<span class="nc" id="L255">				String matchlabel = en.getValue();</span>
+
+<span class="nc" id="L257">				float distance = levy.getDistance( needlelabel, matchlabel );</span>
+<span class="nc bnc" id="L258" title="All 4 branches missed.">				if ( distance &gt;= minDistance &amp;&amp; !match.equals( needle ) ) {</span>
+<span class="nc" id="L259">					hits.add( needle,</span>
+<span class="nc" id="L260">							new Hit( match, matchlabel, uriToTypeLkp.get( match ), distance ) );</span>
+				}
+<span class="nc" id="L262">			}</span>
+<span class="nc" id="L263">		}</span>
+<span class="nc" id="L264">	}</span>
+
+	private Map&lt;URI, String&gt; getHitUniverse( URI type ) {
+<span class="nc" id="L267">		Map&lt;URI, String&gt; possibles = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L268" title="All 2 branches missed.">		if ( across ) {</span>
+<span class="nc" id="L269">			possibles.putAll( labels );</span>
+		}
+		else {
+<span class="nc bnc" id="L272" title="All 2 branches missed.">			for ( URI key : typeToURILkp.getNN( type ) ) {</span>
+<span class="nc" id="L273">				possibles.put( key, labels.get( key ) );</span>
+<span class="nc" id="L274">			}</span>
+		}
+
+<span class="nc" id="L277">		return possibles;</span>
+	}
+
+	public class Hit {
+
+		private final URI match;
+		private final String matchLabel;
+		private final URI matchType;
+		private final float score;
+
+<span class="nc" id="L287">		public Hit( URI match, String matchLabel, URI matchType, float score ) {</span>
+<span class="nc" id="L288">			this.match = match;</span>
+<span class="nc" id="L289">			this.matchLabel = matchLabel;</span>
+<span class="nc" id="L290">			this.matchType = matchType;</span>
+<span class="nc" id="L291">			this.score = score;</span>
+<span class="nc" id="L292">		}</span>
+
+		public URI getMatch() {
+<span class="nc" id="L295">			return match;</span>
+		}
+
+		public String getMatchLabel() {
+<span class="nc" id="L299">			return matchLabel;</span>
+		}
+
+		public URI getMatchType() {
+<span class="nc" id="L303">			return matchType;</span>
+		}
+
+		public float getScore() {
+<span class="nc" id="L307">			return score;</span>
+		}
+
+		@Override
+		public String toString() {
+<span class="nc" id="L312">			return &quot;Hit (&quot; + score + &quot;: &quot; + matchLabel + &quot;,&quot; + match + &quot; -&gt;&quot; + matchType + &quot;)&quot;;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

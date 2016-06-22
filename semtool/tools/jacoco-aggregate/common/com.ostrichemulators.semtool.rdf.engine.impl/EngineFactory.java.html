@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>EngineFactory.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.impl</a> &gt; <span class="el_source">EngineFactory.java</span></div><h1>EngineFactory.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.impl;
+
+import com.bigdata.rdf.sail.BigdataSail;
+import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import com.ostrichemulators.semtool.rdf.engine.util.EngineManagementException;
+import com.ostrichemulators.semtool.rdf.engine.util.EngineManagementException.ErrorCode;
+import com.ostrichemulators.semtool.util.Constants;
+import com.ostrichemulators.semtool.util.Utility;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.log4j.Logger;
+import org.openrdf.repository.RepositoryException;
+
+/**
+ *
+ * @author ryan
+ */
+public class EngineFactory {
+
+<span class="nc" id="L30">	private static final Logger log = Logger.getLogger( EngineFactory.class );</span>
+
+<span class="nc" id="L32">	protected EngineFactory() {</span>
+
+<span class="nc" id="L34">	}</span>
+
+	/**
+	 * Gets a new in-memory engine
+	 *
+	 * @return
+	 */
+	public static IEngine memory() {
+<span class="nc" id="L42">		return InMemorySesameEngine.open();</span>
+	}
+
+	/**
+	 * Creates and opens an IEngine based on some heuristics of the given
+	 * properties. Of particular interest, {@link Constants#ENGINE_IMPL} will
+	 * create the given engine no questions asked.
+	 *
+	 * @param props
+	 * @return
+	 * @throws
+	 * com.ostrichemulators.semtool.rdf.engine.util.EngineManagementException
+	 */
+	public static IEngine getEngine( Properties props ) throws EngineManagementException {
+<span class="nc" id="L56">		IEngine engine = null;</span>
+<span class="nc" id="L57">		Class&lt;? extends IEngine&gt; klass = null;</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">		if ( props.containsKey( Constants.ENGINE_IMPL ) ) {</span>
+			Object obj;
+			try {
+<span class="nc" id="L61">				obj = Class.forName( props.getProperty( Constants.ENGINE_IMPL ) );</span>
+<span class="nc" id="L62">				klass = (Class&lt;? extends IEngine&gt;) obj;</span>
+			}
+<span class="nc" id="L64">			catch ( ClassNotFoundException ex ) {</span>
+<span class="nc" id="L65">				log.error( &quot;unknown engine type: &quot;</span>
+<span class="nc" id="L66">						+ props.getProperty( Constants.ENGINE_IMPL ), ex );</span>
+<span class="nc" id="L67">			}</span>
+		}
+
+<span class="nc bnc" id="L70" title="All 2 branches missed.">		if ( null == klass ) {</span>
+<span class="nc" id="L71">			Map&lt;String, Class&lt;? extends IEngine&gt;&gt; heuristicKeys = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L72">			heuristicKeys.put( BigdataSail.Options.FILE, BigDataEngine.class );</span>
+<span class="nc" id="L73">			heuristicKeys.put( InMemorySesameEngine.MEMSTORE_DIR, InMemorySesameEngine.class );</span>
+<span class="nc" id="L74">			heuristicKeys.put( AbstractSesameEngine.REMOTE_KEY, SesameEngine.class );</span>
+
+<span class="nc bnc" id="L76" title="All 2 branches missed.">			for ( Map.Entry&lt;String, Class&lt;? extends IEngine&gt;&gt; en : heuristicKeys.entrySet() ) {</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">				if ( props.containsKey( en.getKey() ) ) {</span>
+<span class="nc" id="L78">					klass = en.getValue();</span>
+<span class="nc" id="L79">					break;</span>
+				}
+<span class="nc" id="L81">			}</span>
+		}
+
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		if ( null == klass ) {</span>
+<span class="nc" id="L85">			throw new EngineManagementException( ErrorCode.UNKNOWN,</span>
+					&quot;unable to determine engine type&quot; );
+		}
+		else {
+			try {
+<span class="nc" id="L90">				engine = klass.newInstance();</span>
+<span class="nc" id="L91">				engine.openDB( props );</span>
+			}
+<span class="nc" id="L93">			catch ( InstantiationException | IllegalAccessException e ) {</span>
+<span class="nc" id="L94">				throw new EngineManagementException( ErrorCode.UNKNOWN,</span>
+						&quot;Unable to determine engine type&quot;, e );
+			}
+<span class="nc" id="L97">			catch ( RepositoryException e ) {</span>
+<span class="nc" id="L98">				throw new EngineManagementException( ErrorCode.BAD_CONNECTION, e );</span>
+<span class="nc" id="L99">			}</span>
+		}
+
+<span class="nc" id="L102">		return engine;</span>
+	}
+
+	/**
+	 * Creates and opens an IEngine based on the given file's extension
+	 *
+	 * @param file
+	 * @return
+	 * @throws
+	 * com.ostrichemulators.semtool.rdf.engine.util.EngineManagementException
+	 */
+	public static IEngine getEngine( File file ) throws EngineManagementException {
+<span class="nc" id="L114">		IEngine engine = null;</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">		final String name = ( null == file ? &quot;&quot; : file.getName() );</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">		final String abspath = ( null == file ? &quot;null&quot; : file.getAbsolutePath() );</span>
+<span class="nc" id="L117">		Properties props = null;</span>
+		try {
+<span class="nc bnc" id="L119" title="All 2 branches missed.">			if ( FilenameUtils.isExtension( name, Arrays.asList( &quot;prop&quot;, &quot;properties&quot; ) ) ) {</span>
+<span class="nc" id="L120">				engine = getEngine( Utility.loadProp( file ) );</span>
+			}
+<span class="nc bnc" id="L122" title="All 2 branches missed.">			else if ( FilenameUtils.isExtension( name, &quot;jnl&quot; ) ) {</span>
+<span class="nc" id="L123">				engine = new BigDataEngine();</span>
+<span class="nc" id="L124">				props = BigDataEngine.generateProperties( file );</span>
+			}
+<span class="nc bnc" id="L126" title="All 2 branches missed.">			else if ( name.isEmpty() ) {</span>
+<span class="nc" id="L127">				engine = new InMemorySesameEngine();</span>
+			}
+<span class="nc bnc" id="L129" title="All 2 branches missed.">			else if ( &quot;memorystore.data&quot;.equals( name ) ) {</span>
+<span class="nc" id="L130">				engine = new InMemorySesameEngine();</span>
+<span class="nc" id="L131">				props = InMemorySesameEngine.generateProperties( file );</span>
+			}
+<span class="nc bnc" id="L133" title="All 2 branches missed.">			else if ( &quot;tdb&quot;.equalsIgnoreCase( name ) ) {</span>
+<span class="nc" id="L134">				engine = new JenaEngine();</span>
+			}
+<span class="nc bnc" id="L136" title="All 4 branches missed.">			else if ( null != file &amp;&amp; file.isDirectory() ) {</span>
+				// default behaviour: assume it's a plain old openrdf triplestore
+<span class="nc" id="L138">				engine = new SesameEngine();</span>
+<span class="nc" id="L139">				props = SesameEngine.generateProperties( file );</span>
+			}
+
+<span class="nc bnc" id="L142" title="All 4 branches missed.">			if ( !( null == engine || null == props ) ) {</span>
+<span class="nc" id="L143">				engine.openDB( props );</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">				if ( null == engine.getProperty( Constants.SMSS_LOCATION ) ) {</span>
+<span class="nc" id="L145">					engine.setProperty( Constants.SMSS_LOCATION, abspath );</span>
+				}
+			}
+		}
+<span class="nc" id="L149">		catch ( IOException ioe ) {</span>
+<span class="nc" id="L150">			throw new EngineManagementException( ErrorCode.FILE_ERROR, ioe );</span>
+		}
+<span class="nc" id="L152">		catch ( RepositoryException ioe ) {</span>
+<span class="nc" id="L153">			throw new EngineManagementException( ErrorCode.BAD_CONNECTION, ioe );</span>
+<span class="nc" id="L154">		}</span>
+
+<span class="nc" id="L156">		return engine;</span>
+	}
+
+	public static IEngine getEngine( String fileOrUrl ) throws EngineManagementException {
+<span class="nc bnc" id="L160" title="All 2 branches missed.">		if ( Utility.isFile( fileOrUrl ) ) {</span>
+<span class="nc" id="L161">			return getEngine( new File( fileOrUrl ) );</span>
+		}
+		else {
+			// this is a remote DB
+<span class="nc" id="L165">			Properties props = new Properties();</span>
+<span class="nc" id="L166">			props.setProperty( SesameEngine.REMOTE_KEY, Boolean.TRUE.toString() );</span>
+<span class="nc" id="L167">			props.setProperty( SesameEngine.REPOSITORY_KEY, fileOrUrl );</span>
+<span class="nc" id="L168">			props.setProperty( Constants.SMSS_LOCATION, fileOrUrl );</span>
+<span class="nc" id="L169">			return getEngine( props );</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

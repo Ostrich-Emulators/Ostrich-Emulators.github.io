@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>BigDataEngine.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.impl</a> &gt; <span class="el_source">BigDataEngine.java</span></div><h1>BigDataEngine.java</h1><pre class="source lang-java linenums">/**
+ * *****************************************************************************
+ * Copyright 2013 SEMOSS.ORG
+ *
+ * This file is part of SEMOSS.
+ *
+ * SEMOSS is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * SEMOSS is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * SEMOSS. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ * ****************************************************************************
+ */
+package com.ostrichemulators.semtool.rdf.engine.impl;
+
+import com.bigdata.journal.ITx;
+import com.bigdata.journal.Journal;
+
+import org.openrdf.repository.RepositoryException;
+
+import com.ostrichemulators.semtool.util.Constants;
+import com.bigdata.rdf.rules.InferenceEngine;
+import com.bigdata.rdf.sail.BigdataSail;
+import com.bigdata.rdf.sail.BigdataSailRepository;
+import com.bigdata.rdf.sail.BigdataSailRepositoryConnection;
+import com.bigdata.rdf.sail.CreateKBTask;
+import com.bigdata.rdf.store.AbstractTripleStore;
+import com.bigdata.rdf.task.AbstractApiTask;
+import com.ostrichemulators.semtool.rdf.engine.api.InsightManager;
+import java.io.File;
+import java.util.List;
+import java.util.Properties;
+import org.apache.log4j.Logger;
+import org.openrdf.model.Statement;
+import com.ostrichemulators.semtool.rdf.engine.util.EngineManagementException;
+import com.ostrichemulators.semtool.rdf.engine.util.StatementSorter;
+import com.ostrichemulators.semtool.user.LocalUserImpl;
+import com.ostrichemulators.semtool.user.Security;
+import com.ostrichemulators.semtool.user.User;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.concurrent.ExecutionException;
+import org.apache.commons.io.FileUtils;
+import org.openrdf.http.protocol.UnauthorizedException;
+import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.rio.turtle.TurtleWriter;
+
+/**
+ * Big data engine serves to connect the .jnl files, which contain the RDF
+ * database, to the java engine.
+ */
+public class BigDataEngine extends AbstractSesameEngine {
+
+<span class="nc" id="L63">	private static final Logger log = Logger.getLogger( BigDataEngine.class );</span>
+
+<span class="nc" id="L65">	private Journal journal = null;</span>
+<span class="nc" id="L66">	private BigdataSailRepository repo = null;</span>
+<span class="nc" id="L67">	private BigdataSailRepositoryConnection rc = null;</span>
+<span class="nc" id="L68">	private BigdataSail sail = null;</span>
+<span class="nc" id="L69">	private BigdataSailRepository insightrepo = null;</span>
+<span class="nc" id="L70">	private InsightManagerImpl insightEngine = null;</span>
+<span class="nc" id="L71">	private boolean externallySetInsightManager = false;</span>
+
+<span class="nc" id="L73">	public BigDataEngine() {</span>
+<span class="nc" id="L74">	}</span>
+
+<span class="nc" id="L76">	public BigDataEngine( File jnl ) throws RepositoryException {</span>
+<span class="nc" id="L77">		openDB( generateProperties( jnl ) );</span>
+<span class="nc" id="L78">	}</span>
+
+	@Override
+	protected void createRc( Properties props ) throws RepositoryException {
+<span class="nc" id="L82">		Properties rws = getRWSProperties( props );</span>
+<span class="nc" id="L83">		boolean isremote = Boolean.parseBoolean( props.getProperty( REMOTE_KEY, &quot;false&quot; ) );</span>
+
+<span class="nc bnc" id="L85" title="All 2 branches missed.">		if ( isremote ) {</span>
+<span class="nc" id="L86">			String url = props.getProperty( REPOSITORY_KEY );</span>
+<span class="nc" id="L87">			String ins = props.getProperty( INSIGHTS_KEY );</span>
+<span class="nc" id="L88">			log.debug( &quot;big data remote! &quot; + url + &quot; ... &quot; + ins );</span>
+<span class="nc" id="L89">			throw new UnsupportedOperationException( &quot;Remote Bigdata repositories are not yet supported&quot; );</span>
+		}
+		else {
+			// users have full access to local DBs 
+<span class="nc" id="L93">			Security.getSecurity().associateUser( this, new LocalUserImpl() );</span>
+
+			// the journal is the file itself
+<span class="nc" id="L96">			journal = new Journal( rws );</span>
+
+			// the main KB
+<span class="nc" id="L99">			rws.setProperty( BigdataSail.Options.NAMESPACE, &quot;kb&quot; );</span>
+<span class="nc" id="L100">			CreateKBTask ctor = new CreateKBTask( &quot;kb&quot;, rws );</span>
+			try {
+<span class="nc" id="L102">				AbstractApiTask.submitApiTask( journal, ctor ).get();</span>
+<span class="nc" id="L103">				AbstractTripleStore triples</span>
+<span class="nc" id="L104">						= AbstractTripleStore.class.cast( journal.getResourceLocator().</span>
+<span class="nc" id="L105">								locate( &quot;kb&quot;, ITx.UNISOLATED ) );</span>
+
+<span class="nc" id="L107">				sail = new BigdataSail( triples );</span>
+<span class="nc" id="L108">				repo = new BigdataSailRepository( sail );</span>
+<span class="nc" id="L109">				repo.initialize();</span>
+
+				// the insights KB
+<span class="nc" id="L112">				rws.setProperty( BigdataSail.Options.NAMESPACE, Constants.INSIGHTKB );</span>
+<span class="nc" id="L113">				CreateKBTask ctor2 = new CreateKBTask( Constants.INSIGHTKB, rws );</span>
+<span class="nc" id="L114">				AbstractApiTask.submitApiTask( journal, ctor2 ).get();</span>
+<span class="nc" id="L115">				AbstractTripleStore insights</span>
+<span class="nc" id="L116">						= AbstractTripleStore.class.cast( journal.getResourceLocator().</span>
+<span class="nc" id="L117">								locate( Constants.INSIGHTKB, ITx.UNISOLATED ) );</span>
+<span class="nc" id="L118">				BigdataSail insightSail = new BigdataSail( insights );</span>
+<span class="nc" id="L119">				insightrepo = new BigdataSailRepository( insightSail );</span>
+<span class="nc" id="L120">				insightrepo.initialize();</span>
+			}
+<span class="nc" id="L122">			catch ( InterruptedException | ExecutionException e ) {</span>
+<span class="nc" id="L123">				log.fatal( e, e );</span>
+<span class="nc" id="L124">			}</span>
+<span class="nc" id="L125">			rc = repo.getConnection();</span>
+		}
+<span class="nc" id="L127">	}</span>
+
+	@Override
+	protected RepositoryConnection getRawConnection() {
+<span class="nc" id="L131">		return rc;</span>
+	}
+
+	@Override
+	public void setInsightManager( InsightManager ie ) {
+<span class="nc" id="L136">		super.setInsightManager( ie );</span>
+<span class="nc" id="L137">		externallySetInsightManager = true;</span>
+<span class="nc" id="L138">	}</span>
+
+	@Override
+	protected InsightManager createInsightManager() throws RepositoryException {
+		// create an in-memory KB, but copy everything from our jnl-based
+		// KB to it
+
+<span class="nc" id="L145">		insightEngine = new InsightManagerImpl();</span>
+<span class="nc" id="L146">		BigdataSailRepositoryConnection insightrc = null;</span>
+		try {
+<span class="nc" id="L148">			insightrc = insightrepo.getReadOnlyConnection();</span>
+
+<span class="nc" id="L150">			log.debug( &quot;loading on-disk insights stmts: &quot; + insightrc.size() );</span>
+//
+//		try ( Writer w = new BufferedWriter( new FileWriter( &quot;/tmp/x.ttl&quot; ) ) ) {
+//			insightrc.export( new TurtleWriter( w ) );
+//		}
+//		catch ( Exception e ) {
+//				// don't care
+//		}
+
+<span class="nc" id="L159">			insightEngine.loadFromRepository( insightrc );</span>
+		}
+		finally {
+<span class="nc bnc" id="L162" title="All 4 branches missed.">			if ( null != insightrc ) {</span>
+				try {
+<span class="nc" id="L164">					insightrc.close();</span>
+				}
+<span class="nc" id="L166">				catch ( RepositoryException re ) {</span>
+<span class="nc" id="L167">					log.warn( re, re );</span>
+<span class="nc" id="L168">				}</span>
+			}
+		}
+		
+<span class="nc" id="L172">		return insightEngine;</span>
+	}
+
+	private void copyInsightsToDisk( InsightManager im ) throws RepositoryException {
+		// this function is a bit tricky...we want to:
+		// 1) commit then close this engine's write-handle on the main KB
+		// 2) open it on the Insights KB
+		// 3) rewrite everything to the Insights KB
+		// 4) close the Insights write handle
+		// 5) re-open the write handle to the main KB
+
+<span class="nc" id="L183">		List&lt;Statement&gt; stmts = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L184">		User user = Security.getSecurity().getAssociatedUser( this );</span>
+<span class="nc" id="L185">		stmts.addAll( InsightManagerImpl.getModel( im, user ) );</span>
+<span class="nc" id="L186">		Collections.sort( stmts, new StatementSorter() );</span>
+
+		try {
+			// 1
+<span class="nc" id="L190">			rc.commit();</span>
+<span class="nc" id="L191">			rc.close();</span>
+		}
+<span class="nc" id="L193">		catch ( Exception e ) {</span>
+<span class="nc" id="L194">			log.error( &quot;unable to prepare repository for insights management&quot;, e );</span>
+<span class="nc" id="L195">			throw e;</span>
+<span class="nc" id="L196">		}</span>
+
+		try {
+			// 2
+<span class="nc" id="L200">			BigdataSailRepositoryConnection repoc = insightrepo.getConnection();</span>
+			// 3
+<span class="nc" id="L202">			log.debug( &quot;writing &quot; + stmts.size() + &quot; statements to on-disk insight kb&quot; );</span>
+			// sort the statements so a later export looks nice (totally unnecessary,
+			// but troubleshooting is easier)
+<span class="nc" id="L205">			repoc.begin();</span>
+<span class="nc" id="L206">			repoc.clear();</span>
+<span class="nc" id="L207">			repoc.add( stmts );</span>
+<span class="nc" id="L208">			repoc.commit();</span>
+			// 4
+<span class="nc" id="L210">			repoc.close();</span>
+<span class="nc" id="L211">			logProvenance( stmts );</span>
+		}
+		finally {
+<span class="nc" id="L214">			try {</span>
+				// 5
+<span class="nc" id="L216">				rc = BigDataEngine.this.repo.getConnection();</span>
+			}
+<span class="nc" id="L218">			catch ( Exception e ) {</span>
+<span class="nc" id="L219">				log.error( e, e );</span>
+<span class="nc" id="L220">			}</span>
+<span class="nc" id="L221">		}</span>
+
+<span class="nc bnc" id="L223" title="All 2 branches missed.">		if ( log.isTraceEnabled() ) {</span>
+<span class="nc" id="L224">			File dumpfile</span>
+<span class="nc" id="L225">					= new File( FileUtils.getTempDirectory(), &quot;semtool-outsights-committed.ttl&quot; );</span>
+<span class="nc" id="L226">			try ( Writer w = new BufferedWriter( new FileWriter( dumpfile ) ) ) {</span>
+<span class="nc" id="L227">				TurtleWriter tw = new TurtleWriter( w );</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">				for ( Statement s : stmts ) {</span>
+<span class="nc" id="L229">					tw.handleStatement( s );</span>
+<span class="nc" id="L230">				}</span>
+<span class="nc bnc" id="L231" title="All 8 branches missed.">			}</span>
+<span class="nc" id="L232">			catch ( Exception ioe ) {</span>
+<span class="nc" id="L233">				log.warn( ioe, ioe );</span>
+<span class="nc" id="L234">			}</span>
+		}
+<span class="nc" id="L236">	}</span>
+
+	@Override
+	public void updateInsights( InsightManager im ) throws EngineManagementException {
+		try {
+<span class="nc bnc" id="L241" title="All 2 branches missed.">			if ( !externallySetInsightManager ) {</span>
+<span class="nc" id="L242">				copyInsightsToDisk( im );</span>
+			}
+<span class="nc" id="L244">			insightEngine.addAll( im.getPerspectives(), true );</span>
+		}
+<span class="nc" id="L246">		catch ( UnauthorizedException ue ) {</span>
+<span class="nc" id="L247">			throw new EngineManagementException(</span>
+					EngineManagementException.ErrorCode.ACCESS_DENIED, ue );
+		}
+<span class="nc" id="L250">		catch ( RepositoryException re ) {</span>
+<span class="nc" id="L251">			throw new EngineManagementException(</span>
+					EngineManagementException.ErrorCode.UNKNOWN, re );
+<span class="nc" id="L253">		}</span>
+<span class="nc" id="L254">	}</span>
+
+	/**
+	 * Closes the data base associated with the engine. This will prevent further
+	 * changes from being made in the data store and safely ends the active
+	 * transactions and closes the engine.
+	 */
+	@Override
+	public void closeDB() {
+<span class="nc" id="L263">		super.closeDB();</span>
+
+		try {
+<span class="nc" id="L266">			journal.close();</span>
+		}
+<span class="nc" id="L268">		catch ( Exception e1 ) {</span>
+<span class="nc" id="L269">			log.warn( &quot;could not close journal file&quot;, e1 );</span>
+<span class="nc" id="L270">		}</span>
+<span class="nc" id="L271">	}</span>
+
+	@Override
+	public void calculateInferences() throws RepositoryException {
+		try {
+<span class="nc" id="L276">			log.debug( &quot;start calculating inferences&quot; );</span>
+<span class="nc" id="L277">			InferenceEngine ie = sail.getInferenceEngine();</span>
+<span class="nc" id="L278">			ie.computeClosure( null );</span>
+<span class="nc" id="L279">			updateLastModifiedDate();</span>
+<span class="nc" id="L280">			rc.commit();</span>
+<span class="nc" id="L281">			log.debug( &quot;done calculating inferences&quot; );</span>
+		}
+<span class="nc" id="L283">		catch ( RepositoryException e ) {</span>
+<span class="nc" id="L284">			log.error( e, e );</span>
+<span class="nc" id="L285">		}</span>
+<span class="nc" id="L286">	}</span>
+
+	public static Properties generateProperties( File jnl ) {
+<span class="nc" id="L289">		Properties props = new Properties();</span>
+<span class="nc" id="L290">		props.setProperty( Constants.SMSS_LOCATION, jnl.toString() );</span>
+<span class="nc" id="L291">		props.setProperty( BigdataSail.Options.FILE, jnl.toString() );</span>
+<span class="nc" id="L292">		props.setProperty( Constants.ENGINE_IMPL,</span>
+<span class="nc" id="L293">				BigDataEngine.class.getCanonicalName() );</span>
+<span class="nc" id="L294">		props.setProperty( Constants.SMSS_VERSION_KEY, &quot;1.0&quot; );</span>
+
+<span class="nc" id="L296">		return props;</span>
+	}
+
+	/**
+	 * Gets the bigdata-specific properties
+	 *
+	 * @param prop all the properties to look through
+	 *
+	 * @return bigdata-specific properties
+	 */
+	private Properties getRWSProperties( Properties prop ) {
+<span class="nc" id="L307">		Properties rws = new Properties();</span>
+<span class="nc bnc" id="L308" title="All 2 branches missed.">		for ( String key : prop.stringPropertyNames() ) {</span>
+<span class="nc bnc" id="L309" title="All 2 branches missed.">			if ( key.startsWith( &quot;com.bigdata&quot; ) ) {</span>
+<span class="nc" id="L310">				String val = prop.getProperty( key );</span>
+<span class="nc" id="L311">				rws.setProperty( key, val );</span>
+			}
+<span class="nc" id="L313">		}</span>
+
+<span class="nc" id="L315">		return rws;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

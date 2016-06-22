@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>LegacyEdgeModeler.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">OS-EM Semantic Tool Utilities</a> &gt; <a href="../index.html" class="el_bundle">common</a> &gt; <a href="index.source.html" class="el_package">com.ostrichemulators.semtool.rdf.engine.edgemodelers</a> &gt; <span class="el_source">LegacyEdgeModeler.java</span></div><h1>LegacyEdgeModeler.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.ostrichemulators.semtool.rdf.engine.edgemodelers;
+
+import com.ostrichemulators.semtool.model.vocabulary.SEMONTO;
+import com.ostrichemulators.semtool.poi.main.ImportData;
+import com.ostrichemulators.semtool.poi.main.ImportMetadata;
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData;
+import com.ostrichemulators.semtool.poi.main.LoadingSheetData.LoadingNodeAndPropertyValues;
+import static com.ostrichemulators.semtool.rdf.engine.edgemodelers.AbstractEdgeModeler.isUri;
+import com.ostrichemulators.semtool.rdf.engine.util.QaChecker;
+import com.ostrichemulators.semtool.rdf.engine.util.QaChecker.RelationCacheKey;
+import static com.ostrichemulators.semtool.rdf.query.util.QueryExecutorAdapter.getCal;
+import com.ostrichemulators.semtool.util.Constants;
+import static com.ostrichemulators.semtool.util.RDFDatatypeTools.getRDFStringValue;
+import static com.ostrichemulators.semtool.util.RDFDatatypeTools.getUriFromRawString;
+import com.ostrichemulators.semtool.util.UriBuilder;
+import java.util.Date;
+import java.util.Map;
+import org.apache.log4j.Logger;
+import org.openrdf.model.Model;
+import org.openrdf.model.URI;
+import org.openrdf.model.Value;
+import org.openrdf.model.ValueFactory;
+import org.openrdf.model.impl.TreeModel;
+import org.openrdf.model.impl.ValueFactoryImpl;
+import org.openrdf.model.vocabulary.OWL;
+import org.openrdf.model.vocabulary.RDF;
+import org.openrdf.model.vocabulary.RDFS;
+import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.repository.RepositoryException;
+
+/**
+ *
+ * @author ryan
+ */
+public class LegacyEdgeModeler extends AbstractEdgeModeler {
+
+<span class="nc" id="L42">	private static final Logger log = Logger.getLogger( LegacyEdgeModeler.class );</span>
+
+	public LegacyEdgeModeler( QaChecker qa ) {
+<span class="nc" id="L45">		super( qa );</span>
+<span class="nc" id="L46">	}</span>
+
+	@Override
+	public URI addRel( LoadingNodeAndPropertyValues nap, Map&lt;String, String&gt; namespaces,
+			LoadingSheetData sheet, ImportMetadata metas, RepositoryConnection myrc )
+			throws RepositoryException {
+
+<span class="nc" id="L53">		String stype = nap.getSubjectType();</span>
+<span class="nc" id="L54">		String srawlabel = nap.getSubject();</span>
+
+<span class="nc" id="L56">		String otype = nap.getObjectType();</span>
+<span class="nc" id="L57">		String orawlabel = nap.getObject();</span>
+
+		// get both ends of the relationship...
+<span class="nc bnc" id="L60" title="All 2 branches missed.">		if ( !hasCachedInstance( stype, srawlabel ) ) {</span>
+<span class="nc" id="L61">			LoadingNodeAndPropertyValues filler</span>
+					= sheet.new LoadingNodeAndPropertyValues( srawlabel );
+<span class="nc" id="L63">			addNode( filler, namespaces, sheet, metas, myrc );</span>
+		}
+<span class="nc" id="L65">		URI subject = getCachedInstance( stype, srawlabel );</span>
+
+<span class="nc bnc" id="L67" title="All 2 branches missed.">		if ( !hasCachedInstance( otype, orawlabel ) ) {</span>
+<span class="nc" id="L68">			LoadingSheetData lsd = LoadingSheetData.nodesheet( sheet.getName(), otype );</span>
+<span class="nc" id="L69">			LoadingNodeAndPropertyValues filler = lsd.add( orawlabel );</span>
+<span class="nc" id="L70">			addNode( filler, namespaces, lsd, metas, myrc );</span>
+		}
+<span class="nc" id="L72">		URI object = getCachedInstance( otype, orawlabel );</span>
+
+<span class="nc" id="L74">		boolean alreadyMadeRel = isUri( sheet.getRelname(), namespaces );</span>
+
+		// ... and get a relationship that ties them together
+<span class="nc" id="L77">		RelationCacheKey lkey = new RelationCacheKey( nap.getSubjectType(),</span>
+<span class="nc" id="L78">				nap.getObjectType(), sheet.getRelname(), nap.getSubject(), nap.getObject() );</span>
+
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		if ( !hasCachedRelation( lkey ) ) {</span>
+			URI connector;
+			String rellocalname;
+<span class="nc bnc" id="L83" title="All 2 branches missed.">			if ( alreadyMadeRel ) {</span>
+<span class="nc" id="L84">				rellocalname = srawlabel + Constants.RELATION_URI_CONCATENATOR + orawlabel;</span>
+<span class="nc" id="L85">				connector = metas.getDataBuilder().getRelationUri().build( rellocalname );</span>
+			}
+			else {
+<span class="nc" id="L88">				UriBuilder typebuilder</span>
+<span class="nc" id="L89">						= metas.getDataBuilder().getRelationUri().add( sheet.getRelname() );</span>
+<span class="nc" id="L90">				rellocalname = srawlabel + Constants.RELATION_URI_CONCATENATOR + orawlabel;</span>
+<span class="nc" id="L91">				connector = typebuilder.add( rellocalname ).build();</span>
+			}
+
+<span class="nc" id="L94">			connector = ensureUnique( connector );</span>
+<span class="nc" id="L95">			cacheRelationNode( connector, lkey );</span>
+		}
+
+<span class="nc" id="L98">		URI relClassBaseURI = getCachedRelationClass( sheet.getRelname() );</span>
+
+<span class="nc" id="L100">		URI connector = getCachedRelation( lkey );</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">		if ( metas.isAutocreateMetamodel() ) {</span>
+<span class="nc" id="L102">			ValueFactory vf = myrc.getValueFactory();</span>
+
+<span class="nc" id="L104">			myrc.add( connector, RDFS.SUBPROPERTYOF, relClassBaseURI );</span>
+<span class="nc" id="L105">			myrc.add( connector, RDFS.LABEL, vf.createLiteral( srawlabel + &quot; &quot;</span>
+<span class="nc" id="L106">					+ sheet.getRelname() + &quot; &quot; + orawlabel ) );</span>
+		}
+<span class="nc" id="L108">		myrc.add( subject, connector, object );</span>
+
+<span class="nc" id="L110">		addProperties( connector, nap, namespaces, sheet, metas, myrc );</span>
+
+<span class="nc" id="L112">		return connector;</span>
+	}
+
+	@Override
+	public URI addNode( LoadingNodeAndPropertyValues nap, Map&lt;String, String&gt; namespaces,
+			LoadingSheetData sheet, ImportMetadata metas, RepositoryConnection myrc ) throws RepositoryException {
+
+<span class="nc" id="L119">		String typename = nap.getSubjectType();</span>
+<span class="nc" id="L120">		String rawlabel = nap.getSubject();</span>
+<span class="nc" id="L121">		URI subject = addSimpleNode( typename, rawlabel, namespaces, metas, myrc );</span>
+
+<span class="nc" id="L123">		ValueFactory vf = myrc.getValueFactory();</span>
+<span class="nc" id="L124">		boolean savelabel = metas.isAutocreateMetamodel();</span>
+<span class="nc bnc" id="L125" title="All 4 branches missed.">		if ( !metas.isLegacyMode() &amp;&amp; rawlabel.contains( &quot;:&quot; ) ) {</span>
+			// we have something with a colon in it, so we need to figure out if it's
+			// a namespace-prefixed string, or just a string with a colon in it
+
+<span class="nc" id="L129">			Value val = getRDFStringValue( rawlabel, namespaces, vf );</span>
+			// check if we have a prefixed URI
+<span class="nc" id="L131">			URI u = getUriFromRawString( rawlabel, namespaces );</span>
+<span class="nc bnc" id="L132" title="All 4 branches missed.">			savelabel = ( savelabel &amp;&amp; null == u );</span>
+<span class="nc" id="L133">			rawlabel = val.stringValue();</span>
+		}
+
+		// if we have a label property, skip this label-making
+		// (it'll get handled in the addProperties function later)
+<span class="nc bnc" id="L138" title="All 4 branches missed.">		if ( savelabel &amp;&amp; !nap.hasProperty( RDFS.LABEL, namespaces ) ) {</span>
+<span class="nc" id="L139">			myrc.add( subject, RDFS.LABEL, vf.createLiteral( rawlabel ) );</span>
+		}
+
+<span class="nc" id="L142">		addProperties( subject, nap, namespaces, sheet, metas, myrc );</span>
+
+<span class="nc" id="L144">		return subject;</span>
+	}
+
+	@Override
+	public void addProperties( URI subject, Map&lt;String, Value&gt; properties,
+			Map&lt;String, String&gt; namespaces, LoadingSheetData sheet,
+			ImportMetadata metas, RepositoryConnection myrc ) throws RepositoryException {
+
+<span class="nc" id="L152">		ValueFactory vf = myrc.getValueFactory();</span>
+
+<span class="nc bnc" id="L154" title="All 2 branches missed.">		for ( Map.Entry&lt;String, Value&gt; entry : properties.entrySet() ) {</span>
+<span class="nc" id="L155">			String propname = entry.getKey();</span>
+<span class="nc" id="L156">			URI predicate = getCachedPropertyClass( propname );</span>
+
+<span class="nc" id="L158">			Value value = entry.getValue();</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">			if ( sheet.isLink( propname ) ) {</span>
+				// our &quot;value&quot; is really the label of another node, so find that node
+<span class="nc" id="L161">				value = addSimpleNode( propname, value.stringValue(), namespaces, metas, myrc );</span>
+<span class="nc" id="L162">				predicate = getCachedRelationClass( sheet.getSubjectType()</span>
+<span class="nc" id="L163">						+ sheet.getObjectType() + propname );</span>
+			}
+
+			// not sure if we even use these values anymore
+<span class="nc bnc" id="L167" title="All 10 branches missed.">			switch ( value.toString() ) {</span>
+				case Constants.PROCESS_CURRENT_DATE:
+<span class="nc" id="L169">					myrc.add( subject, predicate,</span>
+<span class="nc" id="L170">							vf.createLiteral( getCal( new Date() ) ) );</span>
+<span class="nc" id="L171">					break;</span>
+				case Constants.PROCESS_CURRENT_USER:
+<span class="nc" id="L173">					myrc.add( subject, predicate,</span>
+<span class="nc" id="L174">							vf.createLiteral( System.getProperty( &quot;user.name&quot; ) ) );</span>
+<span class="nc" id="L175">					break;</span>
+				default:
+<span class="nc" id="L177">					myrc.add( subject, predicate, value );</span>
+			}
+<span class="nc" id="L179">		}</span>
+<span class="nc" id="L180">	}</span>
+
+	protected URI addSimpleNode( String typename, String rawlabel, Map&lt;String, String&gt; namespaces,
+			ImportMetadata metas, RepositoryConnection myrc ) throws RepositoryException {
+
+<span class="nc" id="L185">		boolean nodeIsAlreadyUri = isUri( rawlabel, namespaces );</span>
+
+<span class="nc bnc" id="L187" title="All 2 branches missed.">		if ( !hasCachedInstance( typename, rawlabel ) ) {</span>
+			URI subject;
+
+<span class="nc bnc" id="L190" title="All 2 branches missed.">			if ( nodeIsAlreadyUri ) {</span>
+<span class="nc" id="L191">				subject = getUriFromRawString( rawlabel, namespaces );</span>
+			}
+			else {
+<span class="nc bnc" id="L194" title="All 2 branches missed.">				if ( metas.isAutocreateMetamodel() ) {</span>
+<span class="nc" id="L195">					UriBuilder nodebuilder = metas.getDataBuilder().getConceptUri();</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">					if ( !typename.contains( &quot;:&quot; ) ) {</span>
+<span class="nc" id="L197">						nodebuilder.add( typename );</span>
+					}
+<span class="nc" id="L199">					subject = nodebuilder.add( rawlabel ).build();</span>
+<span class="nc" id="L200">				}</span>
+				else {
+<span class="nc" id="L202">					subject = metas.getDataBuilder().add( rawlabel ).build();</span>
+				}
+
+<span class="nc" id="L205">				subject = ensureUnique( subject );</span>
+			}
+<span class="nc" id="L207">			cacheInstance( subject, typename, rawlabel );</span>
+		}
+
+<span class="nc" id="L210">		URI subject = getCachedInstance( typename, rawlabel );</span>
+<span class="nc" id="L211">		myrc.add( subject, RDF.TYPE, getCachedInstanceClass( typename ) );</span>
+<span class="nc" id="L212">		return subject;</span>
+	}
+
+	@Override
+	public Model createMetamodel( ImportData alldata, Map&lt;String, String&gt; namespaces,
+			ValueFactory vf ) throws RepositoryException {
+<span class="nc" id="L218">		Model model = new TreeModel();</span>
+<span class="nc" id="L219">		ImportMetadata metas = alldata.getMetadata();</span>
+<span class="nc" id="L220">		UriBuilder schema = metas.getSchemaBuilder();</span>
+<span class="nc" id="L221">		boolean save = metas.isAutocreateMetamodel();</span>
+
+<span class="nc bnc" id="L223" title="All 2 branches missed.">		if ( null == vf ) {</span>
+<span class="nc" id="L224">			vf = new ValueFactoryImpl();</span>
+		}
+
+<span class="nc bnc" id="L227" title="All 2 branches missed.">		for ( LoadingSheetData sheet : alldata.getSheets() ) {</span>
+<span class="nc" id="L228">			String stype = sheet.getSubjectType();</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">			if ( !hasCachedInstanceClass( stype ) ) {</span>
+<span class="nc" id="L230">				boolean nodeAlreadyMade = isUri( stype, namespaces );</span>
+
+<span class="nc bnc" id="L232" title="All 2 branches missed.">				URI uri = ( nodeAlreadyMade</span>
+<span class="nc" id="L233">						? getUriFromRawString( stype, namespaces )</span>
+<span class="nc" id="L234">						: schema.build( stype ) );</span>
+<span class="nc" id="L235">				cacheInstanceClass( uri, stype );</span>
+
+<span class="nc bnc" id="L237" title="All 4 branches missed.">				if ( save &amp;&amp; !nodeAlreadyMade ) {</span>
+<span class="nc" id="L238">					model.add( uri, RDF.TYPE, OWL.CLASS );</span>
+<span class="nc" id="L239">					model.add( uri, RDFS.LABEL, vf.createLiteral( stype ) );</span>
+<span class="nc" id="L240">					model.add( uri, RDFS.SUBCLASSOF, schema.getConceptUri().build() );</span>
+				}
+			}
+
+<span class="nc bnc" id="L244" title="All 2 branches missed.">			if ( sheet.isRel() ) {</span>
+<span class="nc" id="L245">				String otype = sheet.getObjectType();</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">				if ( !hasCachedInstanceClass( otype ) ) {</span>
+<span class="nc" id="L247">					boolean nodeAlreadyMade = isUri( otype, namespaces );</span>
+
+<span class="nc bnc" id="L249" title="All 2 branches missed.">					URI uri = ( nodeAlreadyMade</span>
+<span class="nc" id="L250">							? getUriFromRawString( otype, namespaces )</span>
+<span class="nc" id="L251">							: schema.build( otype ) );</span>
+
+<span class="nc" id="L253">					cacheInstanceClass( uri, otype );</span>
+
+<span class="nc bnc" id="L255" title="All 4 branches missed.">					if ( save &amp;&amp; !nodeAlreadyMade ) {</span>
+<span class="nc" id="L256">						model.add( uri, RDF.TYPE, OWL.CLASS );</span>
+<span class="nc" id="L257">						model.add( uri, RDFS.LABEL, vf.createLiteral( otype ) );</span>
+<span class="nc" id="L258">						model.add( uri, RDFS.SUBCLASSOF, schema.getConceptUri().build() );</span>
+					}
+				}
+
+<span class="nc" id="L262">				String rellabel = sheet.getRelname();</span>
+
+<span class="nc bnc" id="L264" title="All 2 branches missed.">				if ( !hasCachedRelationClass( rellabel ) ) {</span>
+<span class="nc" id="L265">					boolean relationAlreadyMade = isUri( rellabel, namespaces );</span>
+
+<span class="nc bnc" id="L267" title="All 2 branches missed.">					URI ret = ( relationAlreadyMade</span>
+<span class="nc" id="L268">							? getUriFromRawString( rellabel, namespaces )</span>
+<span class="nc" id="L269">							: schema.getRelationUri( rellabel ) );</span>
+<span class="nc" id="L270">					URI relation = schema.getRelationUri().build();</span>
+
+<span class="nc" id="L272">					cacheRelationClass( ret, rellabel );</span>
+
+<span class="nc bnc" id="L274" title="All 2 branches missed.">					if ( save ) {</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">						if ( !relationAlreadyMade ) {</span>
+<span class="nc" id="L276">							model.add( ret, RDF.TYPE, OWL.OBJECTPROPERTY );</span>
+<span class="nc" id="L277">							model.add( ret, RDFS.LABEL, vf.createLiteral( rellabel ) );</span>
+<span class="nc" id="L278">							model.add( ret, RDFS.SUBPROPERTYOF, relation );</span>
+						}
+						// myrc.add( suri, ret, schemaNodes.get( ocachekey ) );
+
+<span class="nc" id="L282">						model.add( schema.getConceptUri().build(), RDF.TYPE, RDFS.CLASS );</span>
+
+<span class="nc" id="L284">						model.add( schema.getContainsUri(), RDFS.SUBPROPERTYOF, schema.getContainsUri() );</span>
+<span class="nc" id="L285">						model.add( relation, RDF.TYPE, RDF.PROPERTY );</span>
+					}
+				}
+			}
+<span class="nc" id="L289">		}</span>
+
+<span class="nc bnc" id="L291" title="All 2 branches missed.">		for ( LoadingSheetData sheet : alldata.getSheets() ) {</span>
+<span class="nc bnc" id="L292" title="All 2 branches missed.">			for ( String propname : sheet.getProperties() ) {</span>
+				// check to see if we're actually a link to some
+				// other node (and not really a new property
+<span class="nc bnc" id="L295" title="All 4 branches missed.">				if ( sheet.isLink( propname ) || hasCachedInstanceClass( propname ) ) {</span>
+<span class="nc" id="L296">					log.debug( &quot;linking &quot; + propname + &quot; as a &quot; + SEMONTO.has</span>
+<span class="nc" id="L297">							+ &quot; relationship to &quot; + getCachedInstanceClass( propname ) );</span>
+
+<span class="nc" id="L299">					cacheRelationClass( SEMONTO.has, sheet.getSubjectType()</span>
+<span class="nc" id="L300">							+ sheet.getObjectType() + propname );</span>
+<span class="nc" id="L301">					continue;</span>
+				}
+
+<span class="nc" id="L304">				boolean alreadyMadeProp = isUri( propname, namespaces );</span>
+
+<span class="nc bnc" id="L306" title="All 2 branches missed.">				if ( !hasCachedPropertyClass( propname ) ) {</span>
+					URI predicate;
+<span class="nc bnc" id="L308" title="All 2 branches missed.">					if ( alreadyMadeProp ) {</span>
+<span class="nc" id="L309">						predicate = getUriFromRawString( propname, namespaces );</span>
+					}
+					else {
+						// UriBuilder bb = schema.getRelationUri().add( Constants.CONTAINS );
+<span class="nc" id="L313">						predicate = schema.build( propname );</span>
+					}
+<span class="nc" id="L315">					cachePropertyClass( predicate, propname );</span>
+				}
+<span class="nc" id="L317">				URI predicate = getCachedPropertyClass( propname );</span>
+
+<span class="nc bnc" id="L319" title="All 4 branches missed.">				if ( save &amp;&amp; !alreadyMadeProp ) {</span>
+<span class="nc" id="L320">					model.add( predicate, RDFS.LABEL, vf.createLiteral( propname ) );</span>
+					// myrc.add( predicate, RDF.TYPE, schema.getContainsUri() );
+<span class="nc" id="L322">					model.add( predicate, RDFS.SUBPROPERTYOF, schema.getRelationUri().build() );</span>
+
+<span class="nc bnc" id="L324" title="All 2 branches missed.">					if ( !metas.isLegacyMode() ) {</span>
+<span class="nc" id="L325">						model.add( predicate, RDFS.SUBPROPERTYOF, schema.getContainsUri() );</span>
+					}
+				}
+<span class="nc" id="L328">			}</span>
+<span class="nc" id="L329">		}</span>
+
+<span class="nc" id="L331">		return model;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>
