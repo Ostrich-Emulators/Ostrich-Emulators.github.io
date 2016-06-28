@@ -61,7 +61,7 @@ public class LoadingSheetXmlHandler extends XlsXmlBase {
 
 <span class="nc" id="L62">		return sum - 1;</span>
 	}
-	
+
 	public LoadingSheetXmlHandler( List&lt;String&gt; sst, StylesTable styles,
 			String sheetname, Map&lt;String, String&gt; ns, boolean lsInMem ) {
 <span class="nc" id="L67">		super( sst );</span>
@@ -177,48 +177,55 @@ public class LoadingSheetXmlHandler extends XlsXmlBase {
 <span class="nc" id="L177">								vf.createLiteral( DateUtil.getJavaDate( Double.parseDouble( getContents() ) ) ) );</span>
 					}
 					else {
-<span class="nc" id="L180">						currentrowdata.put( colnum, vf.createLiteral( Double.parseDouble( getContents() ) ) );</span>
+						// see if we can use an integer instead of a double
+						// (excel doesn't distinguish between the two, but I can't figure
+						// out how to get exactly what's shown in the cell via the cell style)
+<span class="nc" id="L183">						String contents = getContents();</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">						Value val = ( contents.endsWith( &quot;.0&quot; )</span>
+<span class="nc" id="L185">								? vf.createLiteral( Integer.parseInt( contents.substring( 0, contents.length() - 2 ) ) )</span>
+<span class="nc" id="L186">								: vf.createLiteral( Double.parseDouble( contents ) ) );</span>
+<span class="nc" id="L187">						currentrowdata.put( colnum, val );</span>
 					}
-<span class="nc" id="L182">					break;</span>
+<span class="nc" id="L189">					break;</span>
 				case Cell.CELL_TYPE_ERROR:
-<span class="nc" id="L184">					log.warn( &quot;unhandled cell type: CELL_TYPE_ERROR&quot; );</span>
-<span class="nc" id="L185">					break;</span>
+<span class="nc" id="L191">					log.warn( &quot;unhandled cell type: CELL_TYPE_ERROR&quot; );</span>
+<span class="nc" id="L192">					break;</span>
 				case Cell.CELL_TYPE_FORMULA:
-<span class="nc" id="L187">					log.warn( &quot;unhandled cell type: CELL_TYPE_FORMULA&quot; );</span>
-<span class="nc" id="L188">					break;</span>
+<span class="nc" id="L194">					log.warn( &quot;unhandled cell type: CELL_TYPE_FORMULA&quot; );</span>
+<span class="nc" id="L195">					break;</span>
 				default:
-<span class="nc" id="L190">					log.warn( &quot;unhandled cell type: &quot; + celltype );</span>
+<span class="nc" id="L197">					log.warn( &quot;unhandled cell type: &quot; + celltype );</span>
 			}
 
 //			if ( null != currentcell ) {
 //				log.debug( sheet.getSheetName() + &quot;(&quot; + currentrow.getRowNum() + &quot;,&quot;
 //						+ currentcell.getColumnIndex() + &quot;) &quot; + currentcell.getStringCellValue() );
 //			}
-<span class="nc" id="L197">			setReading( false );</span>
+<span class="nc" id="L204">			setReading( false );</span>
 		}
-<span class="nc" id="L199">	}</span>
+<span class="nc" id="L206">	}</span>
 
 	private static void fillInRow( Map&lt;Integer, Value&gt; rowdata,
 			LoadingSheetData sheet, Map&lt;Integer, String&gt; proplkp ) {
-<span class="nc" id="L203">		removeComments( rowdata );</span>
-<span class="nc bnc" id="L204" title="All 4 branches missed.">		if ( rowdata.isEmpty() || !rowdata.containsKey( 1 ) ) {</span>
-<span class="nc" id="L205">			return;</span>
+<span class="nc" id="L210">		removeComments( rowdata );</span>
+<span class="nc bnc" id="L211" title="All 4 branches missed.">		if ( rowdata.isEmpty() || !rowdata.containsKey( 1 ) ) {</span>
+<span class="nc" id="L212">			return;</span>
 		}
 
-<span class="nc" id="L208">		rowdata.remove( 0 );</span>
-<span class="nc" id="L209">		String slabel = rowdata.remove( 1 ).stringValue();</span>
-<span class="nc" id="L210">		String olabel = null;</span>
-<span class="nc bnc" id="L211" title="All 4 branches missed.">		if ( sheet.isRel() &amp;&amp; rowdata.containsKey( 2 ) ) {</span>
-<span class="nc" id="L212">			olabel = rowdata.remove( 2 ).stringValue();</span>
+<span class="nc" id="L215">		rowdata.remove( 0 );</span>
+<span class="nc" id="L216">		String slabel = rowdata.remove( 1 ).stringValue();</span>
+<span class="nc" id="L217">		String olabel = null;</span>
+<span class="nc bnc" id="L218" title="All 4 branches missed.">		if ( sheet.isRel() &amp;&amp; rowdata.containsKey( 2 ) ) {</span>
+<span class="nc" id="L219">			olabel = rowdata.remove( 2 ).stringValue();</span>
 		}
 
-<span class="nc" id="L215">		Map&lt;String, Value&gt; props = new HashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L216" title="All 2 branches missed.">		for ( Map.Entry&lt;Integer, Value&gt; en : rowdata.entrySet() ) {</span>
-<span class="nc" id="L217">			props.put( proplkp.get( en.getKey() ), en.getValue() );</span>
-<span class="nc" id="L218">		}</span>
+<span class="nc" id="L222">		Map&lt;String, Value&gt; props = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">		for ( Map.Entry&lt;Integer, Value&gt; en : rowdata.entrySet() ) {</span>
+<span class="nc" id="L224">			props.put( proplkp.get( en.getKey() ), en.getValue() );</span>
+<span class="nc" id="L225">		}</span>
 
-<span class="nc" id="L220">		sheet.add( slabel, olabel, props );</span>
-<span class="nc" id="L221">	}</span>
+<span class="nc" id="L227">		sheet.add( slabel, olabel, props );</span>
+<span class="nc" id="L228">	}</span>
 
 	/**
 	 * Removes any comments from the given mapping. Any column index after the
@@ -227,40 +234,40 @@ public class LoadingSheetXmlHandler extends XlsXmlBase {
 	 * @param rowdata the data to remove comments from
 	 */
 	private static void removeComments( Map&lt;Integer, Value&gt; rowdata ) {
-<span class="nc" id="L230">		int commentcol = Integer.MAX_VALUE;</span>
-<span class="nc" id="L231">		List&lt;Integer&gt; removers = new ArrayList&lt;&gt;();</span>
-<span class="nc bnc" id="L232" title="All 2 branches missed.">		for ( Map.Entry&lt;Integer, Value&gt; en : rowdata.entrySet() ) {</span>
-<span class="nc" id="L233">			int col = en.getKey();</span>
-<span class="nc" id="L234">			String val = en.getValue().stringValue();</span>
+<span class="nc" id="L237">		int commentcol = Integer.MAX_VALUE;</span>
+<span class="nc" id="L238">		List&lt;Integer&gt; removers = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L239" title="All 2 branches missed.">		for ( Map.Entry&lt;Integer, Value&gt; en : rowdata.entrySet() ) {</span>
+<span class="nc" id="L240">			int col = en.getKey();</span>
+<span class="nc" id="L241">			String val = en.getValue().stringValue();</span>
 
 			// already seen a comment cell
-<span class="nc bnc" id="L237" title="All 2 branches missed.">			if ( col &gt; commentcol ) {</span>
-<span class="nc" id="L238">				removers.add( col );</span>
+<span class="nc bnc" id="L244" title="All 2 branches missed.">			if ( col &gt; commentcol ) {</span>
+<span class="nc" id="L245">				removers.add( col );</span>
 			}
 
-<span class="nc bnc" id="L241" title="All 2 branches missed.">			if ( val.startsWith( &quot;#&quot; ) ) {</span>
-<span class="nc" id="L242">				commentcol = col;</span>
-<span class="nc" id="L243">				removers.add( col );</span>
+<span class="nc bnc" id="L248" title="All 2 branches missed.">			if ( val.startsWith( &quot;#&quot; ) ) {</span>
+<span class="nc" id="L249">				commentcol = col;</span>
+<span class="nc" id="L250">				removers.add( col );</span>
 			}
-<span class="nc" id="L245">		}</span>
+<span class="nc" id="L252">		}</span>
 
-<span class="nc bnc" id="L247" title="All 2 branches missed.">		for ( int col : removers ) {</span>
-<span class="nc" id="L248">			rowdata.remove( col );</span>
-<span class="nc" id="L249">		}</span>
-<span class="nc" id="L250">	}</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">		for ( int col : removers ) {</span>
+<span class="nc" id="L255">			rowdata.remove( col );</span>
+<span class="nc" id="L256">		}</span>
+<span class="nc" id="L257">	}</span>
 
 	@Override
 	public void endDocument() throws SAXException {
-<span class="nc" id="L254">		super.endDocument();</span>
-<span class="nc" id="L255">		loadingsheet.finishLoading();</span>
+<span class="nc" id="L261">		super.endDocument();</span>
+<span class="nc" id="L262">		loadingsheet.finishLoading();</span>
 
-<span class="nc bnc" id="L257" title="All 2 branches missed.">		if ( log.isDebugEnabled() ) {</span>
-<span class="nc" id="L258">			log.debug( &quot;Loading sheet &quot; + loadingsheet.getName()</span>
+<span class="nc bnc" id="L264" title="All 2 branches missed.">		if ( log.isDebugEnabled() ) {</span>
+<span class="nc" id="L265">			log.debug( &quot;Loading sheet &quot; + loadingsheet.getName()</span>
 					+ &quot; processed. properties: &quot;
-<span class="nc" id="L260">					+ Arrays.toString( loadingsheet.getProperties().toArray() ) );</span>
-<span class="nc" id="L261">			log.debug( &quot;Created &quot; + loadingsheet.rows()</span>
-<span class="nc bnc" id="L262" title="All 2 branches missed.">					+ ( loadingsheet.isRel() ? &quot; relationships&quot; : &quot; entities&quot; ) );</span>
+<span class="nc" id="L267">					+ Arrays.toString( loadingsheet.getProperties().toArray() ) );</span>
+<span class="nc" id="L268">			log.debug( &quot;Created &quot; + loadingsheet.rows()</span>
+<span class="nc bnc" id="L269" title="All 2 branches missed.">					+ ( loadingsheet.isRel() ? &quot; relationships&quot; : &quot; entities&quot; ) );</span>
 		}
-<span class="nc" id="L264">	}</span>
+<span class="nc" id="L271">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

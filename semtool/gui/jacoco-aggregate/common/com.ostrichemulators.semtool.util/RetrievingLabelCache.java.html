@@ -6,8 +6,11 @@
 package com.ostrichemulators.semtool.util;
 
 import com.ostrichemulators.semtool.rdf.engine.api.IEngine;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.apache.log4j.Logger;
 import org.openrdf.model.Literal;
 import org.openrdf.model.URI;
@@ -22,85 +25,120 @@ import org.openrdf.model.Value;
  */
 public final class RetrievingLabelCache extends HashMap&lt;Value, String&gt; {
 
-<span class="nc" id="L25">	private static final Logger log = Logger.getLogger( RetrievingLabelCache.class );</span>
+<span class="nc" id="L28">	private static final Logger log = Logger.getLogger( RetrievingLabelCache.class );</span>
 	private IEngine engine;
-<span class="nc" id="L27">	private boolean caching = true;</span>
+<span class="nc" id="L30">	private boolean caching = true;</span>
+	// if we use the localname to determine the label, recache when an engine is set
+<span class="nc" id="L32">	private final Set&lt;URI&gt; labelFromLocalName = new HashSet&lt;&gt;();</span>
 
-<span class="nc" id="L29">	public RetrievingLabelCache( IEngine eng, boolean docache ) {</span>
-<span class="nc" id="L30">		engine = eng;</span>
-<span class="nc" id="L31">		caching = docache;</span>
-<span class="nc" id="L32">	}</span>
-
-	public RetrievingLabelCache( IEngine eng, Map&lt;? extends Value, String&gt; map ) {
-<span class="nc" id="L35">		super( map );</span>
-<span class="nc" id="L36">		engine = eng;</span>
+<span class="nc" id="L34">	public RetrievingLabelCache( IEngine eng, boolean docache ) {</span>
+<span class="nc" id="L35">		engine = eng;</span>
+<span class="nc" id="L36">		caching = docache;</span>
 <span class="nc" id="L37">	}</span>
 
-	public RetrievingLabelCache( IEngine engine ) {
-<span class="nc" id="L40">		this( engine, true );</span>
-<span class="nc" id="L41">	}</span>
+	public RetrievingLabelCache( IEngine eng, Map&lt;? extends Value, String&gt; map ) {
+<span class="nc" id="L40">		super( map );</span>
+<span class="nc" id="L41">		engine = eng;</span>
+<span class="nc" id="L42">	}</span>
 
-<span class="nc" id="L43">	public RetrievingLabelCache() {</span>
-<span class="nc" id="L44">	}</span>
+	public RetrievingLabelCache( IEngine engine ) {
+<span class="nc" id="L45">		this( engine, true );</span>
+<span class="nc" id="L46">	}</span>
+
+<span class="nc" id="L48">	public RetrievingLabelCache() {</span>
+<span class="nc" id="L49">	}</span>
 
 	public void setEngine( IEngine e ) {
-<span class="nc" id="L47">		engine = e;</span>
-<span class="nc" id="L48">	}</span>
+<span class="nc" id="L52">		engine = e;</span>
+<span class="nc bnc" id="L53" title="All 2 branches missed.">		for ( URI u : labelFromLocalName ) {</span>
+<span class="nc" id="L54">			super.remove( u );</span>
+<span class="nc" id="L55">		}</span>
+<span class="nc" id="L56">		labelFromLocalName.clear();</span>
+<span class="nc" id="L57">	}</span>
 
 	@Override
 	public boolean containsKey( Object o ) {
-<span class="nc" id="L52">		return ( o instanceof Value );</span>
+<span class="nc" id="L61">		return ( o instanceof Value );</span>
 	}
 
 	public boolean isCaching() {
-<span class="nc" id="L56">		return caching;</span>
+<span class="nc" id="L65">		return caching;</span>
 	}
-	
+
 	/**
 	 * Should this cache actually cache results?
 	 *
 	 * @param b
 	 */
 	public void setCaching( boolean b ) {
-<span class="nc" id="L65">		caching = b;</span>
-<span class="nc" id="L66">	}</span>
+<span class="nc" id="L74">		caching = b;</span>
+<span class="nc" id="L75">	}</span>
 
 	@Override
 	public String get( Object value ) {
-<span class="nc bnc" id="L70" title="All 2 branches missed.">		if ( value instanceof Value ) {</span>
-<span class="nc" id="L71">			Value val = Value.class.cast( value );</span>
-<span class="nc" id="L72">			String label = null;</span>
-
-<span class="nc bnc" id="L74" title="All 2 branches missed.">			if ( !super.containsKey( val ) ) {</span>
-<span class="nc bnc" id="L75" title="All 2 branches missed.">				if ( value instanceof URI ) {</span>
-<span class="nc" id="L76">					URI uri = URI.class.cast( value );</span>
-<span class="nc bnc" id="L77" title="All 2 branches missed.">					label = ( null == engine</span>
-<span class="nc" id="L78">							? uri.getLocalName()</span>
-<span class="nc" id="L79">							: Utility.getInstanceLabel( uri, engine ) );</span>
-<span class="nc" id="L80">				}</span>
-<span class="nc bnc" id="L81" title="All 2 branches missed.">				else if ( value instanceof Literal ) {</span>
-<span class="nc" id="L82">					Literal lit = Literal.class.cast( value );</span>
-<span class="nc" id="L83">					label = lit.getLabel();</span>
-<span class="nc" id="L84">				}</span>
-				else {
-<span class="nc" id="L86">					label = value.toString();</span>
-				}
-
-<span class="nc bnc" id="L89" title="All 2 branches missed.">				if ( caching ) {</span>
-<span class="nc" id="L90">					put( Value.class.cast( value ), label );</span>
-				}
-				else {
-<span class="nc" id="L93">					return label;</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		if ( value instanceof Value ) {</span>
+<span class="nc" id="L80">			Value val = Value.class.cast( value );</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">			if ( !super.containsKey( val ) ) {</span>
+<span class="nc" id="L82">				String label = cache( val );</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">				if ( !caching ) {</span>
+<span class="nc" id="L84">					return label;</span>
 				}
 			}
 		}
 
-<span class="nc" id="L98">		return super.get( value );</span>
+<span class="nc" id="L89">		return super.get( value );</span>
 	}
 
+	/**
+	 * Caches a label for the given value. If the value is already cached, null is
+	 * returned (NOT the cached value).
+	 *
+	 * @param value
+	 * @return
+	 */
+	public String cache( Value value ) {
+<span class="nc" id="L100">		Value val = Value.class.cast( value );</span>
+<span class="nc" id="L101">		String label = null;</span>
+
+<span class="nc bnc" id="L103" title="All 2 branches missed.">		if ( !super.containsKey( val ) ) {</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">			if ( value instanceof URI ) {</span>
+<span class="nc" id="L105">				URI uri = URI.class.cast( value );</span>
+
+<span class="nc bnc" id="L107" title="All 2 branches missed.">				if ( null == engine ) {</span>
+<span class="nc" id="L108">					labelFromLocalName.add( uri );</span>
+<span class="nc" id="L109">					label = uri.getLocalName();</span>
+				}
+				else {
+<span class="nc" id="L112">					label = Utility.getInstanceLabel( uri, engine );</span>
+				}
+<span class="nc" id="L114">			}</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">			else if ( value instanceof Literal ) {</span>
+<span class="nc" id="L116">				Literal lit = Literal.class.cast( value );</span>
+<span class="nc" id="L117">				label = lit.getLabel();</span>
+<span class="nc" id="L118">			}</span>
+			else {
+<span class="nc" id="L120">				label = value.toString();</span>
+			}
+
+<span class="nc bnc" id="L123" title="All 2 branches missed.">			if ( caching ) {</span>
+<span class="nc" id="L124">				put( Value.class.cast( value ), label );</span>
+			}
+		}
+
+<span class="nc" id="L128">		return label;</span>
+	}
+
+	public void cache( Collection&lt;? extends Value&gt; values ) {
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		for ( Value val : values ) {</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">			if ( !super.containsKey( val ) ) {</span>
+<span class="nc" id="L134">				cache( val );</span>
+			}
+<span class="nc" id="L136">		}</span>
+<span class="nc" id="L137">	}</span>
+
 	public void reset( Map&lt;Value, String&gt; newdata ) {
-<span class="nc" id="L102">		clear();</span>
-<span class="nc" id="L103">		putAll( newdata );</span>
-<span class="nc" id="L104">	}</span>
+<span class="nc" id="L140">		clear();</span>
+<span class="nc" id="L141">		putAll( newdata );</span>
+<span class="nc" id="L142">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>

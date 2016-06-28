@@ -40,16 +40,17 @@ OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.web.io,DbInfo,46,0,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,TreeNode,124,0,14,0,33,0,16,0,9,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,MultiSetMap,139,0,12,0,25,0,13,0,7,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,Utility.ResourceLabelPair,15,0,0,0,5,0,2,0,2,0
-OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,RDFDatatypeTools,880,0,150,0,205,0,89,0,14,0
+OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,RDFDatatypeTools,974,0,174,0,227,0,103,0,16,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,Utility.new VoidQueryAdapter() {...},25,0,0,0,5,0,2,0,2,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,LegacySanitizer,68,0,2,0,16,0,3,0,2,0
-OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,RetrievingLabelCache,125,0,12,0,41,0,17,0,11,0
+OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,RetrievingLabelCache,202,0,22,0,57,0,24,0,13,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,MultiMap,117,0,10,0,20,0,12,0,7,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,UriBuilder,459,0,34,0,112,0,49,0,32,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,Constants,37,0,0,0,11,0,2,0,2,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,UriBuilder.DefaultSanitizer,48,0,8,0,12,0,7,0,3,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,Utility,947,0,106,0,179,0,78,0,24,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,DeterministicSanitizer,83,0,8,0,21,0,6,0,2,0
+OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.util,RDFDatatypeTools.new Comparator() {...},29,0,4,0,9,0,4,0,2,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.impl,InsightManagerImpl,1913,0,152,0,376,0,110,0,34,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.impl,InsightManagerImpl.new Comparator() {...},31,0,0,0,4,0,2,0,2,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.impl,AbstractSesameEngine.new VoidQueryAdapter() {...},50,0,6,0,9,0,5,0,2,0
@@ -68,7 +69,7 @@ OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.query.util,Metad
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.query.util,UpdateExecutorAdapter,7,0,0,0,4,0,2,0,2,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.query.util,AbstractBindable,431,0,10,0,101,0,41,0,36,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.om,Insight,345,0,12,0,84,0,37,0,31,0
-OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.om,AbstractGraphElement,296,0,22,0,67,0,38,0,27,0
+OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.om,AbstractGraphElement,384,0,28,0,89,0,43,0,29,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.om,NamedShape,438,0,16,0,63,0,19,0,11,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.om,InsightOutputType,169,0,0,0,9,0,5,0,5,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.om,Perspective,166,0,8,0,43,0,21,0,17,0
@@ -80,7 +81,7 @@ OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.user,User.UserProper
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.user,Security,39,0,4,0,8,0,6,0,4,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.user,RemoteUserImpl,111,0,2,0,26,0,12,0,11,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.security.permissions,SemossPermission,45,0,0,0,11,0,4,0,4,0
-OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.util,NodeDerivationTools,499,0,22,0,111,0,22,0,11,0
+OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.util,NodeDerivationTools,484,0,22,0,109,0,21,0,10,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.util,StatementSorter,35,0,4,0,7,0,4,0,2,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.util,StructureManagerFactory,36,0,2,0,9,0,4,0,3,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.util,QaChecker.new Consumer() {...},17,0,0,0,3,0,2,0,2,0
@@ -113,7 +114,7 @@ OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.util,Engi
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.util,QaChecker.CacheType,48,0,0,0,2,0,4,0,4,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.util,EngineConsistencyChecker,545,0,40,0,95,0,30,0,10,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.util,EngineManagementException,82,0,0,0,27,0,12,0,12,0
-OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.util,EngineOperationAdapter,7,0,0,0,5,0,5,0,5,0
+OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.util,EngineOperationAdapter,8,0,0,0,6,0,6,0,6,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.query.util.impl,OneVarListQueryAdapter,107,0,4,0,30,0,16,0,14,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.query.util.impl,MapQueryAdapter,30,0,0,0,10,0,4,0,4,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.query.util.impl,ModelQueryAdapter,137,0,18,0,33,0,15,0,6,0
@@ -137,7 +138,7 @@ OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.graph.functions,Grap
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.graph.functions,GraphToTreeConverter.Search,38,0,0,0,2,0,4,0,4,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.poi.main.xlsxml,MetadataTabXmlHandler,696,0,88,0,131,0,55,0,9,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.poi.main.xlsxml,XlsXmlBase,55,0,2,0,16,0,10,0,9,0
-OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.poi.main.xlsxml,LoadingSheetXmlHandler,612,0,73,0,125,0,51,0,10,0
+OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.poi.main.xlsxml,LoadingSheetXmlHandler,631,0,75,0,129,0,52,0,10,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.poi.main.xlsxml,LoaderTabXmlHandler,370,0,54,0,76,0,39,0,10,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.poi.main.xlsxml,SheetTypeXmlHandler,182,0,32,0,42,0,25,0,7,0
 OS-EM Semantic Tool GUI/common,com.ostrichemulators.semtool.rdf.engine.api,ReificationStyle,105,0,6,0,14,0,8,0,5,0
